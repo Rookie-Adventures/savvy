@@ -1,0 +1,69 @@
+# ─── Stage 1: Build Hermes Workspace ─────────────────────────────────────
+FROM node:22-slim AS workspace_builder
+
+ARG GIT_BRANCH=dev
+ARG USE_GIT=false
+ARG GIT_REPO=https://github.com/outsourc-e/hermes-workspace.git
+
+ENV CI=true
+
+RUN corepack enable && apt-get update && apt-get install -y --no-install-recommends ca-certificates git && rm -rf /var/lib/apt/lists/*
+WORKDIR /workspace-src
+
+# Option 1: Local build (default) - copy from build context
+# Option 2: Git build - clone from repository
+COPY hermes-workspace/package.json hermes-workspace/pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile --ignore-scripts
+
+COPY hermes-workspace/ .
+RUN pnpm build
+
+# ─── Stage 2: Production Unified Image ───────────────────────────────────
+FROM nousresearch/hermes-agent:latest AS final
+
+USER root
+
+# Define workspace directories
+ENV WORKSPACE_DIR=/opt/hermes-workspace \
+    HERMES_WORKSPACE_DIR=/workspace \
+    PORT=3000
+
+WORKDIR ${WORKSPACE_DIR}
+
+# Copy Workspace build artifacts + runtime deps from Stage 1
+COPY --from=workspace_builder --chown=hermes:hermes /workspace-src/dist ./dist
+COPY --from=workspace_builder --chown=hermes:hermes /workspace-src/node_modules ./node_modules
+COPY --from=workspace_builder --chown=hermes:hermes /workspace-src/package.json ./package.json
+COPY --from=workspace_builder --chown=hermes:hermes /workspace-src/server-entry.js ./server-entry.js
+COPY --from=workspace_builder --chown=hermes:hermes /workspace-src/skills ./skills
+
+# ─── Stage 3: s6-overlay Process Supervision Wiring ──────────────────────
+# Declare 'workspace' as a new service directory for s6-overlay
+RUN mkdir -p /etc/s6-overlay/s6-rc.d/workspace /etc/s6-overlay/s6-rc.d/workspace/dependencies.d && \
+    # 1. Define service type as 'longrun'
+    echo "longrun" > /etc/s6-overlay/s6-rc.d/workspace/type && \
+    # 2. Set dependency on 'dashboard' (workspace must wait until agent is fully ready)
+    touch /etc/s6-overlay/s6-rc.d/workspace/dependencies.d/dashboard && \
+    # 3. Enable the service by linking it inside the 'user' bundle
+    touch /etc/s6-overlay/s6-rc.d/user/contents.d/workspace
+
+# 4. Create the s6 runner script for Workspace
+RUN printf '#!/command/with-contenv sh\n\
+export HOME=/opt/data\n\
+export NODE_ENV=production\n\
+export HERMES_API_URL=http://127.0.0.1:8642\n\
+export HERMES_DASHBOARD_URL=http://127.0.0.1:9119\n\
+export HERMES_HOME=/opt/data\n\
+export HERMES_WORKSPACE_DIR=/workspace\n\
+cd %s\n\
+exec s6-setuidgid hermes node server-entry.js\n' "${WORKSPACE_DIR}" > /etc/s6-overlay/s6-rc.d/workspace/run && \
+    chmod +x /etc/s6-overlay/s6-rc.d/workspace/run
+
+# Expose ports
+# 3000 -> Workspace UI
+# 8642 -> Optional Agent Open-API Gateway
+EXPOSE 3000 8642
+
+# Restore ENTRYPOINT to /init
+ENTRYPOINT [ "/init", "/opt/hermes/docker/main-wrapper.sh" ]
+CMD [ ]

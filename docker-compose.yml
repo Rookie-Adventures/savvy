@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  hermes:
+    build:
+      context: .
+      dockerfile: Dockerfile.unified
+      args:
+        GIT_BRANCH: ${GIT_BRANCH:-dev}
+    image: hermes-unified:latest
+    restart: unless-stopped
+    command: ["gateway", "run"]
+    ports:
+      - '127.0.0.1:3000:3000' # Expose Workspace Web UI to host loopback
+    environment:
+      # --- Agent LLM API Keys ---
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      # --- Agent Autostart & Network Bind ---
+      HERMES_DASHBOARD: '1'
+      HERMES_DASHBOARD_HOST: '127.0.0.1'
+      HERMES_DASHBOARD_PORT: '9119'
+      API_SERVER_HOST: '127.0.0.1'
+      API_SERVER_ENABLED: 'true'
+      LLM_MODEL: 'local-mock'
+      CLAUDE_DEFAULT_MODEL: 'local-mock'
+      HERMES_DEFAULT_MODEL: 'local-mock'
+      # --- Workspace Bind & Security Configuration ---
+      HOST: '0.0.0.0'
+      HERMES_ALLOW_INSECURE_REMOTE: '1'
+      HERMES_PASSWORD: ${HERMES_PASSWORD:-}
+      API_SERVER_KEY: 'mock-api-server-key-12345'
+      HERMES_API_TOKEN: 'mock-api-server-key-12345'
+    volumes:
+      - hermes-data:/opt/data
+      - hermes-workspace:/workspace
+
+volumes:
+  hermes-data:
+  hermes-workspace:

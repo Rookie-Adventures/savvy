@@ -2,34 +2,30 @@
 
 ## Overview
 
-This document describes how workspace access is routed through the reverse proxy to user containers.
+Workspace access is routed through Nginx to user containers. Raw Docker ports are not exposed publicly.
 
-## Architecture
-
-```
-User Browser → Nginx Proxy → Token Validation → Container
+```text
+User Browser -> Nginx -> savvy-manager token validation -> Hermes container
 ```
 
 ## Token Flow
 
-1. **User requests workspace access** from Hermes console
-2. **Backend calls** `POST /internal/instances/{instance_id}/access-token`
-3. **Savvy Manager generates** a signed JWT-like token with:
-   - `instance_id`
-   - `user_id`
-   - `iat` (issued at)
-   - `exp` (expiration, 30 minutes)
-4. **User is redirected** to `/workspace/{user_id}/?token={token}`
-5. **Nginx validates** the token via `auth_request` to savvy-manager
-6. **If valid**, request is forwarded to the container
+1. User requests workspace access from the Hermes console.
+2. `new-api` calls `POST /internal/instances/{instance_id}/access-token`.
+3. `savvy-manager` generates a signed workspace access token.
+4. User is redirected to `/workspace/{workspace_id}/?token={token}`.
+5. Nginx validates the token through `auth_request`.
+6. If valid, `savvy-manager` returns the container upstream in `X-Workspace-Upstream`.
+7. Nginx proxies the request, including WebSocket traffic, to the container.
 
 ## Token Format
 
-```
+```text
 {base64_payload}.{hmac_signature}
 ```
 
-Payload contains:
+Payload:
+
 ```json
 {
   "instance_id": "inst-123",
@@ -39,44 +35,90 @@ Payload contains:
 }
 ```
 
+This token is only for browser access to Workspace routes. It is separate from the service-to-service HMAC request signature used by `new-api` when calling `savvy-manager`.
+
 ## Nginx Configuration
 
-The proxy uses `auth_request` module to validate tokens:
+`savvy-manager` validates the token and returns:
+
+- `X-User-Id`
+- `X-Instance-Id`
+- `X-Workspace-Upstream`, for example `http://hermes-u123-w456:3000`
 
 ```nginx
+resolver 127.0.0.11 valid=10s ipv6=off;
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    '' close;
+}
+
+location = /_workspace_auth {
+    internal;
+    proxy_pass http://savvy-manager:8000/internal/workspace/validate;
+    proxy_pass_request_body off;
+    proxy_set_header Content-Length "";
+    proxy_set_header X-Original-URI $request_uri;
+    proxy_set_header X-Original-Method $request_method;
+}
+
 location /workspace/ {
-    auth_request /validate-token;
+    auth_request /_workspace_auth;
     auth_request_set $user_id $upstream_http_x_user_id;
     auth_request_set $instance_id $upstream_http_x_instance_id;
-    
-    proxy_pass http://container;
+    auth_request_set $workspace_upstream $upstream_http_x_workspace_upstream;
+
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+
+    proxy_pass $workspace_upstream;
 }
 ```
 
-## Security
+Notes:
 
-- Tokens expire after 30 minutes
-- Tokens are signed with HMAC-SHA256
-- Only the instance owner can generate tokens
-- Proxy rejects expired or invalid tokens
+- Nginx must run on the same Docker network as workspace containers for Docker DNS names to resolve.
+- Variable `proxy_pass` requires Docker DNS resolver `127.0.0.11`.
+- WebSocket headers are required for Hermes terminal/session features.
+- `savvy-manager` must never return an upstream derived from user input. It must look up the instance owner and container name from its database.
 
 ## Container Routing
 
-In production, containers are routed by:
-1. Container name: `savvy-u{user_id}-w1`
-2. Docker network: `hermes-network`
-3. Container port: typically `3000` or `8080`
+MVP routing:
+
+- Container name: `hermes-u{user_id}-w{workspace_id}`.
+- Docker network: `savvy-net`.
+- Container port: `3000`.
+- Upstream returned by manager: `http://hermes-u{user_id}-w{workspace_id}:3000`.
+
+Future cross-host routing can return an internal host address instead, but the browser-facing URL should stay stable.
+
+## Security
+
+- Tokens expire after 30 minutes.
+- Tokens are signed with HMAC-SHA256.
+- Only the instance owner can generate tokens.
+- Proxy rejects expired or invalid tokens.
+- Workspace containers do not receive platform provider API keys.
+- Browser never calls `savvy-manager` directly.
 
 ## Testing
 
 ```bash
-# Generate a test token
-curl -X POST http://localhost:8000/internal/instances/inst-123/access-token \
-  -H "X-Savvy-User-Id: user-456" \
-  -H "X-Savvy-Timestamp: $(date +%s)" \
-  -H "X-Savvy-Nonce: test" \
-  -H "X-Savvy-Signature: {hmac_signature}"
-
-# Access workspace with token
-curl -i http://localhost/workspace/user-456/?token={token}
+curl -i "http://localhost/workspace/test/?token=bad"
 ```
+
+Expected: invalid token is rejected.
+
+```bash
+curl -i "http://localhost/workspace/test/?token=VALID_TOKEN"
+```
+
+Expected: valid token proxies to the matching workspace container.
+

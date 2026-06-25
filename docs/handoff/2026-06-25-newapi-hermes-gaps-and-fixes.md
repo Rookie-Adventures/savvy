@@ -1,0 +1,388 @@
+# 交接文档:new-api × Hermes 集成问题清单与修复方案
+
+> **背景**:本文由上一轮代码审查(Claude/GLM 模型)整理,记录了 `new-api` 白标化、自定义主题、Hermes 入口,以及实现计划任务 1~7 的实际完成度核对结果。
+>
+> **用途**:额度不足无法当场修复,故把所有问题、精确位置、修复代码、需对齐的决策点记录于此,供下一个模型/会话直接照做,无需重新摸代码。
+>
+> **核对日期**:2026-06-25
+> **核对范围**:`new-api/`(Go + React)、`savvy-manager/`(Python/FastAPI)、`docs/`
+
+---
+
+## 0. 先读这个:全局认知
+
+### 0.1 白标化是怎么实现的(重要前提)
+
+**白标几乎完全靠管理后台运行时配置,代码层保留了上游 new-api 原貌。**
+
+- `savvy` 仓库的 `new-api` 源码里 **搜索不到任何 "savvy" 字样**。这符合 AGPL 与保护规则(不得改 QuantumNous/new-api 署名)。
+- 白标字段在管理后台「系统设置 → 站点」:`SystemName` / `Logo` / `Footer` / `About` / `HomePageContent` / `legal.user_agreement` / `legal.privacy_policy`。
+  - 表单代码:`new-api/web/default/src/features/system-settings/general/system-info-section.tsx`
+- **当前状态**:代码里这些字段仍是上游默认值(SystemName 默认 "New API")。**需要管理员登录后台手动填成 Savvy Agent / 粟城科技网络工作室 / support@scheng.net**。
+
+### 0.2 「默认主题改成自定义主题」的真相
+
+用户记忆「把默认主题改成 OpenAI 主题」**不准确**。实际是:
+
+- 在 `Rookie-Adventures/new-api` 的唯一一个用户提交(`6b0d2294`,2026-06-24)里,主题相关只做了两件小事:
+  1. 在 `theme-presets.css` 新增了 `[data-theme-preset='openai']` 整套黑白配色块(CSS 已存在于 savvy 仓库)。
+  2. 在 `theme-customization.ts` 的 `THEME_PRESETS` 注册了 `openai` 作为**可选项** + `PRESET_DEFAULT_FONT.openai = 'sans'`。
+- **`DEFAULT_THEME_CUSTOMIZATION.preset` 仍然是 `'default'`**,没改成 `'openai'`。所以 OpenAI 主题是「主题选择器里可选,但开箱不是默认」。
+- 该提交的真正主体是 **Custom Pages 功能**(后台自定义页 + `/product` `/faq` `/contact` `/refund` `/open-source` 路由 + `ProductIntro` 首页区块),这是任务 2 公开信任页的承载框架。
+
+> **若希望 OpenAI 主题成为开箱默认**:改 `web/default/src/lib/theme-customization.ts:125` 的 `preset: 'default'` → `'openai'`。**【需用户对齐,见决策点 D1】**
+
+### 0.3 任务 1~7 完成度总表
+
+| 任务 | 状态 | 一句话 |
+|---|---|---|
+| 1 白标+导航 | 🟡 半成 | 侧栏 Hermes 入口已加;白标需后台填值 |
+| 2 公共信任页 | 🟡 半成 | 路由全占位(Custom Pages 框架);内容需后台配置或建专属组件;`/pricing` 是上游模型定价页 |
+| 3 manager 骨架 | ✅ 完成 | /health + HMAC + 表 + 6 测试 |
+| 3.5 登录方式 | 🟡 半成 | 上游支持邮箱/OAuth;需后台启用 Gmail(OIDC)/GitHub |
+| 4 实例生命周期 | ✅ 完成 | upsert/create/start/sleep/stop + 幂等 + 所有权 + 资源限制 |
+| 5 免费 3h 扫描 | ✅ 完成 | APScheduler 每分钟扫 + docker stop + 保留卷 |
+| 6 访问票据+代理 | 🟡 半成 | manager 端签发/校验已写,但与 PRD Nginx auth_request 契约不符,缺 nginx 配置 |
+| 7 控制台集成 | 🔴 断裂 | **new-api 调 manager 无 HMAC 签名 → 必 401;前端无法跑通** |
+
+---
+
+## 1. 🔴 阻断性问题(必须先修,否则 Hermes 功能完全跑不通)
+
+### 问题 A:new-api 调用 manager 时没有 HMAC 签名【任务 7 硬伤】
+
+**现象**:两端契约对不上,任何 new-api → manager 的调用都会被 manager 的 `require_hmac` 依赖拒绝(401)。
+
+**根因**:
+- `savvy-manager/app/auth.py:34` 的 `require_hmac` 强制要求这些请求头:
+  - `X-Savvy-Timestamp`、`X-Savvy-Nonce`、`X-Savvy-Signature`、`X-Savvy-User-Id`
+  - 签名串 = HMAC-SHA256(secret, `"{method}\n{path}\n{sha256(body)}\n{timestamp}\n{nonce}"`)
+  - 时间窗默认 300s
+- 但 `new-api/service/hermes.go` 里的请求(`GetHermesInstance`/`StartHermesInstance`/`SleepHermesInstance`)**一个签名头都没带**:
+  - `hermes.go:74-75` 只设了 `Content-Type` 和 `X-User-ID`(而且头名是 `X-User-ID`,manager 要的是 `X-Savvy-User-Id`)
+  - `hermes.go:44` 用 `client.Get(url)` 直接 GET,无法注入头
+
+**修复方案**:在 `new-api/service/hermes.go` 新增一个签名 + 注入头的 helper,所有出站请求统一走它。
+
+```go
+// 新增:在 hermes.go 顶部加导入和 helper
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strconv"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+func getHermesHmacSecret() string {
+	return os.Getenv("SAVVY_HMAC_SECRET") // 与 manager 的 SAVVY_HMAC_SECRET 必须一致
+}
+
+// signAndDo 给请求注入 HMAC 签名头并发送。bodyBytes 可为 nil(GET 请求)。
+func signAndDo(req *http.Request, userID int, bodyBytes []byte) (*http.Response, error) {
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	nonce := uuid.New().String()
+	bodyHash := sha256.Sum256(bodyBytesOrEmpty(bodyBytes))
+
+	message := fmt.Sprintf("%s\n%s\n%s\n%s\n%s",
+		req.Method, req.URL.Path, hex.EncodeToString(bodyHash[:]), timestamp, nonce)
+
+	mac := hmac.New(sha256.New, []byte(getHermesHmacSecret()))
+	mac.Write([]byte(message))
+	signature := hex.EncodeToString(mac.Sum(nil))
+
+	req.Header.Set("X-Savvy-Timestamp", timestamp)
+	req.Header.Set("X-Savvy-Nonce", nonce)
+	req.Header.Set("X-Savvy-Signature", signature)
+	req.Header.Set("X-Savvy-User-Id", strconv.Itoa(userID))
+	return getHermesManagerClient().Do(req)
+}
+
+func bodyBytesOrEmpty(b []byte) []byte {
+	if b == nil {
+		return []byte{}
+	}
+	return b
+}
+```
+
+然后把三个函数里 `client.Get(url)` / `client.Do(req)` 全部换成 `signAndDo(...)`。注意:
+- `GetHermesInstance`(`hermes.go:44`)当前用 `http.Get` 风格,要改成 `http.NewRequest(http.MethodGet, url, nil)` 再 `signAndDo`。
+- 签名里用的是 `req.URL.Path`(不含 query string),要和 manager 的 `str(request.url.path)` 对齐(manager `auth.py:50` 取的是 `request.url.path`,不含 query)。
+
+**注意 secret 来源**:manager 端 `config.py:12` 读 `SAVVY_HMAC_SECRET`(env_prefix=SAVVY_);new-api 端直接读 `SAVVY_HMAC_SECRET` 即可。两边必须同值,部署时统一注入。
+
+---
+
+### 问题 B:违反项目 JSON 规则【CI/Review 会拦】
+
+**规则**(`new-api/AGENTS.md:67-75`):所有 JSON marshal/unmarshal **必须**用 `common/json.go` 的封装:
+- `common.Marshal(v)` / `common.Unmarshal(data, v)` / `common.UnmarshalJsonStr(s, v)` / `common.DecodeJson(reader, v)`
+- **禁止**业务代码直接 `import "encoding/json"` 并调用其 Marshal/Unmarshal/NewEncoder。
+
+**违规位置**:
+| 文件 | 行号 | 违规 |
+|---|---|---|
+| `new-api/service/hermes.go` | 3, 56, 89, 122 | `import "encoding/json"` + `json.Unmarshal` |
+| `new-api/service/hermes_test.go` | 4, 45, 80, 107 | `import "encoding/json"` + `json.NewEncoder().Encode` |
+
+**修复**:
+- `hermes.go`:删掉 `"encoding/json"`,`json.Unmarshal(body, &managerResp)` → `common.Unmarshal(body, &managerResp)`(用 `github.com/QuantumNous/new-api/common`)。注意 import 已有 `common` 路径(见 `controller/hermes.go:9`)。
+- `hermes_test.go`:测试里 mock server 写响应用 `json.NewEncoder(w).Encode(resp)`。测试代码是否豁免?**规则未明确豁免测试,稳妥起见也改成 `common.Marshal` 后 `w.Write`**。或至少在该文件加注释说明这是 test fixture。**【建议统一改 common,见决策点 D2】**
+
+---
+
+### 问题 C:Workspace 代理校验契约与 PRD 不符【任务 6】
+
+**PRD 契约**(`docs/ops/workspace-routing.md:48-82`):Nginx 用 `auth_request` 打 manager 的 `GET /internal/workspace/validate`,manager 返回 `X-User-Id` / `X-Instance-Id` / **`X-Workspace-Upstream`**(如 `http://hermes-u123-w456:3000`),Nginx 据此前转。
+
+**实际代码**(`savvy-manager/app/routers/instances.py:127-153`):
+- 端点路径是 `POST /internal/instances/validate-workspace-token`(PRD 是 `GET /internal/workspace/validate`)。
+- token 从 `X-Token` 请求头读(PRD 的 auth_request 子请求里 token 在 query `?token=`)。
+- 返回头只有 `X-User-Id` / `X-Instance-Id`,**缺 `X-Workspace-Upstream`** → Nginx 无法知道前转到哪个容器。
+
+**修复方向二选一【需用户对齐,见决策点 D3】**:
+
+**选项 1(改代码,推荐)**:让代码符合 PRD 文档。
+- 改端点为 `GET /internal/workspace/validate`(新 prefix `/internal/workspace`),从 `X-Original-URI` 头解析出 token(query 参数),校验后返回 `X-Workspace-Upstream: http://{container_name}:3000`。
+- container_name 从 instance 记录取(`inst.container_name`),不要从用户输入派生(安全要求,见 `workspace-routing.md:89`)。
+- 补一份真实 nginx 配置文件(见问题 D)。
+
+**选项 2(改文档)**:以代码现状为准,改 `workspace-routing.md` 描述 `X-Token` 头方案。但这样 Nginx 的 `auth_request` 标准子请求流程要绕,不推荐。
+
+manager 端返回 upstream 的代码示意(选项 1):
+```python
+@router.get("/validate")
+async def validate_workspace(request: Request, db: Session = Depends(get_db)):
+    # Nginx auth_request 把原始 URI 放在 X-Original-URI
+    original_uri = request.headers.get("X-Original-URI", "")
+    token = _extract_token_from_uri(original_uri)  # /workspace/u123/?token=xxx
+    if not token:
+        raise HTTPException(401, "Missing token")
+    payload = verify_access_token(token)
+    if not payload:
+        raise HTTPException(401, "Invalid or expired token")
+    inst = db.query(Instance).filter(Instance.instance_id == payload["instance_id"]).first()
+    if not inst or inst.user_id != payload["user_id"] or inst.status != InstanceStatus.RUNNING:
+        raise HTTPException(403, "Invalid instance")
+    return Response(headers={
+        "X-User-Id": payload["user_id"],
+        "X-Instance-Id": payload["instance_id"],
+        "X-Workspace-Upstream": f"http://{inst.container_name}:3000",
+    })
+```
+
+---
+
+### 问题 D:没有实际的 Nginx 配置文件【任务 6】
+
+**现象**:`docs/ops/workspace-routing.md:48-82` 给了一段 nginx 配置片段,但仓库里 **没有实际的 nginx conf 文件**。
+
+**修复**:在 `deploy/nginx/`(或合适位置)创建 `workspace.conf`,内容即文档里那段(已验证语法正确),并接入 docker-compose 的 nginx 服务。
+
+**【需用户对齐 D4】**:nginx 容器是否已在 docker-compose 里?需核对 `docker-compose.yml` / `docker-compose.prod.yml` 是否有 nginx 服务定义,没有则要加。
+
+---
+
+## 2. 🟡 功能缺口(不阻断编译,但功能不完整)
+
+### 问题 E:new-api 缺三个端点对接【任务 7】
+
+manager 已实现的端点中,new-api 后端/前端**还没接**的有 3 个:
+
+| manager 端点 | 文件:行 | new-api 对接 |
+|---|---|---|
+| `POST /internal/users/{user_id}/instance`(创建实例) | `savvy-manager/app/routers/users.py:70` | ❌ 缺 controller + service + 前端调用 |
+| `POST /internal/instances/{id}/access-token`(签发访问令牌) | `savvy-manager/app/routers/instances.py:107` | ❌ 缺 controller + service + 前端调用 |
+| `POST /internal/users/upsert`(用户映射) | `savvy-manager/app/routers/users.py:28` | ❌ 缺(应在用户注册/登录时调用) |
+
+**影响**:
+- 前端 `features/hermes/index.tsx:161` 的 "Create Workspace" 按钮 **没有 onClick** → 点了没反应。
+- `index.tsx:90` 的 "Open Workspace" 链接 `href={instance.accessUrl}` → manager 返回的 `AccessTokenResponse` 里是 `workspace_url`(`/workspace/{user_id}/`),字段名/流程都没对接,点击会 404。
+
+**修复**(new-api 侧):
+1. `controller/hermes.go` 加 `CreateHermesInstance` / `GetHermesAccessToken` 两个 handler,走 `middleware.UserAuth()`,复用问题 A 的 `signAndDo`。
+2. `service/hermes.go` 加 `CreateHermesInstance(userID)` / `IssueAccessToken(userID, instanceID)` 两个 service 函数。
+3. `router/api-router.go:352-359` 的 hermesRoute 补两条路由:
+   ```go
+   hermesRoute.POST("/instance", controller.CreateHermesInstance)          // 对应 manager create
+   hermesRoute.POST("/instance/:instance_id/access-token", controller.GetHermesAccessToken)
+   ```
+4. `features/hermes/api.ts` 补 `createHermesInstance()` / `getAccessToken(instanceId)`。
+5. `features/hermes/index.tsx`:
+   - "Create Workspace" 按钮 `onClick={() => createHermesInstance()}`,成功后 invalidate query。
+   - "Open Workspace" 改为:先调 `getAccessToken(id)` 拿到 `workspace_url` + `token`,再 `window.open(\`${workspace_url}?token=${token}\`)`。
+6. upsert:在用户登录成功路径(找 `controller/user.go` 的登录/注册 handler)或首次进 Hermes 页时,后台静默调一次 manager 的 `/internal/users/upsert`。**【需用户对齐 D5:upsert 时机】**
+
+---
+
+### 问题 F:容器资源限制没按 plan 分档【任务 4 细节】
+
+**PRD 要求三档**(`docs/specs/hermes-saas-platform-prd.md:75-80`):
+- Free: 0.5 CPU / 768M / 128 pids
+- Starter: 2 CPU / 2G / 512 pids
+- Pro: 4 CPU / 8G / 1024 pids
+
+**实际**(`savvy-manager/app/docker_manager.py:36-38`)**写死了 Starter 档**:
+```python
+mem_limit="2g",
+cpu_quota=200000,   # = 2 CPU
+pids_limit=512,
+```
+`create_container` 的 `plan` 参数虽然传进来了(`docker_manager.py:13`),但**完全没用**。
+
+**修复**:在 `create_container` 里按 `plan` 选择 limit 字典:
+```python
+PLAN_LIMITS = {
+    "FREE":            {"mem": "768m", "cpu": 100000, "pids": 128},   # 0.5 CPU
+    "PAID_RESIDENT":   {"mem": "2g",   "cpu": 200000, "pids": 512},   # 2 CPU (Starter)
+    # Pro 暂未启用,Pro 留 placeholder
+}
+limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["FREE"])
+container = client.containers.run(...,
+    mem_limit=limits["mem"],
+    cpu_quota=limits["cpu"],
+    pids_limit=limits["pids"],
+    memswap_limit=limits["mem"],  # PRD 要求 --memory-swap=memory
+    ...
+)
+```
+**【需用户对齐 D6】**:Pro 套餐「coming soon」,是否现在就实现 4C8G 档,还是留占位?建议先占位(默认走 Starter)。
+
+---
+
+### 问题 G:log rotation 没按 PRD 分档
+
+PRD 要求:Free `10m×3`,Starter `20m×5`,Pro `50m×5`。
+实际 `docker_manager.py:39` 写死 `max-size=10m, max-file=3`(Free 档)。建议并入问题 F 的 `PLAN_LIMITS` 字典一起改。
+
+---
+
+### 问题 H:manager 返回字段名与 new-api 前端期望不一致【任务 7】
+
+- manager 的 `InstanceResponse`(`users.py:17-26`)返回 **snake_case**:`instance_id`, `user_id`, `started_at`, `expires_at`。
+- new-api 前端 `features/hermes/types.ts:25-34` 期望 **camelCase**:`id`, `remainingMinutes`, `lastError`, `accessUrl`。
+- new-api service `hermes.go:12-21` 的 `HermesInstance` 用 json tag `id`/`status`/`remaining_minutes`/`access_url`,和 manager 返回的 `instance_id`/`expires_at` **对不上**。
+
+**结果**:即使 HMAC 修好,`GetHermesInstance` 拿到的 JSON 解析后大部分字段为零值/空,前端显示异常。
+
+**修复**【需用户对齐 D7:对齐方向】:让 new-api service 层的 `HermesInstance` 结构体的 json tag 与 manager 返回对齐,或在 service 层做映射。最干净的做法是改 `hermes.go:12-21` 的结构体 tag:
+```go
+type HermesInstance struct {
+	ID               string `json:"instance_id"`   // 对齐 manager
+	Status           string `json:"status"`        // 注意大小写:manager 返回 "RUNNING" 等,前端期望 "running"
+	Plan             string `json:"plan"`          // 同样大小写问题
+	ContainerName    string `json:"container_name,omitempty"`
+	VolumeName       string `json:"volume_name,omitempty"`
+	StartedAt        string `json:"started_at,omitempty"`
+	ExpiresAt        string `json:"expires_at,omitempty"`
+}
+```
+**额外问题**:manager 返回的 status 是大写枚举(`RUNNING`/`SLEEPING`,见 `models.py:7-15`),前端 `types.ts:27` 期望小写(`'running'|'sleeping'`)。需要在 service 或 controller 层做大小写转换。`remainingMinutes` 和 `accessUrl` manager 根本不返回 → 前端要自己算(用 `expires_at` 减当前时间算 remainingMinutes;accessUrl 走 access-token 流程获取)。
+
+---
+
+## 3. 🟢 次要/优化项
+
+### 问题 I:manager 默认 mock_mode=True
+
+`savvy-manager/app/config.py:18`:`mock_mode: bool = True`。本地开发安全(不碰真 Docker),但**部署时必须 `SAVVY_MOCK_MODE=false`**,否则 create/start 全是假数据。务必写进部署文档。
+
+### 问题 J:manager CORS 过宽
+
+`savvy-manager/app/main.py:13-19`:`allow_origins=["*"]` + `allow_credentials=True`。manager 是内网服务(new-api 后端调用,见 PRD `auth.py` 注释),不应 `*`。建议收紧为 `http://localhost:*` 或 new-api 内网地址,或干脆去掉 CORS(内网服务不需要)。**【D8:是否现在收紧】**
+
+### 问题 K:GetHermesManagerStatus 泄露内部 URL
+
+`new-api/controller/hermes.go:113-138` 的 `GetHermesManagerStatus` 把 manager 的真实 URL(`http://savvy-manager:8000` 等)放进 `data.url` 返回给前端。前端不需要知道内部地址。建议 `data` 只返回 `{"status":"connected"}`,去掉 `url` 字段。
+
+### 问题 L:sleep/stop 实现重复
+
+`savvy-manager/app/routers/instances.py` 的 `sleep_instance`(72)和 `stop_instance`(92)逻辑几乎一样。PRD 区分:sleep 是免费用户到期/手动休眠(保留数据),stop 是 admin 强制停止。当前两者都是 `docker stop` + 置 SLEEPING。可接受(MVP),但建议语义上 `stop` 走独立状态(如 STOPPED)而非复用 SLEEPING。**【D9:是否现在区分】**
+
+### 问题 M:scanner 用 datetime.utcnow()
+
+`savvy-manager/app/models.py:28-29,42-44` 用 `datetime.utcnow()`(naive),而 `scanner.py:14` / `instances.py:50` 用 `datetime.now(timezone.utc)`(aware)。混用 aware/naive datetime 比较时区时会出问题(PostgreSQL 下尤其)。建议全改 `datetime.now(timezone.utc)`。
+
+### 问题 N:FastAPI on_event 已废弃
+
+`savvy-manager/app/main.py:26,32` 用 `@app.on_event("startup"/"shutdown")`,FastAPI 新版推荐 `lifespan` context manager。非阻断,可后续优化。
+
+---
+
+## 4. 决策点汇总(需要用户拍板,带 D 编号)
+
+| 编号 | 问题 | 选项 | 建议 |
+|---|---|---|---|
+| **D1** | OpenAI 主题是否设为开箱默认 | 改 `theme-customization.ts:125` `preset:'default'`→`'openai'`;或保持可选由后台/用户选 | 建议保持可选,通过后台「主题」或 SystemName 配置即可,不硬编码默认 |
+| **D2** | 测试代码是否也要用 common.json | 改 / 保留 | 建议改(规则未豁免测试,统一最安全) |
+| **D3** | Workspace 校验端点契约 | 选项1 改代码符 PRD / 选项2 改文档符代码 | **选项1**(改代码) |
+| **D4** | nginx 服务是否已在 compose | 需核对 compose 文件 | — |
+| **D5** | upsert 调用时机 | 登录时 / 注册时 / 首次进 Hermes 页 | 建议登录成功时 + 首次进 Hermes 页兜底 |
+| **D6** | Pro 套餐资源档 | 现在实现 4C8G / 留占位 | 建议留占位(coming soon) |
+| **D7** | 字段对齐方向 | 改 new-api service 对齐 manager / 改 manager 对齐前端 | 建议改 new-api service 层(manager 是 source of truth) |
+| **D8** | manager CORS 是否收紧 | 现在改 / 后续 | 建议现在改掉 `*` |
+| **D9** | sleep/stop 状态是否区分 | 现在 / 后续 | 后续(MVP 不影响) |
+
+---
+
+## 5. 推荐修复顺序(给下一个模型)
+
+1. **问题 A + B + H**(HMAC 签名 + common.json + 字段对齐)→ 这是让 Hermes 链路跑通的前提,一起改 `service/hermes.go` 和 `service/hermes_test.go`,改完跑 `go test ./service -run Hermes`。
+2. **问题 E**(补 create / access-token / upsert 对接)→ 前端 Create/Open Workspace 能用。
+3. **问题 C + D**(Workspace 校验端点对齐 PRD + nginx 配置)→ 浏览器能访问工作空间。
+4. **问题 F + G**(资源/log 分档)→ 容器限额正确。
+5. 次要项 I~N 按需。
+
+每个修复后:
+- Go 端:`cd new-api && go build && go test ./service -run Hermes`
+- 前端:`cd new-api/web/default && bun run build`
+- manager 端:`cd savvy-manager && python -m pytest tests -q`
+
+---
+
+## 6. 验证清单(全部修完后跑一遍)
+
+参考 `docs/superpowers/plans/2026-06-23-newapi-hermes-cloud-workspace.md` Task 10:
+- [ ] 注册测试用户 → 后台自动 upsert 到 manager
+- [ ] 打开 Hermes 控制台,看到 instance 状态(非 401)
+- [ ] 点 Create Workspace → manager 创建实例(状态 SLEEPING/NOT_CREATED→CREATED)
+- [ ] 点 Start → 容器启动,状态 RUNNING,显示剩余时间
+- [ ] 点 Open Workspace → 拿到 access token → 浏览器通过 nginx 访问到容器
+- [ ] 点 Sleep → 容器停止,状态 SLEEPING
+- [ ] 重启 → 数据仍在
+- [ ] 缩短测试模式下,3h 到期自动 sleep
+- [ ] 白标字段(SystemName/Footer/Logo)后台已填,Savvy Agent 品牌显示
+- [ ] 公开信任页(product/pricing/faq/terms/privacy/refund/contact/open-source)有内容
+
+---
+
+## 附:关键文件速查表
+
+| 关注点 | 文件 | 关键行 |
+|---|---|---|
+| new-api Hermes service(签名缺失) | `new-api/service/hermes.go` | 44, 70-75, 103-108(无签名头);3,56,89,122(encoding/json 违规) |
+| new-api Hermes controller | `new-api/controller/hermes.go` | 16,43,78,113 |
+| new-api Hermes 路由注册 | `new-api/router/api-router.go` | 352-359 |
+| new-api Hermes 前端页 | `new-api/web/default/src/features/hermes/index.tsx` | 90(Open 链接),161(Create 按钮无 onClick) |
+| new-api Hermes 前端 API | `new-api/web/default/src/features/hermes/api.ts` | 缺 create/access-token |
+| new-api Hermes 类型 | `new-api/web/default/src/features/hermes/types.ts` | 25-34(camelCase vs manager snake_case) |
+| 侧栏 Hermes 入口 | `new-api/web/default/src/hooks/use-sidebar-data.ts` | 105-108 |
+| 主题预设注册 | `new-api/web/default/src/lib/theme-customization.ts` | 26-86(预设数组),125(default 值),185(default→sans) |
+| 主题预设 CSS | `new-api/web/default/src/styles/theme-presets.css` | 722-783(openai 块) |
+| 白标字段表单 | `new-api/web/default/src/features/system-settings/general/system-info-section.tsx` | 全文 |
+| manager HMAC 校验 | `savvy-manager/app/auth.py` | 7-31(签名),34-59(依赖) |
+| manager 实例生命周期 | `savvy-manager/app/routers/instances.py` | 41(start),72(sleep),92(stop),107(access-token),127(validate) |
+| manager 用户/创建 | `savvy-manager/app/routers/users.py` | 28(upsert),45(get),70(create) |
+| manager Docker 限额 | `savvy-manager/app/docker_manager.py` | 36-39(写死 Starter 档) |
+| manager 扫描器 | `savvy-manager/app/scanner.py` | 11-33 |
+| manager 配置 | `savvy-manager/app/config.py` | 12(secret),18(mock_mode) |
+| PRD | `docs/specs/hermes-saas-platform-prd.md` | 75-80(套餐),137-162(manager API),164-177(workspace 访问) |
+| Nginx 路由契约 | `docs/ops/workspace-routing.md` | 48-82(nginx 片段,无实际文件) |
+| 部署文档 | `docs/ops/deployment.md` | 30-38(资源限额表) |

@@ -29,6 +29,12 @@ export interface HermesInstance {
   remainingMinutes?: number
   lastError?: string
   accessUrl?: string
-  createdAt: string
-  updatedAt: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface HermesAccessToken {
+  token: string
+  workspaceUrl: string
+  expiresAt: string
 }

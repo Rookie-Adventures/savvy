@@ -16,8 +16,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { Main } from '@/components/layout'
 import {
   CardStaggerContainer,
@@ -27,18 +29,76 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getHermesInstance, startHermesInstance, sleepHermesInstance } from './api'
+import {
+  createHermesInstance,
+  ensureHermesUser,
+  getHermesAccessToken,
+  getHermesInstance,
+  sleepHermesInstance,
+  startHermesInstance,
+} from './api'
 import type { HermesInstance } from './types'
 
 function InstanceStatus({ instance }: { instance: HermesInstance }) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const [openingWorkspace, setOpeningWorkspace] = useState(false)
+
+  const invalidateInstance = () =>
+    queryClient.invalidateQueries({ queryKey: ['hermes', 'instance'] })
+
+  const startMutation = useMutation({
+    mutationFn: () => startHermesInstance(instance.id),
+    onSuccess: (res) => {
+      if (res.success) {
+        toast.success(t('Workspace started'))
+        invalidateInstance()
+      } else {
+        toast.error(res.message || t('Failed to start workspace'))
+      }
+    },
+    onError: () => toast.error(t('Failed to start workspace')),
+  })
+
+  const sleepMutation = useMutation({
+    mutationFn: () => sleepHermesInstance(instance.id),
+    onSuccess: (res) => {
+      if (res.success) {
+        toast.success(t('Workspace is sleeping'))
+        invalidateInstance()
+      } else {
+        toast.error(res.message || t('Failed to sleep workspace'))
+      }
+    },
+    onError: () => toast.error(t('Failed to sleep workspace')),
+  })
+
+  // Open Workspace: request a short-lived access token, then open the
+  // manager-proxied workspace URL with the token as a query param.
+  const handleOpenWorkspace = async () => {
+    setOpeningWorkspace(true)
+    try {
+      const res = await getHermesAccessToken(instance.id)
+      if (res.success && res.data) {
+        const { workspaceUrl, token } = res.data
+        const url = `${workspaceUrl}?token=${encodeURIComponent(token)}`
+        window.open(url, '_blank', 'noopener,noreferrer')
+      } else {
+        toast.error(res.message || t('Failed to open workspace'))
+      }
+    } catch {
+      toast.error(t('Failed to open workspace'))
+    } finally {
+      setOpeningWorkspace(false)
+    }
+  }
 
   const statusVariant = {
-    running: 'success',
+    running: 'default',
     sleeping: 'secondary',
-    creating: 'warning',
+    creating: 'outline',
     error: 'destructive',
-  }[instance.status] as 'success' | 'secondary' | 'warning' | 'destructive'
+  }[instance.status] as 'default' | 'secondary' | 'outline' | 'destructive'
 
   return (
     <Card>
@@ -72,24 +132,32 @@ function InstanceStatus({ instance }: { instance: HermesInstance }) {
 
         <div className='flex gap-2'>
           {instance.status === 'sleeping' && (
-            <Button size='sm' onClick={() => startHermesInstance(instance.id)}>
-              {t('Start')}
+            <Button
+              size='sm'
+              onClick={() => startMutation.mutate()}
+              disabled={startMutation.isPending}
+            >
+              {startMutation.isPending ? t('Starting...') : t('Start')}
             </Button>
           )}
           {instance.status === 'running' && (
             <Button
               size='sm'
               variant='outline'
-              onClick={() => sleepHermesInstance(instance.id)}
+              onClick={() => sleepMutation.mutate()}
+              disabled={sleepMutation.isPending}
             >
-              {t('Sleep')}
+              {sleepMutation.isPending ? t('Sleeping...') : t('Sleep')}
             </Button>
           )}
           {instance.status === 'running' && (
-            <Button size='sm' variant='secondary' asChild>
-              <a href={instance.accessUrl} target='_blank' rel='noopener noreferrer'>
-                {t('Open Workspace')}
-              </a>
+            <Button
+              size='sm'
+              variant='secondary'
+              onClick={handleOpenWorkspace}
+              disabled={openingWorkspace}
+            >
+              {openingWorkspace ? t('Opening...') : t('Open Workspace')}
             </Button>
           )}
         </div>
@@ -117,13 +185,36 @@ function HermesSkeleton() {
 
 export function Hermes() {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['hermes', 'instance'],
     queryFn: getHermesInstance,
     refetchInterval: 10000,
   })
 
+  // Ensure the current user exists in savvy-manager before showing the page.
+  // Fire-and-forget; errors surface only if the user then tries an action.
+  useEffect(() => {
+    ensureHermesUser().catch(() => {
+      // Swallow errors here; the user will see a clearer error on action.
+    })
+  }, [])
+
   const instance = data?.data
+
+  const createMutation = useMutation({
+    mutationFn: createHermesInstance,
+    onSuccess: (res) => {
+      if (res.success) {
+        toast.success(t('Workspace created'))
+        queryClient.invalidateQueries({ queryKey: ['hermes', 'instance'] })
+      } else {
+        toast.error(res.message || t('Failed to create workspace'))
+      }
+    },
+    onError: () => toast.error(t('Failed to create workspace')),
+  })
 
   return (
     <Main>
@@ -149,7 +240,7 @@ export function Hermes() {
                   </p>
                 </CardContent>
               </Card>
-            ) : instance ? (
+            ) : instance && instance.id ? (
               <InstanceStatus instance={instance} />
             ) : (
               <Card>
@@ -157,7 +248,14 @@ export function Hermes() {
                   <p className='text-muted-foreground mb-4'>
                     {t('No workspace found')}
                   </p>
-                  <Button>{t('Create Workspace')}</Button>
+                  <Button
+                    onClick={() => createMutation.mutate()}
+                    disabled={createMutation.isPending}
+                  >
+                    {createMutation.isPending
+                      ? t('Creating...')
+                      : t('Create Workspace')}
+                  </Button>
                 </CardContent>
               </Card>
             )}

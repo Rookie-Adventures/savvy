@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from ..auth import require_hmac
 from ..database import get_db
-from ..models import Instance, InstanceStatus, PlanType
+from ..models import Instance, WorkspaceState, InstanceStatus, PlanType
 from ..docker_manager import start_container, stop_container
 from ..token import generate_access_token, verify_access_token
 
@@ -151,3 +151,34 @@ async def validate_workspace_token(request: Request, db: Session = Depends(get_d
             "X-Instance-Id": instance_id,
         },
     )
+
+
+@router.get("/{instance_id}/state")
+async def get_workspace_state(instance_id: str, auth=Depends(require_hmac), db: Session = Depends(get_db)):
+    # Authenticate and get instance
+    _get_instance(instance_id, auth["user_id"], db)
+
+    ws_state = db.query(WorkspaceState).filter(WorkspaceState.instance_id == instance_id).first()
+    if not ws_state:
+        return {"state_data": {}}
+    return {"state_data": ws_state.state_data, "last_synced_at": ws_state.last_synced_at.isoformat()}
+
+
+@router.put("/{instance_id}/state")
+async def update_workspace_state(instance_id: str, request: Request, auth=Depends(require_hmac), db: Session = Depends(get_db)):
+    # Authenticate and get instance
+    _get_instance(instance_id, auth["user_id"], db)
+
+    body = await request.json()
+    state_data = body.get("state_data", {})
+
+    ws_state = db.query(WorkspaceState).filter(WorkspaceState.instance_id == instance_id).first()
+    if not ws_state:
+        ws_state = WorkspaceState(instance_id=instance_id, state_data=state_data)
+        db.add(ws_state)
+    else:
+        ws_state.state_data = state_data
+
+    db.commit()
+    return {"status": "ok"}
+

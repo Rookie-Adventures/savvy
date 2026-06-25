@@ -3,23 +3,92 @@ package controller
 import (
 	"fmt"
 	"net/http"
-	"os"
+	"strings"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/service"
 
 	"github.com/gin-gonic/gin"
 )
 
-func GetHermesInstance(c *gin.Context) {
+// hermesInstanceVO is the view object returned to the frontend.
+// Field names (camelCase via json tags) match the HermesInstance interface
+// in web/default/src/features/hermes/types.ts.
+type hermesInstanceVO struct {
+	ID              string `json:"id"`
+	Status          string `json:"status"` // lowercase: running / sleeping / creating / error
+	Plan            string `json:"plan"`
+	RemainingMinutes *int  `json:"remainingMinutes,omitempty"`
+	AccessURL       string `json:"accessUrl,omitempty"`
+	CreatedAt       string `json:"createdAt,omitempty"`
+	UpdatedAt       string `json:"updatedAt,omitempty"`
+}
+
+// toVO converts the manager's raw instance into the frontend view object.
+// Manager returns UPPERCASE status enums (RUNNING/SLEEPING/...); the frontend
+// expects lowercase. remainingMinutes is derived from expires_at.
+func toVO(inst *service.HermesInstance) hermesInstanceVO {
+	vo := hermesInstanceVO{
+		ID:     inst.InstanceID,
+		Status: normalizeStatus(inst.Status),
+		Plan:   inst.Plan,
+	}
+	if inst.ExpiresAt != "" {
+		if mins := remainingMinutes(inst.ExpiresAt); mins != nil {
+			vo.RemainingMinutes = mins
+		}
+	}
+	if inst.StartedAt != "" {
+		vo.CreatedAt = inst.StartedAt
+	}
+	return vo
+}
+
+func normalizeStatus(s string) string {
+	low := strings.ToLower(s)
+	switch low {
+	case "running", "sleeping", "creating", "error", "not_created", "deleting":
+		// map manager-only states to the four the frontend knows about
+		if low == "not_created" {
+			return "creating"
+		}
+		if low == "deleting" {
+			return "error"
+		}
+		return low
+	default:
+		return "error"
+	}
+}
+
+func remainingMinutes(expiresAtISO string) *int {
+	t, err := time.Parse(time.RFC3339, expiresAtISO)
+	if err != nil {
+		return nil
+	}
+	mins := int(time.Until(t).Minutes())
+	if mins < 0 {
+		mins = 0
+	}
+	return &mins
+}
+
+func getUserID(c *gin.Context) (int, bool) {
 	userID := c.GetInt("id")
 	if userID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"message": "unauthorized",
 		})
+		return 0, false
+	}
+	return userID, true
+}
+
+func GetHermesInstance(c *gin.Context) {
+	userID, ok := getUserID(c)
+	if !ok {
 		return
 	}
 
@@ -36,17 +105,37 @@ func GetHermesInstance(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    instance,
+		"data":    toVO(instance),
+	})
+}
+
+// CreateHermesInstance creates a new workspace (or returns the existing one).
+func CreateHermesInstance(c *gin.Context) {
+	userID, ok := getUserID(c)
+	if !ok {
+		return
+	}
+
+	instance, err := service.CreateHermesInstance(userID)
+	if err != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("failed to create hermes instance: %s", err.Error()))
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    toVO(instance),
 	})
 }
 
 func StartHermesInstance(c *gin.Context) {
-	userID := c.GetInt("id")
-	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"message": "unauthorized",
-		})
+	userID, ok := getUserID(c)
+	if !ok {
 		return
 	}
 
@@ -59,8 +148,7 @@ func StartHermesInstance(c *gin.Context) {
 		return
 	}
 
-	err := service.StartHermesInstance(userID, instanceID)
-	if err != nil {
+	if err := service.StartHermesInstance(userID, instanceID); err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("failed to start hermes instance: %s", err.Error()))
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -76,12 +164,8 @@ func StartHermesInstance(c *gin.Context) {
 }
 
 func SleepHermesInstance(c *gin.Context) {
-	userID := c.GetInt("id")
-	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"message": "unauthorized",
-		})
+	userID, ok := getUserID(c)
+	if !ok {
 		return
 	}
 
@@ -94,8 +178,7 @@ func SleepHermesInstance(c *gin.Context) {
 		return
 	}
 
-	err := service.SleepHermesInstance(userID, instanceID)
-	if err != nil {
+	if err := service.SleepHermesInstance(userID, instanceID); err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("failed to sleep hermes instance: %s", err.Error()))
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -110,29 +193,91 @@ func SleepHermesInstance(c *gin.Context) {
 	})
 }
 
-func GetHermesManagerStatus(c *gin.Context) {
-	hermesManagerURL := os.Getenv("HERMES_MANAGER_URL")
-	if hermesManagerURL == "" {
-		hermesManagerURL = "http://localhost:8000"
+// GetHermesAccessToken issues a short-lived workspace access token. The
+// frontend uses it to open the workspace in a new tab via the manager-proxied
+// workspace_url.
+type hermesAccessTokenVO struct {
+	Token        string `json:"token"`
+	WorkspaceURL string `json:"workspaceUrl"`
+	ExpiresAt    string `json:"expiresAt"`
+}
+
+func GetHermesAccessToken(c *gin.Context) {
+	userID, ok := getUserID(c)
+	if !ok {
+		return
 	}
 
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(hermesManagerURL + "/health")
+	instanceID := c.Param("instance_id")
+	if instanceID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "instance_id is required",
+		})
+		return
+	}
+
+	token, err := service.GetHermesAccessToken(userID, instanceID)
 	if err != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("failed to get hermes access token: %s", err.Error()))
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data": hermesAccessTokenVO{
+			Token:        token.Token,
+			WorkspaceURL: token.WorkspaceURL,
+			ExpiresAt:    token.ExpiresAt,
+		},
+	})
+}
+
+// GetHermesManagerStatus reports manager reachability WITHOUT leaking the
+// internal URL (it used to return data.url to the browser).
+func GetHermesManagerStatus(c *gin.Context) {
+	if !service.HealthCheckHermesManager() {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
 			"message": "hermes-manager is not available",
 		})
 		return
 	}
-	defer resp.Body.Close()
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
 		"data": gin.H{
 			"status": "connected",
-			"url":    hermesManagerURL,
 		},
+	})
+}
+
+// EnsureHermesUser is an internal helper endpoint (auth-protected) that
+// upserts the current user into manager. Can be called by the frontend on
+// first Hermes page visit, or from the login flow.
+func EnsureHermesUser(c *gin.Context) {
+	userID, ok := getUserID(c)
+	if !ok {
+		return
+	}
+
+	if _, err := service.UpsertHermesUser(userID); err != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("failed to upsert hermes user: %s", err.Error()))
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
 	})
 }

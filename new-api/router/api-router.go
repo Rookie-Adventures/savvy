@@ -352,9 +352,12 @@ func SetApiRouter(router *gin.Engine) {
 		hermesRoute := apiRouter.Group("/hermes")
 		hermesRoute.Use(middleware.UserAuth())
 		{
+			hermesRoute.POST("/user/ensure", controller.EnsureHermesUser)
 			hermesRoute.GET("/instance", controller.GetHermesInstance)
+			hermesRoute.POST("/instance", controller.CreateHermesInstance)
 			hermesRoute.POST("/instance/:instance_id/start", controller.StartHermesInstance)
 			hermesRoute.POST("/instance/:instance_id/sleep", controller.SleepHermesInstance)
+			hermesRoute.POST("/instance/:instance_id/access-token", controller.GetHermesAccessToken)
 			hermesRoute.GET("/manager/status", controller.GetHermesManagerStatus)
 		}
 

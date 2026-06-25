@@ -17,10 +17,22 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { api } from '@/lib/api'
-import type { ApiResponse, HermesInstance } from './types'
+import type { ApiResponse, HermesAccessToken, HermesInstance } from './types'
 
 export async function getHermesInstance(): Promise<ApiResponse<HermesInstance>> {
   const res = await api.get('/api/hermes/instance')
+  return res.data
+}
+
+export async function createHermesInstance(): Promise<
+  ApiResponse<HermesInstance>
+> {
+  const res = await api.post('/api/hermes/instance')
+  return res.data
+}
+
+export async function ensureHermesUser(): Promise<ApiResponse> {
+  const res = await api.post('/api/hermes/user/ensure')
   return res.data
 }
 
@@ -35,5 +47,12 @@ export async function sleepHermesInstance(
   instanceId: string
 ): Promise<ApiResponse> {
   const res = await api.post(`/api/hermes/instance/${instanceId}/sleep`)
+  return res.data
+}
+
+export async function getHermesAccessToken(
+  instanceId: string
+): Promise<ApiResponse<HermesAccessToken>> {
+  const res = await api.post(`/api/hermes/instance/${instanceId}/access-token`)
   return res.data
 }

@@ -1,6 +1,7 @@
 from enum import Enum
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Enum as SQLEnum
+from sqlalchemy import Column, String, DateTime, Enum as SQLEnum, JSON, ForeignKey
+from sqlalchemy.orm import relationship
 from .database import Base
 
 
@@ -42,3 +43,13 @@ class Instance(Base):
     expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    workspace_state = relationship("WorkspaceState", backref="instance", uselist=False, cascade="all, delete-orphan")
+
+
+class WorkspaceState(Base):
+    __tablename__ = "workspace_states"
+
+    instance_id = Column(String, ForeignKey("instances.instance_id", ondelete="CASCADE"), primary_key=True)
+    state_data = Column(JSON, default=dict)
+    last_synced_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

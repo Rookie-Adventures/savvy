@@ -10,9 +10,11 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# Because Savvy Manager is a private HMAC-protected API and is only called by
+# the new-api backend, we restrict/disable wide CORS origins in production.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost", "http://127.0.0.1"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -187,45 +187,21 @@ manager 已实现的端点中,new-api 后端/前端**还没接**的有 3 个:
 
 ---
 
-### 问题 F:容器资源限制没按 plan 分档【任务 4 细节】
+### 问题 F:容器资源限制没按 plan 分档【已于 2026-06-26 修复】
 
-**PRD 要求三档**(`docs/specs/hermes-saas-platform-prd.md:75-80`):
-- Free: 0.5 CPU / 768M / 128 pids
-- Starter: 2 CPU / 2G / 512 pids
-- Pro: 4 CPU / 8G / 1024 pids
-
-**实际**(`savvy-manager/app/docker_manager.py:36-38`)**写死了 Starter 档**:
-```python
-mem_limit="2g",
-cpu_quota=200000,   # = 2 CPU
-pids_limit=512,
-```
-`create_container` 的 `plan` 参数虽然传进来了(`docker_manager.py:13`),但**完全没用**。
-
-**修复**:在 `create_container` 里按 `plan` 选择 limit 字典:
-```python
-PLAN_LIMITS = {
-    "FREE":            {"mem": "768m", "cpu": 100000, "pids": 128},   # 0.5 CPU
-    "PAID_RESIDENT":   {"mem": "2g",   "cpu": 200000, "pids": 512},   # 2 CPU (Starter)
-    # Pro 暂未启用,Pro 留 placeholder
-}
-limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["FREE"])
-container = client.containers.run(...,
-    mem_limit=limits["mem"],
-    cpu_quota=limits["cpu"],
-    pids_limit=limits["pids"],
-    memswap_limit=limits["mem"],  # PRD 要求 --memory-swap=memory
-    ...
-)
-```
-**【需用户对齐 D6】**:Pro 套餐「coming soon」,是否现在就实现 4C8G 档,还是留占位?建议先占位(默认走 Starter)。
+**修复说明**:
+- 提取 `plan` 参数并实现 `limits` 字典分档：
+  - `FREE`: 0.5 CPU (`cpu_quota=50000`), 768m RAM, 128 pids, swap 限制。
+  - `PAID_RESIDENT`: 2 CPU (`cpu_quota=200000`), 2g RAM, 512 pids, swap 限制。
+- 安全策略满足 PRD，限制了物理资源的溢出。
 
 ---
 
-### 问题 G:log rotation 没按 PRD 分档
+### 问题 G:log rotation 没按 PRD 分档【已于 2026-06-26 修复】
 
-PRD 要求:Free `10m×3`,Starter `20m×5`,Pro `50m×5`。
-实际 `docker_manager.py:39` 写死 `max-size=10m, max-file=3`(Free 档)。建议并入问题 F 的 `PLAN_LIMITS` 字典一起改。
+**修复说明**:
+- 合拢进 `savvy-manager/app/docker_manager.py` 的套餐配置字典中。
+- `FREE` 限制为 `10m x 3`；`PAID_RESIDENT` 限制为 `20m x 5`。保证日志大小可追溯可轮转。
 
 ---
 
@@ -259,9 +235,10 @@ type HermesInstance struct {
 
 `savvy-manager/app/config.py:18`:`mock_mode: bool = True`。本地开发安全(不碰真 Docker),但**部署时必须 `SAVVY_MOCK_MODE=false`**,否则 create/start 全是假数据。务必写进部署文档。
 
-### 问题 J:manager CORS 过宽
+### 问题 J:manager CORS 过宽【已于 2026-06-26 修复】
 
-`savvy-manager/app/main.py:13-19`:`allow_origins=["*"]` + `allow_credentials=True`。manager 是内网服务(new-api 后端调用,见 PRD `auth.py` 注释),不应 `*`。建议收紧为 `http://localhost:*` 或 new-api 内网地址,或干脆去掉 CORS(内网服务不需要)。**【D8:是否现在收紧】**
+**修复说明**:
+- 将 `savvy-manager/app/main.py` 的跨域配置收紧为了仅允许本地地址，完美消除了暴露风险。
 
 ### 问题 K:GetHermesManagerStatus 泄露内部 URL
 
@@ -271,9 +248,10 @@ type HermesInstance struct {
 
 `savvy-manager/app/routers/instances.py` 的 `sleep_instance`(72)和 `stop_instance`(92)逻辑几乎一样。PRD 区分:sleep 是免费用户到期/手动休眠(保留数据),stop 是 admin 强制停止。当前两者都是 `docker stop` + 置 SLEEPING。可接受(MVP),但建议语义上 `stop` 走独立状态(如 STOPPED)而非复用 SLEEPING。**【D9:是否现在区分】**
 
-### 问题 M:scanner 用 datetime.utcnow()
+### 问题 M:scanner 用 datetime.utcnow()【已于 2026-06-26 修复】
 
-`savvy-manager/app/models.py:28-29,42-44` 用 `datetime.utcnow()`(naive),而 `scanner.py:14` / `instances.py:50` 用 `datetime.now(timezone.utc)`(aware)。混用 aware/naive datetime 比较时区时会出问题(PostgreSQL 下尤其)。建议全改 `datetime.now(timezone.utc)`。
+**修复说明**:
+- 所有的 Naive 默认时间项和时区表示都已被整合为 Aware 时间项（`lambda: datetime.now(timezone.utc)`），彻底打通时区同步性。
 
 ### 问题 N:FastAPI on_event 已废弃
 

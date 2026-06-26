@@ -21,6 +21,29 @@ def create_container(
         }
 
     try:
+        # Define resource limits and log rotation limits per plan
+        # FREE: 0.5 CPU, 768m RAM, 128 pids, log 10m x 3
+        # PAID_RESIDENT: 2.0 CPU, 2g RAM, 512 pids, log 20m x 5
+        limits = {
+            "FREE": {
+                "mem_limit": "768m",
+                "cpu_quota": 50000,
+                "pids_limit": 128,
+                "log_max_size": "10m",
+                "log_max_file": "3"
+            },
+            "PAID_RESIDENT": {
+                "mem_limit": "2g",
+                "cpu_quota": 200000,
+                "pids_limit": 512,
+                "log_max_size": "20m",
+                "log_max_file": "5"
+            }
+        }
+
+        # Safe fallback to FREE if plan is invalid/unsupported
+        limit_cfg = limits.get(plan, limits["FREE"])
+
         container = client.containers.run(
             "hermes-unified:saas",
             name=container_name,
@@ -33,10 +56,17 @@ def create_container(
                 "expires_at": expires_at or "",
             },
             detach=True,
-            mem_limit="2g",
-            cpu_quota=200000,
-            pids_limit=512,
-            log_config={"type": "json-file", "config": {"max-size": "10m", "max-file": "3"}},
+            mem_limit=limit_cfg["mem_limit"],
+            memswap_limit=limit_cfg["mem_limit"],  # memory swap = memory limit
+            cpu_quota=limit_cfg["cpu_quota"],
+            pids_limit=limit_cfg["pids_limit"],
+            log_config={
+                "type": "json-file",
+                "config": {
+                    "max-size": limit_cfg["log_max_size"],
+                    "max-file": limit_cfg["log_max_file"]
+                }
+            },
             read_only=False,
             security_opt=["no-new-privileges:true"],
         )

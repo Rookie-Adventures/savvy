@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import Base, engine
-from .routers import health, users, instances
+from .routers import health, users, instances, workspace
 from .scanner import start_scanner, stop_scanner
 
 app = FastAPI(
@@ -21,6 +21,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(users.router)
 app.include_router(instances.router)
+app.include_router(workspace.router)
 
 
 @app.on_event("startup")

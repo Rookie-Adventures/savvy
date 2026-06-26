@@ -54,6 +54,31 @@ func RecordRelaySample(info *relaycommon.RelayInfo, success bool, outputTokens i
 	})
 }
 
+func RecordHermesSample(agentType string, group string, success bool, ttftMs int64, latencyMs int64, outputTokens int64) {
+	if agentType == "" {
+		agentType = "hermes-agent-default"
+	} else {
+		agentType = "hermes-agent-" + agentType
+	}
+
+	hasTtft := ttftMs > 0
+	generationMs := latencyMs - ttftMs
+	if generationMs <= 0 {
+		generationMs = latencyMs
+	}
+
+	Record(Sample{
+		Model:        agentType,
+		Group:        group,
+		LatencyMs:    latencyMs,
+		TtftMs:       ttftMs,
+		HasTtft:      hasTtft,
+		Success:      success,
+		OutputTokens: outputTokens,
+		GenerationMs: generationMs,
+	})
+}
+
 func Record(sample Sample) {
 	setting := perf_metrics_setting.GetSetting()
 	if !setting.Enabled || sample.Model == "" {

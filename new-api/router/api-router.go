@@ -359,6 +359,7 @@ func SetApiRouter(router *gin.Engine) {
 			hermesRoute.POST("/instance/:instance_id/sleep", controller.SleepHermesInstance)
 			hermesRoute.POST("/instance/:instance_id/access-token", controller.GetHermesAccessToken)
 			hermesRoute.GET("/manager/status", controller.GetHermesManagerStatus)
+			hermesRoute.POST("/stream", controller.StreamHermesMessage)
 		}
 
 		mjRoute := apiRouter.Group("/mj")

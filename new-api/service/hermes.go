@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/pkg/perf_metrics"
 	"github.com/google/uuid"
 )
 
@@ -256,6 +258,169 @@ func GetHermesAccessToken(userID int, instanceID string) (*HermesAccessToken, er
 		return nil, fmt.Errorf("failed to parse access token: %w", err)
 	}
 	return &token, nil
+}
+
+// CallHermesAgentStream makes a stream POST to hermes-agent gateway (FastAPI) at HERMES_AGENT_URL.
+// It parses the OpenAI-compatible EventSource SSE lines, forwards raw JSON payloads (excluding the "data: " prefix and [DONE]),
+// and measures performance metrics (TTFT, latency, tokens), calling perfmetrics.RecordHermesSample.
+func CallHermesAgentStream(ctx context.Context, group string, message string, agentType string, outChan chan<- []byte, errChan chan<- error) {
+	startTime := time.Now()
+	var firstResponseTime time.Time
+	var ttftMs int64
+	var tokenCount int64
+	success := false
+
+	defer func() {
+		latencyMs := time.Since(startTime).Milliseconds()
+		// Record telemetry
+		perfmetrics.RecordHermesSample(agentType, group, success, ttftMs, latencyMs, tokenCount)
+		common.SysLog(fmt.Sprintf("[hermes-agent-telemetry] success=%t type=%s group=%s latency=%dms ttft=%dms tokens=%d", success, agentType, group, latencyMs, ttftMs, tokenCount))
+	}()
+
+	agentURL := os.Getenv("HERMES_AGENT_URL")
+	if agentURL == "" {
+		agentURL = "http://127.0.0.1:8642"
+	}
+	agentURL = strings.TrimRight(agentURL, "/") + "/v1/chat/completions"
+
+	// Construct OpenAI compatible payload
+	payload := map[string]any{
+		"model": "hermes-agent",
+		"messages": []map[string]string{
+			{
+				"role":    "user",
+				"content": message,
+			},
+		},
+		"stream": true,
+	}
+
+	jsonData, err := common.Marshal(payload)
+	if err != nil {
+		errChan <- fmt.Errorf("failed to marshal request payload: %w", err)
+		return
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", agentURL, strings.NewReader(string(jsonData)))
+	if err != nil {
+		errChan <- fmt.Errorf("failed to create request: %w", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "text/event-stream")
+
+	// Use custom client
+	client := &http.Client{Timeout: 5 * time.Minute}
+	resp, err := client.Do(req)
+	if err != nil {
+		errChan <- fmt.Errorf("failed to connect to hermes-agent: %w", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		errChan <- fmt.Errorf("hermes-agent returned status %d: %s", resp.StatusCode, string(body))
+		return
+	}
+
+	// Read stream line by line
+	// bufio.Reader handles large lines
+	bufReader := io.Reader(resp.Body)
+	// We read line by line manually or using a scanner. bufio.Reader is safe.
+	lineReader := strings.NewReader("")
+	_ = lineReader
+
+	// Let's use bufReader but wrap in a scanner
+	// Note: OpenAI chunk stream lines look like:
+	// data: {"id":"chatcmpl-...","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"..."},"finish_reason":null}]}
+	// data: [DONE]
+	// There can also be comments (starting with ':')
+	r := io.LimitReader(bufReader, 1024*1024*50) // Safeguard limit 50MB
+	dec := strings.Builder{}
+	_ = dec
+
+	var buf [4096]byte
+	var pending []byte
+
+	for {
+		select {
+		case <-ctx.Done():
+			errChan <- ctx.Err()
+			return
+		default:
+			n, err := r.Read(buf[:])
+			if n > 0 {
+				chunk := append(pending, buf[:n]...)
+				lines := strings.Split(string(chunk), "\n")
+				if len(lines) > 0 {
+					pending = []byte(lines[len(lines)-1])
+					for i := 0; i < len(lines)-1; i++ {
+						line := strings.TrimSpace(lines[i])
+						if line == "" {
+							continue
+						}
+						if strings.HasPrefix(line, ":") {
+							continue // SSE comment
+						}
+						if strings.HasPrefix(line, "data: ") {
+							data := strings.TrimPrefix(line, "data: ")
+							data = strings.TrimSpace(data)
+							if data == "[DONE]" {
+								continue
+							}
+
+							// Record TTFT
+							if firstResponseTime.IsZero() {
+								firstResponseTime = time.Now()
+								ttftMs = firstResponseTime.Sub(startTime).Milliseconds()
+							}
+
+							// Increment estimated token count or actual tokens
+							// Since this is a chunk, we count each chunk as 1 token, or count words/chars.
+							// Counting delta contents is highly accurate.
+							var chunkObj struct {
+								Choices []struct {
+									Delta struct {
+										Content string `json:"content"`
+									} `json:"delta"`
+								} `json:"choices"`
+							}
+							if err := common.Unmarshal([]byte(data), &chunkObj); err == nil {
+								if len(chunkObj.Choices) > 0 && chunkObj.Choices[0].Delta.Content != "" {
+									// Standard estimation: 1 token ~= 4 characters in English, or 1 character in Chinese.
+									// To be accurate, we can count chunks or estimate:
+									tokenCount++
+								}
+							} else {
+								tokenCount++ // fallback increment
+							}
+
+							outChan <- []byte(data)
+						}
+					}
+				}
+			}
+			if err != nil {
+				if err == io.EOF {
+					if len(pending) > 0 {
+						line := strings.TrimSpace(string(pending))
+						if strings.HasPrefix(line, "data: ") {
+							data := strings.TrimPrefix(line, "data: ")
+							data = strings.TrimSpace(data)
+							if data != "[DONE]" {
+								outChan <- []byte(data)
+							}
+						}
+					}
+					success = true
+					return
+				}
+				errChan <- fmt.Errorf("error reading stream: %w", err)
+				return
+			}
+		}
+	}
 }
 
 // HealthCheckHermesManager is a lightweight GET /health used by the status

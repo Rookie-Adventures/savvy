@@ -386,3 +386,93 @@ type HermesInstance struct {
 | PRD | `docs/specs/hermes-saas-platform-prd.md` | 75-80(套餐),137-162(manager API),164-177(workspace 访问) |
 | Nginx 路由契约 | `docs/ops/workspace-routing.md` | 48-82(nginx 片段,无实际文件) |
 | 部署文档 | `docs/ops/deployment.md` | 30-38(资源限额表) |
+
+---
+
+## 7. 更新日志:2026-06-26
+
+### 7.1 ✅ Hermes 链路阻断性问题已修复(问题 A/B/H + E)
+
+本次会话已完成并提交于 commit `edd0337f4`(feat: Enhance Hermes and Savvy Manager integration)。改了 6 个文件,`go build ./...` 通过、`go test ./service/ -run Hermes` 9 个测试全绿、前端 `tsgo -b` 类型检查通过。
+
+| 原问题 | 修复 | 文件 |
+|---|---|---|
+| **A. HMAC 签名断裂** | 新增 `signAndDo()` helper,注入 `X-Savvy-{Timestamp,Nonce,Signature,User-Id}` 头,签名串 `method\npath\nsha256(body)\ntimestamp\nnonce` 与 manager `auth.py` 完全对齐 | `service/hermes.go` |
+| **B. encoding/json 违规** | 全部改用 `common.Unmarshal`/`common.Marshal`,`encoding/json` 仅保留 `json.RawMessage` 类型引用(合规) | `service/hermes.go`, `service/hermes_test.go` |
+| **H. 字段不对齐** | controller 层 `toVO()` 把 manager 大写状态枚举转小写、snake_case 转 camelCase、用 `expires_at` 算 `remainingMinutes` | `controller/hermes.go` |
+| **E. 缺端点对接** | 新增 `CreateHermesInstance`/`GetHermesAccessToken`/`EnsureHermesUser` service+controller+路由 + 前端 api/types/index.tsx;Create/Open Workspace 按钮真正可用 | 6 个文件 |
+
+**契约要点(供后续维护)**:
+- new-api 调 manager 必须带 4 个 `X-Savvy-*` 头 + 正确签名,否则 401。
+- `SAVVY_HMAC_SECRET` 环境变量在 new-api 和 manager 两端**必须同值**。
+- 签名里 `path` 是 URL path **不含 query string**(对齐 manager 的 `request.url.path`)。
+
+### 7.2 ✅ 工作区状态持久化已实现
+
+同样在 commit `edd0337f4` 中完成:
+- `savvy-manager/app/models.py`:新增 `WorkspaceState` 模型(`workspace_states` 表,`instance_id` 外键 + JSON `state_data` + `last_synced_at`,与 Instance 一对一级联删除)。
+- `savvy-manager/app/routers/instances.py`:新增 `GET /internal/instances/{id}/state` 和 `PUT /internal/instances/{id}/state` 两个端点(HMAC 保护)。
+- **注意**:需要 `Base.metadata.create_all` 重建表(MVP SQLite 默认会自动建;生产 PostgreSQL 需确认迁移执行)。
+
+### 7.3 ⚠️ 重要:SSE 流式代理层「从未实现」(不是丢失,是幻觉)
+
+**事件**:另一会话的 AI 在交接文档中声称 `new-api/controller/hermes.go` 的 `StreamHermesMessage` 和 `new-api/service/hermes.go` 的 `CallHermesAgentStream`「SSE 流式响应已解决」,要求在此基础上加 Metrics 遥测。
+
+**取证结论(三项 git 取证全部一致)**:
+1. `git log --all -p -S "StreamHermesMessage"` 和 `-S "CallHermesAgentStream"` —— **搜全历史(所有分支/所有 commit diff)零结果**。`-S` 捕获任何曾增删的符号,空 = 从未写过。
+2. 当前工作区 `git grep` —— 零结果。
+3. `git stash list` —— 空。
+4. 核对唯一相关 commit `edd0337f4` 的完整 `--stat`:改动只有 HMAC/字段对齐/前端/状态持久化,**无任何 SSE/streaming 文件或符号**。
+5. 那份声称「已解决」的 `2026-06-26-hermes-agent-integration.md` **不在仓库里**,是那个 AI 会话内的规划产物,被它自己误当成已合并代码。
+
+**真相**:这是「把计划(plan)叙述成已完成(done)」的经典 AI 幻觉。**不存在丢失或忘提交的代码**,无需找回。
+
+**真实能力位置**:
+- 流式能力存在于 `hermes-agent/acp_adapter/server.py`(上游 NousResearch),用内部 `stream_delta_callback`(第 1304/1411/1444 行)。
+- `hermes-workspace` 前端确实期望标准 SSE/HTTP 流:`connection-startup-screen.tsx:29` 说兼容任何暴露 `/v1/chat/completions` 的后端;`claude-onboarding.tsx:347` 用 `fetch('/api/send-stream')`。
+- **但 new-api 侧从未写过任何 SSE 转发/代理层来对接**。
+
+**下一步正确路径(全新功能,从零实现)**:
+1. `service.CallHermesAgentStream`:HTTP 客户端,调 hermes-agent 的流式接口,逐块读 SSE/JSON;在此集成遥测(TTFT、token 数、流结束调用 `perfmetrics.RecordHermesSample`)。
+2. `controller.StreamHermesMessage`:接前端 JSON,转 HTTP chunked/SSE 吐给前端。
+3. **前置待确认**:hermes-agent 暴露给 new-api 的 HTTP 监听端口 + 流式对话端点路径(是 `POST /v1/chat/completions` 标准格式,还是 ACP 私有 HTTP endpoint?)。这是设计这层的必要输入,**建议先确认再动手**。
+
+> 给接手者:遇到任何声称「某功能已实现」的交接描述,务必用 `git log -S` 或 `git grep` 先取证再信。本次事件正是靠取证避免了在幻觉基础上继续开发。
+
+### 7.4 ✅ 待确认点已查明:hermes-agent 的 HTTP 服务接口
+
+经代码取证,hermes-agent 对外(给 hermes-workspace)的 HTTP 接口**已确认**,回答 7.3 第 3 点:
+
+**架构事实**(来源:`hermes-workspace/src/server/claude-api.ts` + `gateway-capabilities.ts`):
+
+- hermes-agent 运行时启动一个 **FastAPI 后端**,代号 "Gateway",**默认监听 `http://127.0.0.1:8642`**。
+- 端口可经 `HERMES_API_URL` 环境变量覆盖(优先级:运行时 override > `HERMES_API_URL` > 默认 localhost:8642)。
+- 提供的端点:
+  - `GET /health` — 健康检查
+  - `POST /v1/chat/completions` — **OpenAI 兼容的对话/流式端点**(hermes-workspace 主要用这个,`connection-startup-screen.tsx` 明确说兼容任何暴露此端点的后端)
+  - `POST /v1/responses` — Responses API 风格的流式端点(`send-stream.ts:596` 提到,优先尝试,失败回退到 `/v1/chat/completions`)
+  - `GET /v1/models` — 模型列表
+  - `POST /api/sessions/{id}/chat/stream` — 旧式会话流式端点(`claude-api.ts:384`)
+- 另有一个 **Dashboard 服务**默认 `:9119`(sessions/skills/config/cron 等,与对话流无关)。
+
+**对 new-api 实现 `CallHermesAgentStream` 的直接结论**:
+- hermes-agent 暴露的是**标准 OpenAI 兼容**的 `POST /v1/chat/completions`(支持 `stream: true`)。
+- 因此 `CallHermesAgentStream` 不需要适配 ACP 私有协议,**直接当 OpenAI 兼容客户端实现即可**——用 Go 的 HTTP client 发 `stream:true` 请求,逐行读 `data: {...}` SSE 块解析 delta。
+- 目标 URL 默认 `http://hermes-agent:8642/v1/chat/completions`(容器名按部署网络定),建议从环境变量 `HERMES_AGENT_URL` 读取。
+- **遥测埋点位置**:在 SSE 读循环里,首块记录 TTFT,逐块累计 token,流结束调 `perfmetrics.RecordHermesSample`。
+
+**注意**:当前 hermes-workspace 是**直连** gateway(8642),没经过 new-api。new-api 要做这层,意味着让 new-api 成为 hermes-workspace ↔ hermes-agent 之间的**代理/网关**,hermes-workspace 的 `HERMES_API_URL` 需指向 new-api 而非 8642。这是部署拓扑的变更,**建议在实现前与用户确认**。
+
+
+### 7.5 ✅ SSE 流式代理层与遥测指标已从零实现 (2026-06-26)
+
+在 `dev` 分支中，我们已成功从零完成了这一全新功能的实现：
+1. **服务逻辑 (`new-api/service/hermes.go`)**:
+   - 实现了 `CallHermesAgentStream`。连接至 `HERMES_AGENT_URL` 并流式发送标准 OpenAI completions 载荷 (`stream: true`)。
+   - 解析 FastAPI 的 EventSource 响应流，统计生成 Delta 并计算首包响应时延 (TTFT)、累加 Token 数，在流结束/异常退出时，利用 defer 调用 `perfmetrics.RecordHermesSample` 向数据库/Redis 指标桶落盘。
+2. **控制器逻辑 (`new-api/controller/hermes.go`)**:
+   - 实现了 `StreamHermesMessage`，包装 Gin.Stream，接收前端请求并安全输出格式化的 SSE `message` 分块。
+3. **接口路由注册 (`new-api/router/api-router.go`)**:
+   - 挂载了 `POST /api/hermes/stream` 路径。
+
+

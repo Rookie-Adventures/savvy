@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -279,5 +280,61 @@ func EnsureHermesUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
+	})
+}
+
+// StreamHermesMessage proxy handles streaming completions from the hermes-agent gateway FastAPI.
+func StreamHermesMessage(c *gin.Context) {
+	var req struct {
+		Message   string `json:"message" binding:"required"`
+		AgentType string `json:"agent_type" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Transfer-Encoding", "chunked")
+
+	// Set up SSE channels
+	streamChan := make(chan []byte)
+	errChan := make(chan error)
+
+	group := c.GetString("group")
+	if group == "" {
+		group = "default"
+	}
+
+	go func() {
+		defer close(streamChan)
+		defer close(errChan)
+		service.CallHermesAgentStream(ctx, group, req.Message, req.AgentType, streamChan, errChan)
+	}()
+
+	c.Stream(func(w io.Writer) bool {
+		select {
+		case <-ctx.Done():
+			return false
+		case err, ok := <-errChan:
+			if ok && err != nil {
+				logger.LogError(ctx, fmt.Sprintf("hermes agent stream error: %s", err.Error()))
+				return false
+			}
+		case data, ok := <-streamChan:
+			if !ok {
+				return false
+			}
+			msgStr := string(data)
+			msgStr = strings.TrimSpace(msgStr)
+			c.SSEvent("message", msgStr)
+			return true
+		}
+		return false
 	})
 }

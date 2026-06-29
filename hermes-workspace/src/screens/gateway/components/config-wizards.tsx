@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import type { TeamMember, TeamTemplateId } from './team-panel'
 import { TEAM_TEMPLATES } from './team-panel'
 
@@ -395,11 +394,11 @@ export function AgentWizardModal({
           <div>
             <FieldLabel>Model</FieldLabel>
             <select value={member.modelId} onChange={(e) => onUpdate({ modelId: e.target.value })} className={SELECT_CLS}>
-              <optgroup label={t('label.presets')}>
+              <optgroup label="Presets">
                 {modelPresets.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
               </optgroup>
               {gatewayModels.length > 0 ? (
-                <optgroup label={t('label.availableModels')}>
+                <optgroup label="Available Models">
                   {gatewayModels.map((m) => <option key={m.value} value={m.value}>{m.label} ({m.provider})</option>)}
                 </optgroup>
               ) : null}
@@ -490,7 +489,7 @@ export function AgentWizardModal({
             onChange={(e) => { onUpdate({ backstory: e.target.value }) }}
             className="mt-2 w-full resize-none rounded-lg border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800 px-3 py-2.5 text-xs text-neutral-900 dark:text-white outline-none ring-accent-400 focus:ring-1 font-mono leading-relaxed overflow-auto"
             style={{ minHeight: 100, maxHeight: 400 }}
-            placeholder={t('placeholder.personaInstructions')}
+            placeholder="Persona, instructions, and context for this agent..."
           />
         </div>
       </div>
@@ -641,7 +640,7 @@ export function TeamWizardModal({
             type="button"
             onClick={() => setShowIconPicker((v) => !v)}
             className="absolute -bottom-0.5 -right-0.5 flex size-5 items-center justify-center rounded-full border-2 border-white dark:border-neutral-900 bg-neutral-700 text-white shadow-md hover:bg-neutral-600 transition-colors"
-            title={t('ui.changeIcon')}
+            title="Change icon"
           >
             <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M7 1.5l1.5 1.5L3 8.5H1.5V7L7 1.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
@@ -688,7 +687,7 @@ export function TeamWizardModal({
           <input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder={t('placeholder.teamBestAt')}
+            placeholder="What is this team best at? e.g. Deep research & analysis"
             className={INPUT_CLS}
           />
         </div>
@@ -706,7 +705,7 @@ export function TeamWizardModal({
                 </div>
                 <p className="min-w-0 flex-1 text-xs font-semibold text-neutral-900 dark:text-white truncate">{member.name}</p>
                 <button type="button" onClick={() => removeAgent(member.id)}
-                  className="flex size-6 items-center justify-center rounded-full text-neutral-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-colors" title={t('ui.removeFromTeam')}>
+                  className="flex size-6 items-center justify-center rounded-full text-neutral-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-colors" title="Remove from team">
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
                 </button>
               </div>
@@ -736,7 +735,7 @@ export function TeamWizardModal({
                     {agent.role ? <p className="text-[10px] text-neutral-400 truncate">{agent.role}</p> : null}
                   </div>
                   <button type="button" onClick={() => addAgent(agent.id)}
-                    className="flex size-6 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white transition-colors" title={t('ui.addToTeam')}>
+                    className="flex size-6 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white transition-colors" title="Add to team">
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
                   </button>
                 </div>
@@ -884,7 +883,7 @@ export function AddTeamModal({ currentTeam, quickStartTemplates, existingIcons =
       {step === 1 ? (
         <>
           <div className="px-6 py-8">
-            <p className="mb-5 text-xl font-bold text-neutral-900 dark:text-white">{t('gateway.nameYourTeam')}</p>
+            <p className="mb-5 text-xl font-bold text-neutral-900 dark:text-white">Name your team</p>
             <input
               ref={nameInputRef}
               value={teamName}
@@ -912,7 +911,7 @@ export function AddTeamModal({ currentTeam, quickStartTemplates, existingIcons =
       {step === 2 ? (
         <>
           <div className="px-6 py-6">
-            <p className="mb-4 text-xl font-bold text-neutral-900 dark:text-white">{t('gateway.chooseAPicture')}</p>
+            <p className="mb-4 text-xl font-bold text-neutral-900 dark:text-white">Choose a picture</p>
             <div className="grid grid-cols-6 gap-2">
               {INLINE_TEAM_ICONS.map((ic) => (
                 <button
@@ -1138,7 +1137,7 @@ export function ProviderEditModal({ provider, currentModels, availableModels, on
                 ) : null}
               </FieldLabel>
               <select value={defaultModel} onChange={(e) => setDefaultModel(e.target.value)} className={SELECT_CLS}>
-                <option value="">{t('settings.useGatewayDefault')}</option>
+                <option value="">Use gateway default</option>
                 {combined.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
             </div>
@@ -1155,7 +1154,7 @@ export function ProviderEditModal({ provider, currentModels, availableModels, on
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            placeholder={t('placeholder.newApiKey')}
+            placeholder="New API key…"
             className={cn(INPUT_CLS, 'font-mono')}
           />
         </div>

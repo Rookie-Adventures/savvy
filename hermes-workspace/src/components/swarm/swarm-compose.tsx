@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Rocket01Icon, CheckmarkCircle02Icon, AlertCircleIcon, Clock01Icon } from '@hugeicons/core-free-icons'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import type { CrewMember } from '@/hooks/use-crew-status'
 
 type WorkerResult = {
@@ -67,7 +66,7 @@ export function SwarmCompose({ members, roomIds, className }: SwarmComposeProps)
     <div className={cn('rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-5', className)}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold text-[var(--theme-text)]">{t('swarm.composeOrchestration')}</div>
+          <div className="text-sm font-semibold text-[var(--theme-text)]">Compose orchestration</div>
           <div className="mt-1 text-xs text-[var(--theme-muted)]">
             Dispatched in parallel against each agent profile with the configured worker runtime.
           </div>
@@ -108,7 +107,7 @@ export function SwarmCompose({ members, roomIds, className }: SwarmComposeProps)
         value={prompt}
         onChange={(event) => setPrompt(event.target.value)}
         disabled={busy}
-        placeholder={t('placeholder.typeSinglePrompt')}
+        placeholder="Type a single prompt that goes out to every agent in the room…"
         className="mt-3 w-full rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-hover)] px-3 py-2 text-sm text-[var(--theme-text)] focus:border-[#B87333]/60 focus:outline-none"
       />
 

@@ -18,7 +18,6 @@ import {
   CommandSeparator,
 } from '@/components/ui/command'
 import { useAutocompleteFilter } from '@/components/ui/autocomplete'
-import { t } from '@/lib/i18n'
 
 type CommandSession = {
   key: string
@@ -101,11 +100,11 @@ function CommandSessionDialog({
           onValueChange={setValue}
           mode="none"
         >
-          <CommandInput placeholder={t('placeholder.searchSessions')} />
+          <CommandInput placeholder="Search sessions" />
           <CommandPanel className="flex min-h-0 flex-1 flex-col">
             {isEmpty ? (
               <div className="h-72 min-h-0 flex items-center justify-center text-sm text-primary-600">
-                {t('empty.noSessionsFound')}
+                No sessions found.
               </div>
             ) : (
               <CommandList className="h-72 min-h-0">

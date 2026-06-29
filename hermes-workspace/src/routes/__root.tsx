@@ -21,7 +21,6 @@ import { OnboardingTour } from '@/components/onboarding/onboarding-tour'
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
 import { UpdateCenterNotifier } from '@/components/update-center-notifier'
 import { applyInterfacePreferences, initializeSettingsAppearance, useSettings } from '@/hooks/use-settings'
-import { t } from '@/lib/i18n'
 import { useApplyChatWidth } from '@/hooks/use-chat-settings'
 import {
   ClaudeOnboarding,
@@ -201,7 +200,7 @@ export const Route = createRootRoute({
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-primary-50">
         <h1 className="text-2xl font-semibold text-primary-900 mb-4">
-          {t('ui.somethingWentWrong')}
+          Something went wrong
         </h1>
         <pre className="p-4 bg-primary-100 rounded-lg text-sm text-primary-700 max-w-full overflow-auto mb-6">
           {error instanceof Error ? error.message : String(error)}

@@ -1,6 +1,5 @@
 import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import { usePageTitle } from '@/hooks/use-page-title'
 import {
   ScrollAreaCorner,
@@ -862,7 +861,7 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
         <span>Modified {formatDate(selectedEntry.modifiedAt)}</span>
       )}
       {dirty && (
-        <span className="text-accent-500 font-medium">{t('ui.unsavedChanges')}</span>
+        <span className="text-accent-500 font-medium">Unsaved changes</span>
       )}
     </div>
   )
@@ -915,7 +914,7 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
                 className="max-h-full max-w-full rounded-lg border border-primary-200 dark:border-neutral-800 shadow-sm object-contain"
               />
             ) : (
-              <div className="text-sm text-primary-400">{t('files.noPreview')}</div>
+              <div className="text-sm text-primary-400">No preview</div>
             )}
           </div>
           {footer}
@@ -1217,7 +1216,7 @@ export function FilesScreen() {
             <button
               type="button"
               onClick={openNewFolderPrompt}
-              title={t('ui.newFolder')}
+              title="New folder"
               className="rounded p-1 text-sm text-primary-400 hover:bg-primary-200 dark:hover:bg-neutral-800 hover:text-primary-600 dark:hover:text-neutral-300 transition-colors leading-none"
             >
               📁+
@@ -1225,7 +1224,7 @@ export function FilesScreen() {
             <button
               type="button"
               onClick={() => void loadTree()}
-              title={t('ui.refresh')}
+              title="Refresh"
               className="rounded p-1 text-lg text-primary-400 hover:bg-primary-200 dark:hover:bg-neutral-800 hover:text-primary-600 dark:hover:text-neutral-300 transition-colors leading-none"
             >
               ↺

@@ -53,7 +53,6 @@ import { Button } from '@/components/ui/button'
 import { usePinnedModels } from '@/hooks/use-pinned-models'
 // import { ModeSelector } from '@/components/mode-selector'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import { useVoiceInput } from '@/hooks/use-voice-input'
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder'
 import { toast } from '@/components/ui/toast'
@@ -1068,7 +1067,7 @@ function ChatComposerComponent({
         }),
       ])
       setIsProfileMenuOpen(false)
-      toast(t('toast.activatedProfileName', { name: profileName }))
+      toast(`Activated profile ${profileName}`)
     },
     onError: (error) => {
       toast(
@@ -2546,7 +2545,7 @@ function ChatComposerComponent({
                             return (
                               <div className="p-4 text-center text-sm text-neutral-500">
                                 <p className="font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                                  {t('empty.noModelsAvailable')}
+                                  No models available
                                 </p>
                                 <p className="text-xs">
                                   Check your Hermes provider configuration.
@@ -2970,7 +2969,7 @@ function ChatComposerComponent({
                                       const allModels = modelsQuery.data?.models ?? []
                                       const defaultProvider = modelsQuery.data?.currentProvider ?? ''
                                       if (allModels.length === 0) {
-                                        return <div className="p-4 text-center text-sm text-neutral-500">{t('empty.noModelsAvailable')}</div>
+                                        return <div className="p-4 text-center text-sm text-neutral-500">No models available</div>
                                       }
                                       const parsed = allModels.map((m) => {
                                         const mId = String(typeof m === 'string' ? m : m.id || m.model || m.name || 'unknown')

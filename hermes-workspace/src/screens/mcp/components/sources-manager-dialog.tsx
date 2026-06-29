@@ -14,7 +14,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/toast'
-import { t } from '@/lib/i18n'
 import {
   useMcpHubSources,
   useAddHubSource,
@@ -299,13 +298,13 @@ export function SourcesManagerDialog({ open, onClose }: Props) {
     deleteMutation.mutate(id, {
       onSuccess: () => {
         setDeletingId(null)
-        toast(t('toast.sourceRemoved'), { type: 'success' })
+        toast('Source removed', { type: 'success' })
       },
       onError: (err) => {
         setDeletingId(null)
         const errors = (err as { errors?: MutationError[] }).errors ?? []
         setServerErrors(errors)
-        toast(t('toast.failedToRemoveSource'), { type: 'error' })
+        toast('Failed to remove source', { type: 'error' })
       },
     })
   }
@@ -315,7 +314,7 @@ export function SourcesManagerDialog({ open, onClose }: Props) {
     addMutation.mutate(data, {
       onSuccess: () => {
         setMode('list')
-        toast(t('toast.sourceAdded'), { type: 'success' })
+        toast('Source added', { type: 'success' })
       },
       onError: (err) => {
         const errors = (err as { errors?: MutationError[] }).errors ?? []
@@ -333,7 +332,7 @@ export function SourcesManagerDialog({ open, onClose }: Props) {
         onSuccess: () => {
           setMode('list')
           setEditingSource(null)
-          toast(t('toast.sourceUpdated'), { type: 'success' })
+          toast('Source updated', { type: 'success' })
         },
         onError: (err) => {
           const errors = (err as { errors?: MutationError[] }).errors ?? []

@@ -3,7 +3,6 @@
 import { memo } from 'react'
 import { DialogContent, DialogRoot } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 type ContextAlertModalProps = {
   open: boolean
@@ -116,18 +115,18 @@ function ContextAlertModalComponent({
               {isCritical && (
                 <Recommendation
                   icon="🆕"
-                  text={t('ui.startNewChatToReset')}
+                  text="Start a new chat to reset context"
                   emphasis
                 />
               )}
               <Recommendation
                 icon="📋"
-                text={t('ui.summarizeBeforeNewChat')}
+                text="Summarize important details before starting a new chat"
               />
               {!isCritical && (
                 <Recommendation
                   icon="💡"
-                  text={t('ui.keepMessagesConcise')}
+                  text="Keep messages concise to use context efficiently"
                 />
               )}
             </div>

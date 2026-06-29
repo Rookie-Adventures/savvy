@@ -5,7 +5,6 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import type { CronJob } from '@/components/cron-manager/cron-types'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
-import { t } from '@/lib/i18n'
 import { toggleCronJob, upsertCronJob } from '@/lib/cron-api'
 import { formatRelativeTime } from '@/screens/dashboard/lib/formatters'
 
@@ -68,7 +67,7 @@ export function OperationsAgentJobs({
       setDescription('')
       setAdding(false)
       await queryClient.invalidateQueries({ queryKey: ['operations', 'cron'] })
-      toast(t('toast.cronJobCreated'), { type: 'success' })
+      toast('Cron job created', { type: 'success' })
     },
     onError: (error) => {
       toast(
@@ -174,7 +173,7 @@ export function OperationsAgentJobs({
               <input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder={t('placeholder.dailyScan')}
+                placeholder="Daily scan"
                 className="w-full rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none placeholder:text-[var(--theme-muted)] focus:border-[var(--theme-accent)]"
               />
             </label>
@@ -193,7 +192,7 @@ export function OperationsAgentJobs({
             <textarea
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder={t('placeholder.whatJobShouldDo')}
+              placeholder="What this job should do"
               className="min-h-[96px] w-full rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none placeholder:text-[var(--theme-muted)] focus:border-[var(--theme-accent)]"
             />
           </label>

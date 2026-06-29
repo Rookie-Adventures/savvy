@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 export type AgendaViewProps = {
   activeMissions: Array<{
@@ -285,7 +284,7 @@ export function AgendaView({
   return (
     <div className="space-y-3">
       <header className="rounded-xl border border-primary-800 bg-primary-900 p-4">
-        <p className="text-xs uppercase tracking-wide text-primary-400">{t('gateway.todayOverview')}</p>
+        <p className="text-xs uppercase tracking-wide text-primary-400">Today overview</p>
         <h2 className="mt-1 text-lg font-semibold text-primary-100">{greeting}</h2>
         <p className="text-xs text-primary-300">Here is your daily briefing.</p>
       </header>
@@ -416,7 +415,7 @@ export function AgendaView({
         count={agentStatuses.length}
         open={openSections.agents}
         onToggle={toggleSection}
-        emptyText={t('empty.noAgentsAvailable')}
+        emptyText="No agents available."
       >
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {agentStatuses.map((agent) => {

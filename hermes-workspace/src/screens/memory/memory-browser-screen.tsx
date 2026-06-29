@@ -9,7 +9,6 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from '@/components/ui/toast'
-import { t } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 type MemoryFileMeta = {
@@ -234,7 +233,7 @@ export function MemoryBrowserScreen() {
       await queryClient.invalidateQueries({ queryKey: ['memory'] })
       setIsEditing(false)
       setHasUnsavedChanges(false)
-      toast(t('toast.savedCheckmark'), { type: 'success' })
+      toast('Saved ✓', { type: 'success' })
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Failed to save file'
@@ -279,7 +278,7 @@ export function MemoryBrowserScreen() {
               <input
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
-                placeholder={t('placeholder.searchMemoryFiles')}
+                placeholder="Search memory files"
                 className="w-full rounded-xl py-2 pl-9 pr-3 text-sm outline-none transition-colors focus:border-accent-500"
                 style={{
                   border: '1px solid var(--theme-border)',
@@ -472,13 +471,13 @@ export function MemoryBrowserScreen() {
             )}
           >
             {filesQuery.isLoading ? (
-              <StateBox label={t('loading.memory')} />
+              <StateBox label="Loading memory files..." />
             ) : filesQuery.error instanceof Error ? (
               <StateBox label={filesQuery.error.message} error />
             ) : !selectedPath ? (
-              <StateBox label={t('empty.noMemoryFilesFound')} />
+              <StateBox label="No memory files found" />
             ) : contentQuery.isLoading ? (
-              <StateBox label={t('loading.file')} />
+              <StateBox label="Loading file..." />
             ) : contentQuery.error instanceof Error ? (
               <StateBox label={contentQuery.error.message} error />
             ) : isEditing ? (

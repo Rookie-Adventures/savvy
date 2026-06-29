@@ -1,6 +1,5 @@
 import type { ChangeEvent, ReactNode } from 'react'
 import { useHermesWorldSettings, type HermesWorldSettings } from './hermesworld-settings'
-import { t } from '@/lib/i18n'
 
 type Props = {
   open: boolean
@@ -83,7 +82,7 @@ export function SettingsPanel({ open, onClose, signedInName, onSignOut }: Props)
             <Range label="Mouse sensitivity" value={settings.controls.mouseSensitivity} min={1} max={100} onChange={onNumber(['controls', 'mouseSensitivity'])} />
             <Check label="Invert Y" checked={settings.controls.invertY} onChange={onToggle(['controls', 'invertY'])} />
             <div className="rounded-xl border border-white/10 bg-black/25 p-2">
-              <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">{t('playground.keyboardRebinding')}</div>
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Keyboard rebinding</div>
               <div className="grid gap-1 text-[11px] text-white/70">
                 {Object.entries(settings.controls.bindings).slice(0, 14).map(([action, key]) => (
                   <div key={action} className="flex justify-between gap-2"><span>{action}</span><kbd className="text-amber-100">{key}</kbd></div>
@@ -116,7 +115,7 @@ export function SettingsPanel({ open, onClose, signedInName, onSignOut }: Props)
             {signedInName ? (
               <>
                 <div className="rounded-xl border border-emerald-300/20 bg-emerald-300/10 p-3 text-sm text-emerald-50">Signed in as {signedInName}</div>
-                <button type="button" onClick={onSignOut} className="rounded-xl border border-red-300/25 bg-red-300/10 px-3 py-2 text-sm font-bold text-red-100 hover:bg-red-300/15">{t('playground.signOut')}</button>
+                <button type="button" onClick={onSignOut} className="rounded-xl border border-red-300/25 bg-red-300/10 px-3 py-2 text-sm font-bold text-red-100 hover:bg-red-300/15">Sign out</button>
               </>
             ) : (
               <div className="rounded-xl border border-white/10 bg-black/25 p-3 text-sm text-white/55">Not signed in. Sign out is unavailable.</div>

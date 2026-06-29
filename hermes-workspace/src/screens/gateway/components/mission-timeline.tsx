@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import type { TeamMember } from './team-panel'
 import type { HubTask } from './task-board'
 import { AgentOutputPanel } from './agent-output-panel'
@@ -61,7 +60,7 @@ export function MissionTimeline({
         <li className="flex items-start gap-3">
           <span className="mt-1 h-[14px] w-[14px] rounded-full bg-orange-400" />
           <div>
-            <p className="text-[16px] font-bold text-neutral-900">{t('gateway.missionStarted')}</p>
+            <p className="text-[16px] font-bold text-neutral-900">Mission started</p>
             <p className="text-xs text-neutral-500">{new Date(startedAt).toLocaleString()}</p>
           </div>
         </li>
@@ -109,7 +108,7 @@ export function MissionTimeline({
 
                 {isActive ? (
                   <div className="mt-2 rounded-r-lg border-l-4 border-emerald-500 bg-emerald-50 px-3 py-2">
-                    <p className="text-sm font-semibold text-emerald-800">{t('gateway.agentWorking')}</p>
+                    <p className="text-sm font-semibold text-emerald-800">Agent working</p>
                     <p className="mt-0.5 text-xs text-emerald-600">
                       Live stream is active{status?.lastSeen ? ` · last seen ${new Date(status.lastSeen).toLocaleTimeString()}` : ''}
                     </p>
@@ -150,7 +149,7 @@ export function MissionTimeline({
           <li className="flex items-start gap-3">
             <span className="mt-1 h-3 w-3 rounded-full bg-neutral-300" />
             <div>
-              <p className="text-base font-bold text-neutral-900">{t('gateway.missionStopped')}</p>
+              <p className="text-base font-bold text-neutral-900">Mission stopped</p>
               <p className="text-xs text-neutral-500">
                 {completedTasks}/{totalTasks} tasks complete · total time {formatElapsed(elapsedTime)}
               </p>

@@ -17,7 +17,6 @@ import { botsFor } from './lib/playground-bots'
 import { PLAYGROUND_WORLDS, itemById, type PlaygroundItemId, type PlaygroundWorldId } from './lib/playground-rpg'
 import type { RemotePlayer } from './hooks/use-playground-multiplayer'
 import { useWorkspaceStore } from '@/stores/workspace-store'
-import { t } from '@/lib/i18n'
 
 
 const PlaygroundAdminPanel = lazy(() => import('./components/playground-admin-panel').then((module) => ({ default: module.PlaygroundAdminPanel })))
@@ -910,7 +909,7 @@ function OnboardingHintCard({ open }: { open: boolean }) {
   if (!open) return null
   return (
     <div className="pointer-events-none fixed left-1/2 top-[108px] z-[92] w-[min(92vw,420px)] -translate-x-1/2 rounded-2xl border border-amber-200/35 bg-black/76 p-3 text-white shadow-2xl backdrop-blur-xl">
-      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/70">{t('playground.trainingHint')}</div>
+      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/70">Training hint</div>
       <div className="mt-1 text-sm font-black text-[#F1C56D]">Move • Talk • Jump • Crouch</div>
       <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-white/72">
         <span><kbd className="text-amber-100">WASD</kbd> Move</span>
@@ -1549,7 +1548,7 @@ function RouteFallback() {
     <div className="flex min-h-screen items-center justify-center bg-[#050b12] p-6 text-white">
       <div className="max-w-[520px] rounded-3xl border border-amber-300/25 bg-[#070b14] p-5 shadow-2xl">
         <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-200/80">HermesWorld</div>
-        <div className="mt-1 text-xl font-extrabold">{t('playground.routeFallbackActive')}</div>
+        <div className="mt-1 text-xl font-extrabold">Route fallback active</div>
         <p className="mt-3 text-sm text-white/75">
           The 3D route failed to render in this browser context. Reload the page or open `/agora` for the lightweight fallback.
         </p>

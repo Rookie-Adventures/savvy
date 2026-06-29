@@ -8,7 +8,6 @@ import {
   AlertDialogRoot,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { t } from '@/lib/i18n'
 
 type SessionDeleteDialogProps = {
   open: boolean
@@ -36,7 +35,7 @@ export function SessionDeleteDialog({
           </AlertDialogDescription>
           <div className="flex justify-end gap-2">
             <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={onConfirm}>{t('ui.delete')}</AlertDialogAction>
+            <AlertDialogAction onClick={onConfirm}>Delete</AlertDialogAction>
           </div>
         </div>
       </AlertDialogContent>

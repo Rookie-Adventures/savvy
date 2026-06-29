@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import type { HubTask, TaskStatus, TaskPriority } from './task-board'
 import { useTaskStore, type Task as StoreTask, type TaskStatus as StoreTaskStatus } from '@/stores/task-store'
 import { addApproval } from '../lib/approvals-store'
@@ -371,7 +370,7 @@ export function KanbanBoard({
         >
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--theme-muted)]">Task Actions</p>
 
-          <label className="mb-1 block text-[11px] text-[var(--theme-muted)]">{t('gateway.changePriority')}</label>
+          <label className="mb-1 block text-[11px] text-[var(--theme-muted)]">Change priority</label>
           <div className="mb-3 grid grid-cols-2 gap-1">
             {(Object.keys(PRIORITY_LABELS) as TaskPriority[]).map((priority) => (
               <button
@@ -388,7 +387,7 @@ export function KanbanBoard({
             ))}
           </div>
 
-          <label className="mb-1 block text-[11px] text-[var(--theme-muted)]">{t('gateway.reassignAgent')}</label>
+          <label className="mb-1 block text-[11px] text-[var(--theme-muted)]">Reassign agent</label>
           <select
             className="mb-3 w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-card2)] px-2 py-1.5 text-xs text-[var(--theme-text)] outline-none"
             defaultValue=""
@@ -408,13 +407,13 @@ export function KanbanBoard({
             ))}
           </select>
 
-          <label className="mb-1 block text-[11px] text-[var(--theme-muted)]">{t('gateway.addNote')}</label>
+          <label className="mb-1 block text-[11px] text-[var(--theme-muted)]">Add note</label>
           <textarea
             value={noteDraft}
             onChange={(event) => setNoteDraft(event.target.value)}
             rows={3}
             className="mb-2 w-full resize-none rounded-md border border-[var(--theme-border)] bg-[var(--theme-card2)] px-2 py-1.5 text-xs text-[var(--theme-text)] outline-none placeholder:text-[var(--theme-muted)]"
-            placeholder={t('placeholder.leaveNote')}
+            placeholder="Leave a note for this task"
           />
           <div className="flex items-center justify-between gap-2">
             <button

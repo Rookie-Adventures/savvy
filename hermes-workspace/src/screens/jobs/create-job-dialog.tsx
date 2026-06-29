@@ -5,7 +5,6 @@ import { AnimatePresence, motion } from 'motion/react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Cancel01Icon } from '@hugeicons/core-free-icons'
 import type { JobProfileOption } from '@/lib/jobs-api'
-import { t } from '@/lib/i18n'
 
 const SCHEDULE_PRESETS = [
   { label: 'Every 15m', value: 'every 15m' },
@@ -163,7 +162,7 @@ export function CreateJobDialog({
               style={{ borderColor: 'var(--theme-border)' }}
             >
               <div>
-                <h2 className="text-lg font-semibold">{t('page.createJob')}</h2>
+                <h2 className="text-lg font-semibold">Create Job</h2>
                 <p
                   className="mt-1 text-sm"
                   style={{ color: 'var(--theme-muted)' }}
@@ -223,7 +222,7 @@ export function CreateJobDialog({
                       name: event.target.value,
                     }))
                   }
-                  placeholder={t('placeholder.dailyResearchSummary')}
+                  placeholder="Daily research summary"
                   required
                   className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                   style={{
@@ -237,7 +236,7 @@ export function CreateJobDialog({
 
               <section className="space-y-3">
                 <div>
-                  <h3>{t('page.schedule')}</h3>
+                  <h3 className="text-sm font-medium">Schedule</h3>
                   <p
                     className="mt-1 text-xs"
                     style={{ color: 'var(--theme-muted)' }}
@@ -275,7 +274,7 @@ export function CreateJobDialog({
                   })}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">{t('jobs.customSchedule')}</label>
+                  <label className="text-sm font-medium">Custom schedule</label>
                   <input
                     value={form.schedule}
                     onChange={(event) =>
@@ -312,7 +311,7 @@ export function CreateJobDialog({
                       prompt: event.target.value,
                     }))
                   }
-                  placeholder={t('placeholder.whatShouldAgentDo')}
+                  placeholder="What should Hermes Agent do?"
                   required
                   rows={5}
                   className="w-full resize-none rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
@@ -326,7 +325,7 @@ export function CreateJobDialog({
 
               <section className="space-y-4">
                 <div>
-                  <h3>{t('page.options')}</h3>
+                  <h3 className="text-sm font-medium">Options</h3>
                   <p
                     className="mt-1 text-xs"
                     style={{ color: 'var(--theme-muted)' }}
@@ -362,7 +361,7 @@ export function CreateJobDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">{t('jobs.deliverTo')}</label>
+                  <label className="text-sm font-medium">Deliver to</label>
                   <div className="flex flex-wrap gap-2">
                     {DELIVERY_OPTIONS.map((option) => {
                       const isActive = form.deliver.includes(option)

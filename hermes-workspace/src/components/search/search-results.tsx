@@ -2,7 +2,6 @@ import { Search01Icon } from '@hugeicons/core-free-icons'
 import { SearchResultItem } from './search-result-item'
 import type { SearchResultItemData } from './search-result-item'
 import { EmptyState } from '@/components/empty-state'
-import { t } from '@/lib/i18n'
 
 type SearchResultsProps = {
   query: string
@@ -23,7 +22,7 @@ export function SearchResults({
     return (
       <EmptyState
         icon={Search01Icon as any}
-        title={t('empty.noResults')}
+        title="No results found"
         description={
           query ? `Try a different search term` : 'Start typing to search'
         }

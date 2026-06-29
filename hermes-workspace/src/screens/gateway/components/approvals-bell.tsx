@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import type { ApprovalRequest } from '../lib/approvals-store'
 
 type ApprovalsBellProps = {
@@ -150,8 +149,8 @@ export function ApprovalsBell({ approvals, onApprove, onDeny }: ApprovalsBellPro
             {latestThree.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 text-center">
                 <span className="mb-2 text-2xl">🛡️</span>
-                <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">{t('gateway.allClear')}</p>
-                <p className="mt-0.5 text-xs text-neutral-400 dark:text-neutral-500">{t('gateway.noPendingApprovals')}</p>
+                <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">All clear</p>
+                <p className="mt-0.5 text-xs text-neutral-400 dark:text-neutral-500">No pending approvals</p>
               </div>
             ) : (
               latestThree.map((approval) => {

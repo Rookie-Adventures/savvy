@@ -35,7 +35,6 @@ import {
   CHAT_RUN_COMMAND_EVENT,
 } from '@/screens/chat/chat-events'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 type CommandPaletteProps = {
   pathname: string
@@ -450,7 +449,7 @@ export function CommandPalette({ pathname, sessions }: CommandPaletteProps) {
           onValueChange={setQuery}
           mode="none"
         >
-          <CommandInput placeholder={t('placeholder.searchScreens')} />
+          <CommandInput placeholder="Search screens, sessions, and commands" />
           <CommandPanel className="flex min-h-0 flex-1 flex-col">
             {groupedActions.length === 0 ? (
               <div className="flex h-72 items-center justify-center text-sm text-primary-600">

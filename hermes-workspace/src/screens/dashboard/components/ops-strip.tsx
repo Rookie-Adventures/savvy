@@ -1,7 +1,6 @@
 import { useNavigate } from '@tanstack/react-router'
 import type { DashboardOverview } from '@/server/dashboard-aggregator'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 function formatPulse(iso: string | null): string {
   if (!iso) return '—'
@@ -236,7 +235,7 @@ export function OpsStrip({
                   : 'transparent',
               color: 'var(--theme-muted)',
             }}
-            title={t('ui.openKanbanBoard')}
+            title="Open Kanban board"
           >
             <span>board</span>
             <span style={{ color: 'var(--theme-text)' }}>{kanban.total}</span>

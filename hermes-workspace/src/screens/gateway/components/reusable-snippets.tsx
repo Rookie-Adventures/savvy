@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 export type SnippetProps = {
   snippets: Array<{
@@ -42,7 +41,7 @@ export function ReusableSnippets({ snippets, onUseSnippet }: SnippetProps) {
           type="text"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder={t('placeholder.searchSnippets')}
+          placeholder="Search snippets by title, content, or tag..."
           className="h-10 w-full rounded-lg border border-primary-700 bg-primary-900 px-3 text-sm text-primary-100 placeholder:text-primary-400 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
         />
       </div>

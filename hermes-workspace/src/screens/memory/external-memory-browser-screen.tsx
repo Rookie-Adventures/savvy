@@ -3,7 +3,6 @@ import { BrainIcon, Search01Icon } from '@hugeicons/core-free-icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 type ExternalMemoryProvider = {
   id: string
@@ -234,7 +233,7 @@ export function ExternalMemoryBrowserScreen() {
     }
     if (
       action === 'delete' &&
-      !window.confirm(t('confirm.deleteExternalMemory'))
+      !window.confirm('Delete this external memory row?')
     ) {
       return
     }
@@ -302,7 +301,7 @@ export function ExternalMemoryBrowserScreen() {
             <input
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
-              placeholder={t('placeholder.searchTextMetadata')}
+              placeholder="Search text, metadata, source..."
               className="w-full rounded-xl border border-primary-200 bg-white py-2 pr-3 pl-9 text-sm text-primary-900 outline-none dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
             />
           </div>

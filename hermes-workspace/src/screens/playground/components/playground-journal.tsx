@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { itemById, PLAYGROUND_QUESTS } from '../lib/playground-rpg'
-import { t } from '@/lib/i18n'
 import type { PlaygroundRpgState } from '../hooks/use-playground-rpg'
 
 export function PlaygroundJournal({
@@ -129,13 +128,13 @@ export function PlaygroundJournal({
                     <div className="mt-3 grid gap-2 rounded-xl border border-cyan-300/15 bg-cyan-300/5 p-3 text-[12px] md:grid-cols-2">
                       {quest.lesson && (
                         <div>
-                          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-200/80">{t('playground.hermesLesson')}</div>
+                          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-200/80">Hermes lesson</div>
                           <div className="mt-1 text-white/72">{quest.lesson}</div>
                         </div>
                       )}
                       {quest.payoff && (
                         <div>
-                          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-200/80">{t('playground.whyItMatters')}</div>
+                          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-200/80">Why it matters</div>
                           <div className="mt-1 text-white/72">{quest.payoff}</div>
                         </div>
                       )}

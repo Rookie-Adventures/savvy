@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { t } from '@/lib/i18n'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   AlertCircleIcon,
@@ -138,7 +137,7 @@ export function SwarmHealthStrip({ targetWorkerId }: { targetWorkerId?: string |
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <HugeiconsIcon icon={degraded ? AlertCircleIcon : CheckmarkCircle02Icon} size={14} className={degraded ? 'text-amber-300' : 'text-emerald-300'} />
-          <span className="text-[11px] uppercase tracking-[0.18em] text-emerald-200/80">{t('swarm.swarmHealth')}</span>
+          <span className="text-[11px] uppercase tracking-[0.18em] text-emerald-200/80">Swarm health</span>
         </div>
         <div className="flex items-center gap-2 text-[11px] text-emerald-100/55">
           <span>{tickLabel ? `Checked ${tickLabel}` : isLoading ? 'Checking…' : ''}</span>

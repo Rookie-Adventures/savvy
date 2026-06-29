@@ -9,7 +9,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import { openHamburgerMenu } from '@/components/mobile-hamburger-menu'
 
 function toTitleCase(value: string): string {
@@ -370,7 +369,7 @@ function ChatHeaderComponent({
                 type="button"
                 onClick={() => setSessionPopoverOpen((p) => !p)}
                 className="min-w-0 truncate text-sm font-medium text-balance hover:text-accent-600 transition-colors rounded-sm text-left"
-                title={t('ui.clickToSwitchSession')}
+                title="Click to switch session"
               >
                 {activeTitle}
               </button>
@@ -379,7 +378,7 @@ function ChatHeaderComponent({
                   type="button"
                   onClick={startTitleEdit}
                   className="text-xs text-primary-400 opacity-0 group-hover:opacity-100 hover:text-primary-600 transition-opacity shrink-0"
-                  title={t('ui.renameSession')}
+                  title="Rename session"
                 >
                   ✏️
                 </button>
@@ -409,7 +408,7 @@ function ChatHeaderComponent({
                       <input
                         autoFocus
                         type="text"
-                        placeholder={t('placeholder.searchSessions')}
+                        placeholder="Search sessions..."
                         value={sessionSearch}
                         onChange={(e) => setSessionSearch(e.target.value)}
                         className="flex-1 bg-transparent text-sm outline-none"
@@ -562,7 +561,7 @@ function ChatHeaderComponent({
                   </Button>
                 }
               />
-              <TooltipContent side="bottom">{t('chat.undoLastMessage')}</TooltipContent>
+              <TooltipContent side="bottom">Undo last message</TooltipContent>
             </TooltipRoot>
           </TooltipProvider>
         )}

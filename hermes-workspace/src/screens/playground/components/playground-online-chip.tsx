@@ -18,7 +18,6 @@
  *   - offline:   red dot, "offline"
  */
 import { useEffect, useState } from 'react'
-import { t } from '@/lib/i18n'
 
 type Stats = {
   online: number
@@ -141,7 +140,7 @@ export function PlaygroundOnlineChip({ accent = '#34d399' }: { accent?: string }
           animation: status.color === '#34d399' ? 'pulse-online 2s ease-in-out infinite' : undefined,
         }}
       />
-      <span>{t('playground.playersOnline')}</span>
+      <span>Players online</span>
       <span className="rounded-full bg-white/8 px-2 py-0.5 text-[10px] text-white/80">{displayCount}</span>
       {stats?.peakToday && stats.peakToday > 0 && (
         <span className="text-white/45">· peak {stats.peakToday}</span>

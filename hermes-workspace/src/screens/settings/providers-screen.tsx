@@ -26,7 +26,6 @@ import {
   normalizeProviderId,
 } from '@/lib/provider-catalog'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 // FIX: replaced direct server module imports with workspace API calls to avoid
 // bundling Node.js-only modules (node:sqlite, node:fs) into the client bundle.
@@ -579,7 +578,7 @@ function SettingCard(props: {
     if (setting.kind === 'number') {
       nextValue = parseNumberValue(rawValue)
       if (nextValue === null) {
-        toast(t('toast.enterValidNumber', { label: setting.label }), { type: 'error' })
+        toast(`Enter a valid number for ${setting.label}`, { type: 'error' })
         return
       }
     } else if (setting.kind === 'multiline' || setting.kind === 'text') {
@@ -1083,7 +1082,7 @@ function ActiveModelCard({
         queryClient.invalidateQueries({ queryKey: ['claude', 'config'] }),
         queryClient.invalidateQueries({ queryKey: ['claude-config'] }),
       ])
-      toast(t('toast.modelConfigSaved'), {
+      toast('Model config saved — takes effect on next message', {
         type: 'success',
       })
     },
@@ -1565,10 +1564,10 @@ export function ProvidersScreen({ embedded = false }: ProvidersScreenProps) {
         await queryClient.invalidateQueries({
           queryKey: ['claude', 'providers', 'models'],
         })
-        toast(t('toast.providerRemoved', { name: provider.name }), { type: 'success' })
+        toast(`Provider "${provider.name}" removed`, { type: 'success' })
       }
     } catch {
-      toast(t('toast.networkErrorRemoveProvider'), { type: 'error' })
+      toast('Network error — could not remove provider.', { type: 'error' })
     } finally {
       setDeletingId(null)
     }

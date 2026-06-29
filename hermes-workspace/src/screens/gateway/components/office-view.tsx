@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import type { AgentWorkingRow, AgentWorkingStatus } from './agents-working-panel'
 import type { ModelPresetId } from './team-panel'
 import { AGENT_ACCENT_COLORS, AgentAvatar } from './agent-avatar'
@@ -490,7 +489,7 @@ export function OfficeView({
       <div className={cn('flex items-center justify-center p-8', compact ? 'h-full' : 'min-h-[320px]')}>
         <div className="text-center">
           <p className="mb-3 text-4xl">🏢</p>
-          <p className="text-sm font-semibold text-neutral-600 dark:text-neutral-300">{t('gateway.emptyOffice')}</p>
+          <p className="text-sm font-semibold text-neutral-600 dark:text-neutral-300">Empty office</p>
           <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Add agents in Configure to fill the office.</p>
         </div>
       </div>
@@ -622,7 +621,7 @@ export function OfficeView({
             type="button"
             onClick={() => setLayoutPickerOpen((v) => !v)}
             className="inline-flex min-h-11 items-center rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-slate-700 dark:bg-slate-800 dark:text-neutral-300 dark:hover:bg-slate-700 sm:px-4 sm:py-2 sm:text-sm"
-            title={t('ui.changeOfficeLayout')}
+            title="Change office layout"
           >
             <span>✏️</span>
           </button>

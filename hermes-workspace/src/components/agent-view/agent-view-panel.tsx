@@ -43,7 +43,6 @@ import { OrchestratorAvatar } from '@/components/orchestrator-avatar'
 import { useOrchestratorState } from '@/hooks/use-orchestrator-state'
 import { useChatActivityStore } from '@/stores/chat-activity-store'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import { InspectorPanel, InspectorToggleButton } from '@/components/inspector/inspector-panel'
 
 function getLastUserMessageBubbleElement(): HTMLElement | null {
@@ -401,7 +400,7 @@ function OrchestratorCard({
                   if (e.key === 'Enter') commitEdit()
                   if (e.key === 'Escape') setIsEditing(false)
                 }}
-                placeholder={t('placeholder.agentName')}
+                placeholder="Agent name..."
                 className="w-24 rounded border border-primary-200/25 bg-primary-50 px-1.5 py-0.5 text-xs font-semibold text-primary-900 outline-none focus:border-accent-400"
                 maxLength={20}
               />
@@ -886,7 +885,7 @@ export function AgentViewPanel() {
 
               {/* Center — title */}
               <h2 className="text-sm font-semibold text-primary-900">
-                {t('page.agentView')}
+                Agent View
               </h2>
 
               {/* Right — inspector + close */}
@@ -1352,9 +1351,9 @@ export function AgentViewPanel() {
                             footer={
                               <div className="flex items-center justify-between">
                                 {missionSessionIds.has(node.id) ? (
-                                  <span className="text-[10px] text-accent-400">{t('agent.activeMission')}</span>
+                                  <span className="text-[10px] text-accent-400">Active mission</span>
                                 ) : nonMissionActiveAgents.length > 0 ? (
-                                  <span className="text-[10px] text-primary-500">{t('agent.outsideMission')}</span>
+                                  <span className="text-[10px] text-primary-500">Outside mission</span>
                                 ) : <span />}
                                 <button
                                   type="button"

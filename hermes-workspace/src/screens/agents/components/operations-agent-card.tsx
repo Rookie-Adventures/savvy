@@ -14,7 +14,6 @@ import { AgentProgress } from '@/components/agent-view/agent-progress'
 import { PixelAvatar } from '@/components/agent-swarm/pixel-avatar'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import { toast } from '@/components/ui/toast'
-import { t } from '@/lib/i18n'
 import { runCronJob, toggleCronJob } from '@/lib/cron-api'
 import { cn } from '@/lib/utils'
 import { useAgentChat, type OperationsChatMessage } from '../hooks/use-agent-chat'
@@ -203,7 +202,7 @@ export function OperationsAgentCard({
     mutationFn: async (jobId: string) => runCronJob(jobId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['operations', 'cron'] })
-      toast(t('toast.cronJobStarted'), { type: 'success' })
+      toast('Cron job started', { type: 'success' })
     },
     onError: (mutationError) => {
       toast(
@@ -284,7 +283,7 @@ export function OperationsAgentCard({
             disabled={(isSending && !isActive)}
             title={
               agent.needsSetup
-                ? t('empty.noModelConfigured')
+                ? 'No model configured — open settings to set one up'
                 : undefined
             }
             className={cn(

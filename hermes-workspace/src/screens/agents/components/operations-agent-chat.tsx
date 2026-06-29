@@ -4,7 +4,6 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { Button } from '@/components/ui/button'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import { formatRelativeTime } from '@/screens/dashboard/lib/formatters'
 import { useAgentChat } from '../hooks/use-agent-chat'
 
@@ -38,7 +37,7 @@ export function OperationsAgentChat({
     <section className="rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-5 shadow-[0_20px_70px_color-mix(in_srgb,var(--theme-shadow)_14%,transparent)]">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-[var(--theme-text)]">{t('page.chat')}</h3>
+          <h3 className="text-lg font-semibold text-[var(--theme-text)]">Chat</h3>
           <p className="mt-1 text-sm text-[var(--theme-muted-2)]">
             Persistent session with {agentName}
           </p>
@@ -107,7 +106,7 @@ export function OperationsAgentChat({
               void handleSend()
             }
           }}
-          placeholder={t('placeholder.typeMessage')}
+          placeholder="Type a message..."
           className="min-h-[112px] flex-1 resize-y rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none placeholder:text-[var(--theme-muted)] focus:border-[var(--theme-accent)]"
         />
         <Button

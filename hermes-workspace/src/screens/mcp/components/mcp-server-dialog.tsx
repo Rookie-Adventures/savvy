@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { t } from '@/lib/i18n'
 import {
   DialogContent,
   DialogDescription,
@@ -225,7 +224,7 @@ export function McpServerDialog({ open, initial, onClose }: Props) {
                 </label>
                 {draft.authType === 'bearer' ? (
                   <label className={LABEL}>
-                    <span>{t('mcp.bearerToken')}</span>
+                    <span>Bearer token</span>
                     <input
                       type="password"
                       className={FIELD}

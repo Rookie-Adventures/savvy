@@ -22,7 +22,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 type WikiPageMeta = {
   path: string
@@ -437,7 +436,7 @@ export function KnowledgeBrowserScreen() {
               <input
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
-                placeholder={t('placeholder.searchKnowledge')}
+                placeholder="Search knowledge"
                 className="w-full rounded-xl py-2 pl-9 pr-3 text-sm outline-none transition-colors focus:border-accent-500"
                 style={{
                   border: '1px solid var(--theme-border)',
@@ -494,7 +493,7 @@ export function KnowledgeBrowserScreen() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">{t('knowledge.sourceType')}</label>
+                  <label className="text-sm font-medium">Source type</label>
                   <div className="flex gap-3">
                     <button
                       type="button"
@@ -763,9 +762,9 @@ export function KnowledgeBrowserScreen() {
               </div>
               <div className="space-y-1">
                 {searchQuery.isLoading ? (
-                  <StateBox label={t('empty.searchingKnowledge')} />
+                  <StateBox label="Searching knowledge..." />
                 ) : searchResults.length === 0 ? (
-                  <StateBox label={t('empty.noMatches')} />
+                  <StateBox label="No matches found" />
                 ) : (
                   searchResults.map((result, index) => (
                     <button
@@ -833,7 +832,7 @@ export function KnowledgeBrowserScreen() {
 
                 <section className="rounded-xl border border-primary-200 bg-primary-50/80 p-1 dark:border-neutral-800 dark:bg-neutral-900/60">
                   {listQuery.isLoading ? (
-                    <StateBox label={t('loading.knowledgePages')} />
+                    <StateBox label="Loading knowledge pages..." />
                   ) : listQuery.error instanceof Error ? (
                     <StateBox label={listQuery.error.message} error />
                   ) : filteredPages.length === 0 ? (
@@ -887,19 +886,19 @@ export function KnowledgeBrowserScreen() {
 
           <div className="h-full overflow-auto p-2 md:p-3">
             {listQuery.isLoading ? (
-              <StateBox label={t('loading.knowledgeBase')} />
+              <StateBox label="Loading knowledge base..." />
             ) : listQuery.error instanceof Error ? (
               <StateBox label={listQuery.error.message} error />
             ) : !knowledgeExists ? (
               <EmptyKnowledgeState knowledgeRoot={knowledgeRoot} />
             ) : !selectedPath ? (
-              <StateBox label={t('empty.selectPageToStart')} />
+              <StateBox label="Select a page to start browsing" />
             ) : readQuery.isLoading ? (
               <StateBox label="Loading page..." />
             ) : readQuery.error instanceof Error ? (
               <StateBox label={readQuery.error.message} error />
             ) : !page ? (
-              <StateBox label={t('empty.pageNotFound')} error />
+              <StateBox label="Page not found" error />
             ) : (
               <div
                 className="rounded-xl"
@@ -1082,7 +1081,7 @@ export function KnowledgeBrowserScreen() {
       <DialogRoot open={graphOpen} onOpenChange={setGraphOpen}>
         <DialogContent className="w-[min(980px,94vw)] max-w-none p-0">
           <div className="border-b border-primary-200 px-5 py-4 dark:border-neutral-800">
-            <DialogTitle>{t('knowledge.knowledgeGraph')}</DialogTitle>
+            <DialogTitle>Knowledge graph</DialogTitle>
             <DialogDescription>
               Page relationships from wiki links. Click any node to open that
               page.
@@ -1090,11 +1089,11 @@ export function KnowledgeBrowserScreen() {
           </div>
           <div className="p-5">
             {graphQuery.isLoading ? (
-              <StateBox label={t('loading.graph')} />
+              <StateBox label="Loading graph..." />
             ) : graphQuery.error instanceof Error ? (
               <StateBox label={graphQuery.error.message} error />
             ) : (graphQuery.data?.nodes?.length ?? 0) === 0 ? (
-              <StateBox label={t('empty.noGraphData')} />
+              <StateBox label="No graph data yet" />
             ) : (
               <GraphCanvas
                 nodes={graphQuery.data?.nodes ?? []}

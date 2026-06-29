@@ -32,7 +32,7 @@ import { usePageTitle } from '@/hooks/use-page-title'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useSettings } from '@/hooks/use-settings'
-import { LOCALE_LABELS, getLocale, setLocale, t } from '@/lib/i18n'
+import { LOCALE_LABELS,  getLocale, setLocale } from '@/lib/i18n'
 import { THEMES, getTheme, isDarkTheme, setTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 import {
@@ -400,7 +400,7 @@ function SettingsRoute() {
                         }
                         className="w-full rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-900 outline-none"
                       >
-                        <option value="system">{t('settings.systemSans')}</option>
+                        <option value="system">System sans</option>
                         <option value="inter">Inter-style sans</option>
                         <option value="serif">Serif</option>
                         <option value="mono">Monospace</option>
@@ -914,7 +914,7 @@ function ChatDisplaySection() {
           >
             <option value="comfortable">Comfortable (900px)</option>
             <option value="wide">Wide (1200px)</option>
-            <option value="full">{t('settings.fullWidth')}</option>
+            <option value="full">Full width</option>
           </select>
         </SettingsRow>
         <SettingsRow
@@ -1675,7 +1675,7 @@ function ClaudeConfigSection({
             <div className="mt-3 space-y-3 border-t border-primary-200 pt-3">
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="space-y-1">
-                  <span className="text-xs font-medium text-primary-600">{t('settings.fallbackProvider')}</span>
+                  <span className="text-xs font-medium text-primary-600">Fallback provider</span>
                   <Input
                     value={fallbackProviderInput}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -1686,7 +1686,7 @@ function ClaudeConfigSection({
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-xs font-medium text-primary-600">{t('settings.fallbackModelId')}</span>
+                  <span className="text-xs font-medium text-primary-600">Fallback model id</span>
                   <Input
                     value={fallbackModelInput}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -1889,7 +1889,7 @@ function ClaudeConfigSection({
       >
         <div className="space-y-4 rounded-xl border border-primary-200 bg-primary-50/80 p-4">
           <div>
-            <p className="text-sm font-medium text-primary-900">{t('settings.addCustomProvider')}</p>
+            <p className="text-sm font-medium text-primary-900">Add custom provider</p>
             <p className="mt-1 text-xs text-primary-600">
               <span className="font-medium">Title</span> is for your list only (e.g.{' '}
               <span className="font-mono">Qwen3.6.Eclipse</span> = model + host).{' '}
@@ -2037,7 +2037,7 @@ function ClaudeConfigSection({
                   >
                     No rows in <span className="font-mono">custom_providers</span> yet, and no
                     primary base URL or manifest URL was detected. Use{' '}
-                    <span className="font-medium">{t('settings.addCustomProvider')}</span>, or set Model &amp;
+                    <span className="font-medium">Add custom provider</span>, or set Model &amp;
                     Provider and click &quot;Save current model setup to list&quot;.
                   </td>
                 </tr>
@@ -2471,7 +2471,7 @@ function ClaudeConfigSection({
           }
           className={selectClassName}
         >
-          <option value="">{t('settings.selectModel')}</option>
+          <option value="">Select model</option>
           {availableModels.map((model) => (
             <option key={model.id} value={model.id}>
               {model.id}

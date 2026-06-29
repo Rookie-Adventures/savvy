@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { t } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import type { HubTask } from './task-board'
 
@@ -355,7 +354,7 @@ export function TeamPanel({
                 {showRetry ? (
                   <button
                     type="button"
-                    title={t('ui.retrySpawn')}
+                    title="Retry spawn"
                     onClick={(event) => {
                       event.stopPropagation()
                       onRetrySpawn?.(agent)
@@ -385,7 +384,7 @@ export function TeamPanel({
                         </code>
                       </span>
                     ) : (
-                      <span className="text-primary-300 dark:text-neutral-600">{t('gateway.noSession')}</span>
+                      <span className="text-primary-300 dark:text-neutral-600">No session</span>
                     )}
                   </div>
                   {agentSessionEntry?.lastMessage ? (
@@ -407,7 +406,7 @@ export function TeamPanel({
                       }}
                       className="w-full rounded-md border border-primary-200 bg-white px-2 py-1.5 text-xs text-primary-900 outline-none ring-accent-400 focus:ring-1 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
                     >
-                      <optgroup label={t('label.presets')}>
+                      <optgroup label="Presets">
                         {MODEL_PRESETS.map((preset) => (
                           <option key={preset.id} value={preset.id}>
                             {preset.label}
@@ -415,7 +414,7 @@ export function TeamPanel({
                         ))}
                       </optgroup>
                       {(gatewayModels?.length ?? 0) > 0 ? (
-                        <optgroup label={t('label.availableModels')}>
+                        <optgroup label="Available Models">
                           {gatewayModels?.map((model) => (
                             <option key={model.value} value={model.value}>
                               {model.label} ({model.provider})
@@ -438,7 +437,7 @@ export function TeamPanel({
                         })
                       }}
                       rows={3}
-                      placeholder={t('placeholder.defineResponsibilities')}
+                      placeholder="Define responsibilities and deliverables"
                       className="w-full resize-none rounded-md border border-primary-200 bg-white px-2 py-1.5 text-xs text-primary-900 outline-none ring-accent-400 focus:ring-1 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
                     />
                   </label>

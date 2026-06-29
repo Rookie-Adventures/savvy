@@ -23,7 +23,6 @@ import {
 } from '@/components/prompt-kit/chat-container'
 import { AssistantAvatar } from '@/components/avatars'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import { hapticTap } from '@/lib/haptics'
 import { CHAT_OPEN_MESSAGE_SEARCH_EVENT } from '@/screens/chat/chat-events'
 import { useChatStore } from '@/stores/chat-store'
@@ -1672,7 +1671,7 @@ function ChatMessageListComponent({
                 type="text"
                 value={messageSearchValue}
                 onChange={(e) => setMessageSearchValue(e.target.value)}
-                placeholder={t('placeholder.searchMessages')}
+                placeholder="Search messages..."
                 className="min-w-0 flex-1 rounded-md border border-primary-200 bg-primary-50 px-2.5 py-1.5 text-sm text-primary-900 outline-none placeholder:text-primary-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400"
               />
               {isMessageSearchActive && (

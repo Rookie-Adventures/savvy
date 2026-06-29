@@ -8,7 +8,6 @@ import { Markdown } from '@/components/prompt-kit/markdown'
 import { OfficeView } from './components/office-view'
 import type { AgentWorkingRow } from './components/agents-working-panel'
 import { type GatewaySession } from '@/lib/gateway-api'
-import { t } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { type MissionHistoryEntry, type MissionHistoryWorkerDetail, useConductorGateway } from './hooks/use-conductor-gateway'
 
@@ -372,11 +371,11 @@ function WorkerCard({
           <p className="mt-1 text-[var(--theme-text)]">{worker.tokenUsageLabel}</p>
         </div>
         <div className="rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card2)] px-3 py-2">
-          <p className="text-[var(--theme-muted)]">{t('conductor.elapsed')}</p>
+          <p className="text-[var(--theme-muted)]">Elapsed</p>
           <p className="mt-1 text-[var(--theme-text)]">{formatElapsedTime(workerStartedAt, workerEndTime)}</p>
         </div>
         <div className="rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card2)] px-3 py-2">
-          <p className="text-[var(--theme-muted)]">{t('conductor.lastUpdate')}</p>
+          <p className="text-[var(--theme-muted)]">Last update</p>
           <p className="mt-1 text-[var(--theme-text)]">{formatRelativeTime(worker.updatedAt, now)}</p>
         </div>
       </div>
@@ -1199,7 +1198,7 @@ export function Conductor() {
                 </section>
               ) : selectedHistoryOutputPath && selectedHistoryPreview.unavailable ? (
                 showHistoryOutputFallback ? null : (
-                  <p className="px-1 text-sm text-[var(--theme-muted)]">{t('empty.noPreview')}</p>
+                  <p className="px-1 text-sm text-[var(--theme-muted)]">No preview available.</p>
                 )
               ) : null}
 
@@ -1307,7 +1306,7 @@ export function Conductor() {
                   <WorkflowHelpModal
                     compact
                     eyebrow="Conductor"
-                    title={t('label.howConductorWorks')}
+                    title="How Conductor works"
                     sections={[
                       {
                         title: 'What Conductor is for',
@@ -1368,7 +1367,7 @@ export function Conductor() {
             {hasMissionHistory || conductor.recentSessions.length > 0 ? (
               <section className="mt-6 w-full space-y-3">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-muted)]">{t('page.recentMissions')}</h2>
+                  <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-muted)]">Recent Missions</h2>
                   {activityTotalPages > 1 && (
                     <div className="ml-auto flex items-center gap-1.5">
                       <span className="text-[10px] text-[var(--theme-muted-2)]">
@@ -1507,7 +1506,7 @@ export function Conductor() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-lg font-semibold tracking-tight text-[var(--theme-text)]">{t('page.newMission')}</h2>
+                    <h2 className="text-lg font-semibold tracking-tight text-[var(--theme-text)]">New Mission</h2>
                     <p className="mt-1 text-sm text-[var(--theme-muted-2)]">Describe the mission, constraints, and desired outcome.</p>
                   </div>
                   <button
@@ -1578,7 +1577,7 @@ export function Conductor() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--theme-muted)]">Mission Defaults</p>
-                    <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--theme-text)]">{t('page.conductorSettings')}</h2>
+                    <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--theme-text)]">Conductor settings</h2>
                     <p className="mt-2 text-sm text-[var(--theme-muted-2)]">Set the models and defaults every new mission should inherit.</p>
                   </div>
                   <button
@@ -1659,7 +1658,7 @@ export function Conductor() {
                   {canResetSavedState ? (
                     <div className="flex items-center justify-between rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3">
                       <div>
-                        <p className="text-sm font-medium text-[var(--theme-text)]">{t('gateway.resetSavedState')}</p>
+                        <p className="text-sm font-medium text-[var(--theme-text)]">Reset saved state</p>
                         <p className="mt-1 text-xs text-[var(--theme-muted-2)]">Clear mission history and any persisted Conductor mission state.</p>
                       </div>
                       <button
@@ -1691,7 +1690,7 @@ export function Conductor() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--theme-muted)]">Directory Browser</p>
-                    <h3 className="mt-2 text-xl font-semibold tracking-tight text-[var(--theme-text)]">{t('page.chooseProjectDir')}</h3>
+                    <h3 className="mt-2 text-xl font-semibold tracking-tight text-[var(--theme-text)]">Choose project directory</h3>
                     <p className="mt-2 text-sm text-[var(--theme-muted-2)]">Select the folder where Conductor should create project output.</p>
                   </div>
                   <button
@@ -1742,7 +1741,7 @@ export function Conductor() {
 
                   <div className="rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--theme-muted)]">{t('conductor.currentPath')}</span>
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--theme-muted)]">Current path</span>
                       <span className="truncate text-sm text-[var(--theme-text)]">{directoryBrowserPath}</span>
                     </div>
                   </div>
@@ -1764,7 +1763,7 @@ export function Conductor() {
                       {directoryBrowserLoading ? (
                         <div className="flex items-center justify-center gap-3 px-4 py-10 text-sm text-[var(--theme-muted)]">
                           <div className="size-4 animate-spin rounded-full border-2 border-[var(--theme-border)] border-t-[var(--theme-accent)]" />
-                          <span>{t('loading.folders')}</span>
+                          <span>Loading folders…</span>
                         </div>
                       ) : directoryBrowserEntries.length > 0 ? (
                         <div className="space-y-1">
@@ -1782,13 +1781,13 @@ export function Conductor() {
                           ))}
                         </div>
                       ) : (
-                        <div className="px-4 py-10 text-center text-sm text-[var(--theme-muted)]">{t('empty.noFolders')}</div>
+                        <div className="px-4 py-10 text-center text-sm text-[var(--theme-muted)]">No folders found in this location.</div>
                       )}
                     </div>
                   </div>
 
                   <div className="rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--theme-muted)]">{t('conductor.quickPaths')}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--theme-muted)]">Quick paths</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {getDirectorySuggestions().map((pathOption) => (
                         <button
@@ -1908,7 +1907,7 @@ export function Conductor() {
                   <div className="flex items-start gap-3">
                     <span className="pt-0.5 text-[var(--theme-danger)]">❌</span>
                     <div>
-                      <p className="text-sm font-semibold text-[var(--theme-danger)]">{t('conductor.missionFailed')}</p>
+                      <p className="text-sm font-semibold text-[var(--theme-danger)]">Mission failed</p>
                       <p className="mt-1 text-sm text-[var(--theme-danger)]/90">{conductor.streamError}</p>
                     </div>
                   </div>
@@ -1916,7 +1915,7 @@ export function Conductor() {
                     <WorkflowHelpModal
                       compact
                       eyebrow="Conductor"
-                      title={t('label.howConductorWorks')}
+                      title="How Conductor works"
                       sections={[
                         {
                           title: 'What Conductor is for',
@@ -2168,7 +2167,7 @@ export function Conductor() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-lg font-semibold tracking-tight text-[var(--theme-text)]">{t('page.continueMission')}</h2>
+                    <h2 className="text-lg font-semibold tracking-tight text-[var(--theme-text)]">Continue Mission</h2>
                   </div>
                   <button
                     type="button"
@@ -2182,7 +2181,7 @@ export function Conductor() {
 
                 {continuationModalPreview ? (
                   <div className="mt-4 rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--theme-muted)]">{t('gateway.previousOutputSummary')}</p>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--theme-muted)]">Previous output summary</p>
                     <p className="mt-2 text-sm text-[var(--theme-text)]">{continuationModalPreview}</p>
                   </div>
                 ) : null}
@@ -2198,7 +2197,7 @@ export function Conductor() {
                     type="text"
                     value={continueDraft}
                     onChange={(event) => setContinueDraft(event.target.value)}
-                    placeholder={t('placeholder.continueWithInstructions')}
+                    placeholder="Continue with additional instructions..."
                     disabled={conductor.isSending}
                     className="w-full rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none transition-colors placeholder:text-[var(--theme-muted-2)] focus:border-[var(--theme-accent)] disabled:cursor-not-allowed disabled:opacity-60"
                   />
@@ -2352,7 +2351,7 @@ export function Conductor() {
               <div className="space-y-3">
                 {selectedTaskId ? (
                   <div className="flex items-center justify-between gap-3">
-                    <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-muted)]">{t('page.taskOutput')}</h2>
+                    <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-muted)]">Task Output</h2>
                   </div>
                 ) : null}
                 {(() => {

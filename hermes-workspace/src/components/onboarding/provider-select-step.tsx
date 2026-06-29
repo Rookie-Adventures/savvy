@@ -12,7 +12,6 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { t } from '@/lib/i18n'
 
 /* ── Provider Definitions ── */
 
@@ -319,7 +318,7 @@ export function ProviderSelectStep({
                   type="button"
                   onClick={handlePaste}
                   className="inline-flex size-8 items-center justify-center rounded-md text-primary-400 hover:text-primary-600"
-                  title={t('ui.pasteFromClipboard')}
+                  title="Paste from clipboard"
                 >
                   <HugeiconsIcon
                     icon={Copy01Icon}

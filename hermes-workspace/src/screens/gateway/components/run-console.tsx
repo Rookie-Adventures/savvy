@@ -3,7 +3,6 @@ import { CheckmarkCircle02Icon, Copy01Icon, Rocket01Icon, ViewIcon } from '@huge
 import { HugeiconsIcon } from '@hugeicons/react'
 import { fetchSessionHistory } from '@/lib/gateway-api'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import { RunLearnings, type RunLearningsProps } from './run-learnings'
 import { MissionEventLog } from './mission-event-log'
 import type { MissionEvent } from '@/screens/gateway/lib/mission-events'
@@ -517,7 +516,7 @@ export function RunConsole({
                     setSteerTarget(null)
                   }
                 }}
-                placeholder={t('placeholder.sendDirective')}
+                placeholder="Send directive..."
                 className="flex-1 rounded-md border border-primary-700 bg-primary-950 px-2 py-1 text-xs text-primary-100 placeholder:text-primary-500 focus:border-accent-500 focus:outline-none"
               />
               <button
@@ -982,12 +981,12 @@ export function RunConsole({
             ) : (
               <div className="space-y-4">
                 <section className="rounded-lg border border-primary-800/80 bg-primary-900/50 p-3">
-                  <h3 className="text-sm font-semibold text-primary-100">{t('page.summary')}</h3>
+                  <h3 className="text-sm font-semibold text-primary-100">Summary</h3>
                   <p className="mt-2 text-sm leading-relaxed text-primary-300">{report.summary}</p>
                 </section>
 
                 <section className="rounded-lg border border-primary-800/80 bg-primary-900/50 p-3">
-                  <h3 className="text-sm font-semibold text-primary-100">{t('page.keyFindings')}</h3>
+                  <h3 className="text-sm font-semibold text-primary-100">Key Findings</h3>
                   {report.keyFindings.length > 0 ? (
                     <ul className="mt-2 space-y-2">
                       {report.keyFindings.map((finding, index) => (
@@ -1018,7 +1017,7 @@ export function RunConsole({
                 </section>
 
                 <section className="overflow-hidden rounded-lg border border-primary-800/80 bg-primary-900/50">
-                  <h3 className="border-b border-primary-800/80 px-3 py-2 text-sm font-semibold text-primary-100">{t('page.agentBreakdown')}</h3>
+                  <h3 className="border-b border-primary-800/80 px-3 py-2 text-sm font-semibold text-primary-100">Agent Breakdown</h3>
                   <table className="w-full text-left text-xs">
                     <thead className="bg-primary-950/70 text-primary-300">
                       <tr>

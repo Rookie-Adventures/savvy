@@ -14,7 +14,6 @@ import {
 } from '@hugeicons/core-free-icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 const PANEL_HEIGHT_KEY = 'terminal.panel.height'
 const PANEL_OPEN_KEY = 'terminal.panel.open'
@@ -457,7 +456,7 @@ export function TerminalPanel({ isMobile }: TerminalPanelProps) {
                 <HugeiconsIcon icon={Search01Icon} size={14} />
                 <input
                   className="rounded border border-primary-200 bg-transparent px-2 py-1 text-xs focus:outline-none"
-                  placeholder={t('placeholder.searchOutput')}
+                  placeholder="Search output"
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') {
                       handleSearch(

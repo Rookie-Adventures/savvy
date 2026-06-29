@@ -8,7 +8,6 @@
  * v0.1 will swap the local mock room for a real WebSocket-backed room.
  */
 import { useState } from 'react'
-import { t } from '@/lib/i18n'
 import { useAgoraProfile } from './hooks/use-agora-profile'
 import { useAgoraRoom } from './hooks/use-agora-room'
 import { AgoraWorld } from './components/agora-world'
@@ -74,7 +73,7 @@ export function AgoraScreen() {
               background: 'var(--theme-card)',
               border: '1px solid var(--theme-border)',
             }}
-            title={t('label.yourProfile')}
+            title="Your profile"
           >
             <img
               src={`/avatars/${self.profile.avatarId}.png`}

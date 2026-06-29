@@ -7,7 +7,6 @@ import { useCallback, useRef } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { ArrowUp02Icon, Copy01Icon } from '@hugeicons/core-free-icons'
 import { useTerminalPanelStore } from '@/stores/terminal-panel-store'
-import { t } from '@/lib/i18n'
 
 async function sendToActiveTab(data: string) {
   const { tabs, activeTabId } = useTerminalPanelStore.getState()
@@ -74,7 +73,7 @@ export function MobileTerminalInput() {
             void sendToActiveTab('\t')
           }
         }}
-        placeholder={t('placeholder.typeCommand')}
+        placeholder="Type command…"
         autoCapitalize="none"
         autoCorrect="off"
         autoComplete="off"

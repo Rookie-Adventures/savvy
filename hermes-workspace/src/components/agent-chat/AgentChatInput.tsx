@@ -4,7 +4,6 @@ import { ArrowUp01Icon } from '@hugeicons/core-free-icons'
 import type { FormEvent, KeyboardEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 type AgentChatInputProps = {
   disabled?: boolean
@@ -51,7 +50,7 @@ export function AgentChatInput({
         <textarea
           value={value}
           rows={1}
-          placeholder={t('placeholder.messageAgent')}
+          placeholder="Message this agent..."
           disabled={disabled || isSending}
           onChange={function handleChange(event) {
             setValue(event.target.value)

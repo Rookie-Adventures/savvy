@@ -91,7 +91,6 @@ import {
 import { stripQueuedWrapper } from '@/lib/strip-queued-wrapper'
 import { cn } from '@/lib/utils'
 import { toast } from '@/components/ui/toast'
-import { t } from '@/lib/i18n'
 import { hapticTap } from '@/lib/haptics'
 import { FileExplorerSidebar } from '@/components/file-explorer'
 import { SEARCH_MODAL_EVENTS } from '@/hooks/use-search-modal'
@@ -1235,7 +1234,7 @@ export function ChatScreen({
         }
         const errorMessage = `Failed to send message. ${messageText}`
         setError(errorMessage)
-        toast(t('toast.failedToSendMessage'), { type: 'error' })
+        toast('Failed to send message', { type: 'error' })
         showErrorToast(messageText)
         setPendingGeneration(false)
         setWaitingForResponse(false)
@@ -2372,7 +2371,7 @@ export function ChatScreen({
           activeSessionKey ||
           activeFriendlyId
         clearHistoryMessages(queryClient, activeFriendlyId, sessionKey)
-        toast(t('toast.chatCleared'), { type: 'success' })
+        toast('Chat cleared', { type: 'success' })
         return true
       }
 
@@ -2398,7 +2397,7 @@ export function ChatScreen({
           messages: finalDisplayMessages,
         })
         if (exported) {
-          toast(t('toast.conversationExported'), { type: 'success' })
+          toast('Conversation exported', { type: 'success' })
         }
         return true
       }

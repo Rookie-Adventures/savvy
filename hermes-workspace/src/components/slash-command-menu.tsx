@@ -12,7 +12,6 @@ import type { Ref } from 'react'
 import { useAutocompleteFilter } from '@/components/ui/autocomplete'
 import { Command, CommandItem, CommandList } from '@/components/ui/command'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 export type SlashCommandDefinition = {
   command: string
@@ -176,7 +175,7 @@ const SlashCommandMenu = forwardRef(function SlashCommandMenu(
         >
           {filteredCommands.length === 0 ? (
             <div className="px-3 py-2 text-sm text-primary-600">
-              {t('empty.noCommands')}
+              No commands found
             </div>
           ) : (
             <CommandList className="max-h-60 min-h-0">

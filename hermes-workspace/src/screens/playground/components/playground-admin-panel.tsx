@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { t } from '@/lib/i18n'
 
 type AdminStats = {
   ok?: boolean
@@ -109,7 +108,7 @@ export function PlaygroundAdminPanel() {
           <div>
             <div className="flex items-center gap-2">
               <span className="rounded-full border border-amber-200/25 bg-amber-200/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-amber-100">Private</span>
-              <span className="text-[10px] uppercase tracking-[0.18em] text-white/45">{t('playground.dashboardAdmin')}</span>
+              <span className="text-[10px] uppercase tracking-[0.18em] text-white/45">Dashboard admin</span>
             </div>
             <div className="mt-1 text-base font-bold tracking-tight text-white">HermesWorld Control Room</div>
             <div className="mt-0.5 text-[11px] text-white/50">Human relay analytics. NPC ambient chatter is client-side flavor and intentionally excluded.</div>

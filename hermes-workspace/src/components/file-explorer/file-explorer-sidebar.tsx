@@ -29,7 +29,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { t } from '@/lib/i18n'
 
 export type FileEntry = {
   name: string
@@ -223,7 +222,7 @@ export function FileExplorerSidebar({
 
   const handleDelete = useCallback(
     async (entry: FileEntry) => {
-      if (!window.confirm(t('confirm.moveToTrash', { name: entry.name }))) return
+      if (!window.confirm(`Move ${entry.name} to trash?`)) return
       await fetch('/api/files', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -430,7 +429,7 @@ export function FileExplorerSidebar({
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder={t('placeholder.searchFiles')}
+          placeholder="Search files"
           className="w-full rounded-md border border-primary-200 bg-primary-50 px-2 py-1 text-sm text-primary-900 placeholder:text-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-300"
         />
       </div>

@@ -10,7 +10,6 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 import { ChatComposer } from '@/screens/chat/components/chat-composer'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import { useSwarmChat, type SwarmChatMessage } from '@/hooks/use-swarm-chat'
 
 type Swarm2LiveChatProps = {
@@ -143,7 +142,7 @@ function MessageBubble({
       </div>
         {todoSummary ? (
           <div className="space-y-2">
-            <div className="text-[11px] font-medium text-[var(--theme-text)]">{t('swarm2.taskSnapshot')}</div>
+            <div className="text-[11px] font-medium text-[var(--theme-text)]">Task snapshot</div>
             <div className="flex flex-wrap gap-1.5 text-[10px] text-[var(--theme-muted-2)]">
               <span className="rounded-full border border-[var(--theme-border)] px-1.5 py-0.5">{todoSummary.total} total</span>
               <span className="rounded-full border border-[var(--theme-border)] px-1.5 py-0.5">{todoSummary.pending} pending</span>

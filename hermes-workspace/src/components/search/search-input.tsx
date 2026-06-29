@@ -2,7 +2,6 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { Cancel01Icon, Search01Icon } from '@hugeicons/core-free-icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 type SearchInputProps = {
   value: string
@@ -35,7 +34,7 @@ export function SearchInput({
         ref={inputRef}
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
-        placeholder={t('placeholder.searchChatsFiles')}
+        placeholder="Search chats, files, agents, skills..."
         className={cn(
           'h-12 w-full rounded-xl border border-border bg-muted/60 pl-10 pr-24 text-sm text-foreground outline-none',
           'placeholder:text-muted-foreground focus:border-primary focus:bg-muted',

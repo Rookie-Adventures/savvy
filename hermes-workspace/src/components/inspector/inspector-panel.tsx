@@ -5,7 +5,6 @@ import type { ActivityEvent } from './activity-store'
 import { getUnavailableReason } from '@/lib/feature-gates'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 // ── Store ─────────────────────────────────────────────────────────────────────
 
@@ -70,7 +69,7 @@ function ArtifactsTab() {
   const artifacts = events.filter((e) => e.type === 'artifact')
 
   if (artifacts.length === 0) {
-    return <EmptyState text={t('empty.noArtifacts')} />
+    return <EmptyState text="No agent-authored artifacts yet" />
   }
 
   return (
@@ -129,7 +128,7 @@ function ActivityTab() {
   }, [events.length])
 
   if (events.length === 0) {
-    return <EmptyState text={t('empty.noActivity')} />
+    return <EmptyState text="No activity yet — start a conversation" />
   }
 
   return (
@@ -183,7 +182,7 @@ function FilesTab() {
 
   if (files.length === 0) {
     return (
-      <EmptyState text={t('empty.noFilesTouched')} />
+      <EmptyState text="No files touched yet — activity will appear during chat" />
     )
   }
 
@@ -248,10 +247,10 @@ function MemoryTab() {
     }
   }, [])
 
-  if (loading) return <LoadingState text={t('loading.memory')} />
+  if (loading) return <LoadingState text="Loading memory…" />
   if (error) return <ErrorState text={`Memory: ${error}`} />
   if (!files || files.length === 0)
-    return <EmptyState text={t('empty.noMemoryFiles')} />
+    return <EmptyState text="No memory files available" />
 
   return (
     <div className="space-y-2 p-3 overflow-auto max-h-[calc(100vh-140px)]">
@@ -318,9 +317,9 @@ function SkillsTab() {
     }
   }, [])
 
-  if (loading) return <LoadingState text={t('loading.skills')} />
+  if (loading) return <LoadingState text="Loading skills…" />
   if (error) return <ErrorState text={`Skills: ${error}`} />
-  if (skills.length === 0) return <EmptyState text={t('empty.noSkillsFound')} />
+  if (skills.length === 0) return <EmptyState text="No skills found" />
 
   // Group by category
   const grouped: Record<string, Array<SkillItem>> = {}
@@ -429,10 +428,10 @@ function McpTab() {
     }
   }, [])
 
-  if (loading) return <LoadingState text={t('loading.mcpServers')} />
+  if (loading) return <LoadingState text="Loading MCP servers…" />
   if (error) return <ErrorState text={`MCP: ${error}`} />
   if (!servers || servers.length === 0)
-    return <EmptyState text={t('empty.noMcpServers')} />
+    return <EmptyState text="No MCP servers configured" />
 
   return (
     <div className="space-y-2 p-3 overflow-auto max-h-[calc(100vh-140px)]">

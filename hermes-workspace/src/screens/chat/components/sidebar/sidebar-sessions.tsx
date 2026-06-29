@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { usePinnedSessions } from '@/hooks/use-pinned-sessions'
-import { t } from '@/lib/i18n'
 
 type SidebarSessionsProps = {
   sessions: Array<SessionMeta>
@@ -109,7 +108,7 @@ export const SidebarSessions = memo(function SidebarSessions({
             <div className="flex flex-col gap-px pl-3 pr-2">
               {loading ? (
                 <div className="px-2 py-2 text-xs text-primary-500">
-                  {t('loading.sessions')}
+                  Loading sessions…
                 </div>
               ) : error ? (
                 <div className="px-2 py-2 text-xs text-primary-500">

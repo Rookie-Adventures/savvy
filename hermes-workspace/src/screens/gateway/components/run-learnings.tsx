@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 export type RunLearningsProps = {
   runId: string
@@ -210,7 +209,7 @@ export function RunLearnings({ runId, runTitle, learnings, onAddLearning, onClos
             type="text"
             value={draftText}
             onChange={(event) => setDraftText(event.target.value)}
-            placeholder={t('placeholder.addReusableLearning')}
+            placeholder="Add a reusable learning..."
             className="h-10 min-w-0 flex-1 rounded-lg border border-primary-700 bg-primary-900 px-3 text-sm text-primary-100 placeholder:text-primary-400 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
           />
 

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { t } from '@/lib/i18n'
 import { CancelIcon } from '@hugeicons/core-free-icons'
 import { formatModelName } from '@/screens/dashboard/lib/formatters'
 import type { DashboardOverview } from '@/server/dashboard-aggregator'
@@ -364,7 +363,7 @@ function ModelInventoryModal({
               className="py-8 text-center text-[11px]"
               style={{ color: 'var(--theme-muted)' }}
             >
-              {t('loading.models')}
+              Loading models…
             </div>
           ) : error ? (
             <div

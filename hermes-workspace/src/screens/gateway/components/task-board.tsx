@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import { emitFeedEvent } from './feed-event-bus'
 export type TaskPriority = 'urgent' | 'high' | 'normal' | 'low'
 export type TaskStatus = 'inbox' | 'assigned' | 'in_progress' | 'review' | 'done'
@@ -305,7 +304,7 @@ export function TaskBoard({ agents, initialTasks, selectedAgentId, onRef, onTask
       <div className="border-b border-neutral-800 bg-white dark:bg-neutral-950 px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-neutral-100">{t('label.tasks')}</h2>
+            <h2 className="text-sm font-semibold text-neutral-100">Tasks</h2>
             <p className="truncate text-[11px] text-neutral-400">
               {selectedAgentName ? `Focused agent: ${selectedAgentName}` : 'Showing all agents'}
             </p>
@@ -387,14 +386,14 @@ export function TaskBoard({ agents, initialTasks, selectedAgentId, onRef, onTask
                         type="text"
                         value={form.title}
                         onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-                        placeholder={t('placeholder.taskTitle')}
+                        placeholder="Task title"
                         className="w-full rounded-md border border-primary-200 bg-white px-2 py-1.5 text-xs text-primary-900 outline-none ring-accent-400 focus:ring-1 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
                         required
                       />
                       <textarea
                         value={form.description}
                         onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
-                        placeholder={t('placeholder.descriptionOptional')}
+                        placeholder="Description (optional)"
                         rows={3}
                         className="w-full resize-none rounded-md border border-primary-200 bg-white px-2 py-1.5 text-xs text-primary-900 outline-none ring-accent-400 focus:ring-1 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
                       />
@@ -444,7 +443,7 @@ export function TaskBoard({ agents, initialTasks, selectedAgentId, onRef, onTask
                     </form>
                   ) : null}
                   {columnTasks.length === 0 ? (
-                    <p className="py-8 text-center text-[11px] text-neutral-500">{t('gateway.dropTasksHere')}</p>
+                    <p className="py-8 text-center text-[11px] text-neutral-500">Drop tasks here</p>
                   ) : null}
                   {columnTasks.map((task) => {
                     const priority = PRIORITIES.find((item) => item.key === task.priority)
@@ -526,7 +525,7 @@ export function TaskBoard({ agents, initialTasks, selectedAgentId, onRef, onTask
                                   )
                                 }
                                 rows={2}
-                                placeholder={t('placeholder.addDescription')}
+                                placeholder="Add a description…"
                                 className="w-full resize-none rounded-md border border-primary-200 bg-white px-2 py-1.5 text-xs text-primary-900 outline-none ring-accent-400 focus:ring-1 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
                               />
                             </div>

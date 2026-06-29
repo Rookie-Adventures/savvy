@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { AgentProgress } from '@/components/agent-view/agent-progress'
 import { PixelAvatar } from '@/components/agent-swarm/pixel-avatar'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 type ReportState = 'all' | 'needs_review' | 'ready' | 'blocked' | 'in_progress' | 'artifact'
 type ReportLayout = 'board' | 'cards' | 'list'
@@ -737,8 +736,8 @@ export function Swarm2ReportsView({
     <section className="rounded-[1.5rem] border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 shadow-[0_20px_60px_color-mix(in_srgb,var(--theme-shadow)_14%,transparent)]">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--theme-muted)]">{t('swarm2.outputsReports')}</div>
-          <h2 className="mt-1 text-lg font-semibold text-[var(--theme-text)]">{t('swarm2.workerReports')}</h2>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--theme-muted)]">Outputs / Reports</div>
+          <h2 className="mt-1 text-lg font-semibold text-[var(--theme-text)]">Worker reports</h2>
           <p className="mt-1 max-w-3xl text-xs text-[var(--theme-muted-2)]">
             Board for queues, Cards for worker-level scanning, List for dense detail.
           </p>
@@ -767,11 +766,11 @@ export function Swarm2ReportsView({
           </button>
         ))}
         <select value={workerFilter} onChange={(event) => setWorkerFilter(event.target.value)} className="rounded-full border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 py-1.5 text-xs text-[var(--theme-muted)] outline-none">
-          <option value="all">{t('swarm2.allWorkers')}</option>
+          <option value="all">All workers</option>
           {workers.map((worker) => <option key={worker} value={worker}>{worker}</option>)}
         </select>
         <select value={missionFilter} onChange={(event) => setMissionFilter(event.target.value)} className="max-w-xs rounded-full border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 py-1.5 text-xs text-[var(--theme-muted)] outline-none">
-          <option value="all">{t('swarm2.allMissions')}</option>
+          <option value="all">All missions</option>
           {missionOptions.map((mission) => <option key={mission.id} value={mission.id}>{mission.label}</option>)}
         </select>
         <div className="ml-auto flex rounded-full border border-[var(--theme-border)] bg-[var(--theme-bg)] p-1">

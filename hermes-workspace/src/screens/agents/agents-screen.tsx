@@ -3,7 +3,6 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { WorkflowHelpModal } from '@/components/workflow-help-modal'
-import { t } from '@/lib/i18n'
 
 export function AgentsScreen() {
   const navigate = useNavigate()
@@ -17,7 +16,7 @@ export function AgentsScreen() {
               <HugeiconsIcon icon={BotIcon} size={24} strokeWidth={1.6} />
             </div>
             <div>
-              <h1 className="text-base font-semibold text-primary-900">{t('page.agents')}</h1>
+              <h1 className="text-base font-semibold text-primary-900">Agents</h1>
               <p className="mt-1 text-sm text-primary-600">
                 Workspace agent management was removed during cleanup.
               </p>
@@ -27,7 +26,7 @@ export function AgentsScreen() {
             <WorkflowHelpModal
               compact
               eyebrow="Operations"
-              title={t('label.howOperationsWorks')}
+              title="How Operations works"
               sections={[
                 {
                   title: 'What this screen does',
@@ -63,7 +62,7 @@ export function AgentsScreen() {
         </header>
 
         <section className="rounded-xl border border-primary-200 bg-[var(--theme-card)] p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-primary-900">{t('ui.screenSimplified')}</h2>
+          <h2 className="text-lg font-semibold text-primary-900">Screen simplified</h2>
           <p className="mt-2 max-w-2xl text-sm text-primary-600">
             The deleted workspace daemon and project stack backed the previous agent directory.
             Use Conductor for mission launch and the Gateway Conductor for live session visibility.

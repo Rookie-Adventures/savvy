@@ -12,7 +12,6 @@ import {
 } from '@hugeicons/core-free-icons'
 import { cn } from '@/lib/utils'
 import { toast } from '@/components/ui/toast'
-import { t } from '@/lib/i18n'
 
 type ProductId = 'workspace' | 'agent'
 type ProductUpdateStatus = {
@@ -458,7 +457,7 @@ function ReleaseNotes({
               />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-base font-semibold">{t('update.hermesUpdated')}</p>
+              <p className="text-base font-semibold">Hermes updated</p>
               <p className="text-sm" style={{ color: 'var(--theme-muted)' }}>
                 What changed in this update.
               </p>

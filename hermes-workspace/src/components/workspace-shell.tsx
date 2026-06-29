@@ -42,7 +42,6 @@ import { useMobileKeyboard } from '@/hooks/use-mobile-keyboard'
 import { SystemMetricsFooter } from '@/components/system-metrics-footer'
 import { CommandPalette } from '@/components/command-palette'
 import { useSettings } from '@/hooks/use-settings'
-import { t } from '@/lib/i18n'
 // ActivityTicker moved to dashboard-only (too noisy for global header)
 
 const TerminalWorkspace = lazy(() =>
@@ -169,7 +168,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
 
   // Derive active session from URL
   const mobilePageTitle = (() => {
-    if (pathname.startsWith('/terminal')) return t('label.terminalSettings')
+    if (pathname.startsWith('/terminal')) return 'Terminal'
     if (pathname.startsWith('/files')) return 'Files'
     if (pathname.startsWith('/jobs')) return 'Jobs'
     if (pathname.startsWith('/conductor')) return 'Conductor'
@@ -400,7 +399,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
               }}
             >
               {isMobile && isOnTerminalRoute && (
-                <MobilePageHeader title={t('label.terminalSettings')} />
+                <MobilePageHeader title="Terminal" />
               )}
               <div className="flex-1 min-h-0 overflow-hidden">
                 <Suspense fallback={null}>

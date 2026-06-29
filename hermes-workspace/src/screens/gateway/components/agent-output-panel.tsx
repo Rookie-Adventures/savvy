@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import { fetchSessionHistory, type SessionHistoryMessage } from '@/lib/gateway-api'
 import type { HubTask } from './task-board'
@@ -480,7 +479,7 @@ export function AgentOutputPanel({
       {/* Terminal output */}
       {sessionKey && streamDisconnected && !sessionEnded ? (
         <div className="mb-2 flex items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-700 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-400">
-          <span>{t('gateway.streamDisconnected')}</span>
+          <span>Stream disconnected</span>
           <button
             type="button"
             onClick={handleReconnect}

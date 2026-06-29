@@ -19,7 +19,6 @@ import { Swarm2TaskQueue } from './swarm2-task-queue'
 import type { CrewMember } from '@/hooks/use-crew-status'
 import { getOnlineStatus } from '@/hooks/use-crew-status'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 type WorkerState =
   | 'active'
@@ -609,7 +608,7 @@ export function OperationalWorkerCard({
           >
             <div className="mb-3 flex items-center justify-between">
               <div>
-                <h4 className="text-sm font-semibold text-[var(--theme-text)]">{t('swarm2.agentSettings')}</h4>
+                <h4 className="text-sm font-semibold text-[var(--theme-text)]">Agent settings</h4>
                 <p className="text-[11px] text-[var(--theme-muted)]">Local card overrides for now, native worker settings next.</p>
               </div>
               <button
@@ -631,7 +630,7 @@ export function OperationalWorkerCard({
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[var(--theme-muted)]">{t('swarm2.avatarGlyph')}</span>
+                <span className="mb-1 block text-[var(--theme-muted)]">Avatar glyph</span>
                 <select
                   value={draftAvatar}
                   onChange={(event) => setDraftAvatar(event.target.value)}
@@ -660,7 +659,7 @@ export function OperationalWorkerCard({
                 </select>
               </label>
               <label className="block">
-                <span className="mb-1 block text-[var(--theme-muted)]">{t('swarm2.modelLabel')}</span>
+                <span className="mb-1 block text-[var(--theme-muted)]">Model label</span>
                 <select
                   value={draftModel}
                   onChange={(event) => setDraftModel(event.target.value)}

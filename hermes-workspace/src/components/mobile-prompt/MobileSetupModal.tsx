@@ -5,7 +5,6 @@ import { AnimatePresence, motion } from 'motion/react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Cancel01Icon } from '@hugeicons/core-free-icons'
 import { writeTextToClipboard } from '@/lib/clipboard'
-import { t } from '@/lib/i18n'
 
 const STORAGE_KEY_SEEN = 'claude-mobile-setup-seen'
 
@@ -227,7 +226,7 @@ export function MobileSetupModal({ isOpen, onClose }: MobileSetupModalProps) {
             className="size-9 rounded-xl"
           />
           <div className="flex-1">
-            <h2 className="text-lg font-semibold text-white">{t('page.mobileSetup')}</h2>
+            <h2 className="text-lg font-semibold text-white">Mobile Setup</h2>
             <div className="mt-1 flex items-center gap-1.5">
               {steps.map((_, index) => (
                 <span

@@ -30,7 +30,6 @@ import { RouterChat } from '@/components/swarm/router-chat'
 import { SwarmTerminal } from '@/components/swarm/swarm-terminal'
 import { WorkflowHelpModal } from '@/components/workflow-help-modal'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 const SWARM2_ROOM_STORAGE_KEY = 'claude-swarm2-room-v1'
 
@@ -1551,7 +1550,7 @@ export function Swarm2Screen() {
                 <div className="absolute right-0 top-12 z-40 w-[min(28rem,calc(100vw-2rem))] rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-3 text-left shadow-[0_24px_80px_var(--theme-shadow)]">
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--theme-muted)]">{t('swarm2.swarmUpdates')}</div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--theme-muted)]">Swarm updates</div>
                       <div className="text-xs text-[var(--theme-muted-2)]">Actionable state from canonical mission checkpoints and durable report lanes.</div>
                     </div>
                     <button type="button" onClick={() => setNotificationsOpen(false)} className="rounded-lg px-2 py-1 text-xs hover:bg-[var(--theme-card2)]">Close</button>
@@ -1676,7 +1675,7 @@ export function Swarm2Screen() {
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               <label className="block text-sm md:col-span-2">
-                <span className="mb-1 block text-[var(--theme-muted)]">{t('swarm2.rolePreset')}</span>
+                <span className="mb-1 block text-[var(--theme-muted)]">Role preset</span>
                 <select
                   value={newWorkerRole}
                   onChange={(e) => {
@@ -1704,7 +1703,7 @@ export function Swarm2Screen() {
                 <input value={newWorkerId} onChange={(e) => setNewWorkerId(e.target.value)} className="w-full rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 py-2 text-[var(--theme-text)] outline-none" placeholder="swarmN" />
               </label>
               <label className="block text-sm">
-                <span className="mb-1 block text-[var(--theme-muted)]">{t('swarm2.displayName')}</span>
+                <span className="mb-1 block text-[var(--theme-muted)]">Display name</span>
                 <input value={newWorkerName} onChange={(e) => setNewWorkerName(e.target.value)} className="w-full rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 py-2 text-[var(--theme-text)] outline-none" placeholder="e.g. Mirror, Builder" />
               </label>
               <label className="block text-sm md:col-span-2">
@@ -1740,7 +1739,7 @@ export function Swarm2Screen() {
                 <div className="md:col-span-2 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card2)] px-3 py-2 text-xs text-[var(--theme-muted-2)]">
                   <div className="mb-1 font-semibold text-[var(--theme-muted)]">System prompt (embedded with role)</div>
                   <div className="whitespace-pre-wrap leading-relaxed">{ROLE_PRESETS.find((p) => p.role === newWorkerRole)?.systemPrompt}</div>
-                  <div className="mt-2 font-semibold text-[var(--theme-muted)]">{t('swarm2.skillsLoaded')}</div>
+                  <div className="mt-2 font-semibold text-[var(--theme-muted)]">Skills loaded</div>
                   <div className="font-mono">{(ROLE_PRESETS.find((p) => p.role === newWorkerRole)?.skills ?? []).join(', ') || '—'}</div>
                 </div>
               ) : null}

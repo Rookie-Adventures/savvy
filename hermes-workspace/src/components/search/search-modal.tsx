@@ -25,7 +25,6 @@ import {
 } from '@/hooks/use-search-modal'
 import { filterResults, useSearchData } from '@/hooks/use-search-data'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 const SCOPE_TABS: Array<{ value: SearchScope; label: string }> = [
   { value: 'all', label: 'All' },
@@ -491,10 +490,10 @@ export function SearchModal() {
                 <span>Arrow keys to navigate</span>
               </div>
               <div className="flex items-center gap-2 tabular-nums">
-                <span>{t('search.tabScope')}</span>
+                <span>Tab scope</span>
                 <span>1-9 jump</span>
                 <span>↵ open</span>
-                <span>{t('search.escClose')}</span>
+                <span>Esc close</span>
               </div>
             </div>
           </motion.div>

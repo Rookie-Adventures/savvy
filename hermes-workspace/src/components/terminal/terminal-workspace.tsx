@@ -20,7 +20,6 @@ import type { TerminalTab } from '@/stores/terminal-panel-store'
 import { DebugPanel } from '@/components/terminal/debug-panel'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import { useTerminalPanelStore } from '@/stores/terminal-panel-store'
 
 // Dynamic imports to avoid SSR crash (xterm uses `self` which doesn't exist on server)
@@ -819,7 +818,7 @@ export function TerminalWorkspace({
             variant="ghost"
             onClick={handleCreateTab}
             aria-label="New terminal tab"
-            title={t('ui.newTab')}
+            title="New tab"
           >
             <HugeiconsIcon icon={Add01Icon} size={20} strokeWidth={1.5} />
           </Button>

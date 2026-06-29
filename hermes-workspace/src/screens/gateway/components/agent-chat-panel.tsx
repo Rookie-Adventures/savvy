@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import {
   fetchSessionHistory,
@@ -274,7 +273,7 @@ export function AgentChatPanel({
 
           {loading && messages.length === 0 && (
             <div className="flex items-center justify-center py-12 text-sm text-neutral-500">
-              {t('loading.conversation')}
+              Loading conversation…
             </div>
           )}
 
@@ -326,7 +325,7 @@ export function AgentChatPanel({
               onChange={(e) => setDraft(e.target.value)}
               placeholder={
                 !sessionKey
-                  ? t('empty.noSessionAvailable')
+                  ? 'No session available…'
                   : isRunning
                     ? 'Send a directive to the running agent…'
                     : 'Send a message…'

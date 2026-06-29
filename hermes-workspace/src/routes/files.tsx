@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Editor } from '@monaco-editor/react'
 import { createFileRoute } from '@tanstack/react-router'
-import { t } from '@/lib/i18n'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Download01Icon,
@@ -294,7 +293,7 @@ function FilesRoute() {
                 </>
               ) : (
                 <>
-                  <h1 className="text-base font-medium md:text-lg">{t('page.files')}</h1>
+                  <h1 className="text-base font-medium md:text-lg">Files</h1>
                   <p className="hidden text-sm text-primary-600 sm:block">
                     Click a file in the sidebar to load it into the editor.
                   </p>
@@ -326,7 +325,7 @@ function FilesRoute() {
                   type="button"
                   onClick={handleOpenInTab}
                   className="inline-flex items-center gap-1 rounded-md border border-primary-200 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
-                  title={t('ui.openInNewTab')}
+                  title="Open this file in a new browser tab"
                 >
                   <HugeiconsIcon
                     icon={ExternalLink}
@@ -339,7 +338,7 @@ function FilesRoute() {
                   type="button"
                   onClick={handleDownload}
                   className="inline-flex items-center gap-1 rounded-md border border-primary-200 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
-                  title={t('ui.downloadFile')}
+                  title="Download this file to your computer"
                 >
                   <HugeiconsIcon
                     icon={Download01Icon}

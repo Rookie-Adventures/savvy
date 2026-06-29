@@ -1,5 +1,3 @@
-import { t } from '@/lib/i18n'
-
 type RunSnapshot = {
   id: string
   title: string
@@ -109,7 +107,7 @@ export function RunCompare({ runA, runB, onClose }: RunCompareProps) {
     <section className="w-full rounded-xl border border-primary-800 bg-primary-900 p-4">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-primary-100">{t('page.compareRuns')}</h3>
+          <h3 className="text-sm font-semibold text-primary-100">Compare Runs</h3>
           <p className="text-xs text-primary-400">Run metrics side by side</p>
         </div>
         <button
@@ -139,31 +137,31 @@ export function RunCompare({ runA, runB, onClose }: RunCompareProps) {
           </div>
 
           <MetricRow
-            label={t('label.duration')}
+            label="Duration"
             leftValue={runA.duration}
             rightValue={runB.duration}
             delta={durationDelta}
           />
           <MetricRow
-            label={t('label.tokenCount')}
+            label="Token Count"
             leftValue={runA.tokenCount.toLocaleString()}
             rightValue={runB.tokenCount.toLocaleString()}
             delta={tokenDelta}
           />
           <MetricRow
-            label={t('label.cost')}
+            label="Cost"
             leftValue={fmtCost(runA.costEstimate)}
             rightValue={fmtCost(runB.costEstimate)}
             delta={costDelta}
           />
           <MetricRow
-            label={t('label.agentCount')}
+            label="Agent Count"
             leftValue={String(runA.agents.length)}
             rightValue={String(runB.agents.length)}
             delta={agentDelta}
           />
           <MetricRow
-            label={t('label.status')}
+            label="Status"
             leftValue={runA.status}
             rightValue={runB.status}
             delta={statusDelta}

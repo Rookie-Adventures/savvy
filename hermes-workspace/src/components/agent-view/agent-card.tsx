@@ -38,7 +38,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 export type AgentNodeStatus = AgentProgressStatus
 
@@ -376,7 +375,7 @@ export function AgentCard({
 
         {/* Last output / task preview */}
         <div className="mb-3 rounded-xl border border-primary-300/30 bg-primary-200/24 p-2.5">
-          <p className="mb-1 text-[10px] font-medium text-primary-600">{t('agent.lastMessage')}</p>
+          <p className="mb-1 text-[10px] font-medium text-primary-600">Last message</p>
           <p className="text-[11px] leading-relaxed text-primary-800">
             {node.task.length > 80 ? `${node.task.slice(0, 80)}…` : node.task}
           </p>

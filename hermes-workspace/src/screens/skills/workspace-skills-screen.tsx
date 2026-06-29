@@ -11,7 +11,6 @@ import {
 import { AnimatePresence, motion } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
-import { t } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { Markdown } from '@/components/prompt-kit/markdown'
 
@@ -216,18 +215,18 @@ export function WorkspaceSkillsScreen() {
   }, [memoryQuery.data?.files, selectedMemoryPath])
 
   function handleComingSoon() {
-    toast(t('toast.comingSoon'), { type: 'info' })
+    toast('Coming soon', { type: 'info' })
   }
 
   function handleClearAll() {
-    toast(t('toast.areYouSure'), { type: 'warning' })
+    toast('Are you sure?', { type: 'warning' })
     const confirmed =
       typeof window === 'undefined'
         ? true
-        : window.confirm(t('confirm.clearAllMemory'))
+        : window.confirm('Are you sure you want to clear all memory?')
 
     if (!confirmed) return
-    toast(t('toast.cleared'), { type: 'success' })
+    toast('Cleared', { type: 'success' })
   }
 
   return (
@@ -469,7 +468,7 @@ export function WorkspaceSkillsScreen() {
                   <input
                     value={memorySearch}
                     onChange={(event) => setMemorySearch(event.target.value)}
-                    placeholder={t('placeholder.searchMemory')}
+                    placeholder="Search memory..."
                     className="w-full rounded-xl border border-primary-200 bg-white px-10 py-2.5 text-sm text-primary-900 outline-none transition-colors placeholder:text-primary-500 focus:border-accent-500/50"
                   />
                 </div>
@@ -544,19 +543,19 @@ export function WorkspaceSkillsScreen() {
                   </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between gap-4 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2">
-                      <span className="text-primary-600">{t('knowledge.workspaceMemory')}</span>
+                      <span className="text-primary-600">Workspace memory</span>
                       <span className="font-medium text-primary-900">
                         Permanent
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-4 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2">
-                      <span className="text-primary-600">{t('knowledge.projectMemory')}</span>
+                      <span className="text-primary-600">Project memory</span>
                       <span className="font-medium text-primary-900">
                         Per-project
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-4 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2">
-                      <span className="text-primary-600">{t('knowledge.agentMemory')}</span>
+                      <span className="text-primary-600">Agent memory</span>
                       <span className="font-medium text-primary-900">
                         30 day rolling
                       </span>

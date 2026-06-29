@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 type KanbanLane = 'backlog' | 'ready' | 'running' | 'review' | 'blocked' | 'done'
 
@@ -498,8 +497,8 @@ export function Swarm2KanbanBoard({
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-[var(--theme-border2)] bg-[var(--theme-card)] p-5 shadow-[0_30px_100px_var(--theme-shadow)]">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-<div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--theme-muted)]">{t('swarm2.manualPlanning')}</div>
-                <h3 className="mt-1 text-lg font-semibold text-[var(--theme-text)]">{t('swarm2.newBoardCard')}</h3>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--theme-muted)]">Manual planning</div>
+                <h3 className="mt-1 text-lg font-semibold text-[var(--theme-text)]">New board card</h3>
                 <p className="mt-1 text-xs text-[var(--theme-muted-2)]">Spec work before routing it to an agent. Dispatch stays explicit through Router.</p>
               </div>
               <button type="button" onClick={() => setComposerOpen(false)} className="rounded-lg border border-[var(--theme-border)] bg-[var(--theme-card2)] px-3 py-1.5 text-sm text-[var(--theme-muted)] hover:text-[var(--theme-text)]">Close</button>
@@ -514,11 +513,11 @@ export function Swarm2KanbanBoard({
                 <textarea value={draftSpec} onChange={(event) => setDraftSpec(event.target.value)} rows={4} placeholder="Short task spec / context" className="w-full resize-none rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 py-2 text-sm text-[var(--theme-text)] outline-none" />
               </label>
               <label className="block text-xs md:col-span-2">
-                <span className="mb-1 block font-semibold text-[var(--theme-muted)]">{t('swarm2.acceptanceCriteria')}</span>
+                <span className="mb-1 block font-semibold text-[var(--theme-muted)]">Acceptance criteria</span>
                 <textarea value={draftCriteria} onChange={(event) => setDraftCriteria(event.target.value)} rows={3} placeholder="One per line" className="w-full resize-none rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 py-2 text-sm text-[var(--theme-text)] outline-none" />
               </label>
               <label className="block text-xs">
-                <span className="mb-1 block font-semibold text-[var(--theme-muted)]">{t('swarm2.assignedWorker')}</span>
+                <span className="mb-1 block font-semibold text-[var(--theme-muted)]">Assigned worker</span>
                 <select value={draftWorker} onChange={(event) => setDraftWorker(event.target.value)} className="w-full rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 py-2 text-sm text-[var(--theme-text)] outline-none">
                   <option value="">Unassigned</option>
                   {workers.map((worker) => <option key={worker.id} value={worker.id}>{worker.displayName || worker.id}</option>)}
@@ -622,7 +621,7 @@ export function Swarm2KanbanBoard({
                     </div>
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {card.assignedWorker ? (
-                        <button type="button" onClick={() => onSelectWorker?.(card.assignedWorker!)} className="rounded-full border border-[var(--theme-border)] px-2 py-1 text-[10px] font-semibold text-[var(--theme-muted)] hover:bg-[var(--theme-card2)] hover:text-[var(--theme-text)]">{t('swarm2.openWorker')}</button>
+                        <button type="button" onClick={() => onSelectWorker?.(card.assignedWorker!)} className="rounded-full border border-[var(--theme-border)] px-2 py-1 text-[10px] font-semibold text-[var(--theme-muted)] hover:bg-[var(--theme-card2)] hover:text-[var(--theme-text)]">Open worker</button>
                       ) : null}
                       {card.status !== 'running' ? <button type="button" onClick={() => updateMutation.mutate({ id: card.id, updates: { status: 'running' } })} className="rounded-full border border-[var(--theme-border)] px-2 py-1 text-[10px] font-semibold text-[var(--theme-muted)] hover:bg-[var(--theme-card2)] hover:text-[var(--theme-text)]">Run</button> : null}
                       {card.status !== 'review' ? <button type="button" onClick={() => updateMutation.mutate({ id: card.id, updates: { status: 'review' } })} className="rounded-full border border-[var(--theme-border)] px-2 py-1 text-[10px] font-semibold text-[var(--theme-muted)] hover:bg-[var(--theme-card2)] hover:text-[var(--theme-text)]">Review</button> : null}

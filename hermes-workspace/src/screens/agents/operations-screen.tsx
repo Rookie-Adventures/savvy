@@ -17,7 +17,6 @@ import { OperationsNewAgentModal } from './components/operations-new-agent-modal
 import { OperationsSettingsModal } from './components/operations-settings-modal'
 import { FullOutputsView } from './components/full-outputs-view'
 import { AgentBusPanel } from './components/agent-bus-panel'
-import { t } from '@/lib/i18n'
 import { useOperations } from './hooks/use-operations'
 
 export const THEME_STYLE: CSSProperties = {
@@ -88,7 +87,7 @@ export function OperationsScreen() {
               <HugeiconsIcon icon={AiBrain03Icon} size={22} strokeWidth={1.8} />
             </div>
             <div>
-              <h1 className="text-base font-semibold text-primary-900">{t('page.operations')}</h1>
+              <h1 className="text-base font-semibold text-primary-900">Operations</h1>
               <p className="mt-1 text-sm text-primary-600">
                 Your persistent agent team
               </p>

@@ -13,7 +13,6 @@ import { formatModelName } from '@/lib/format-model-name'
 import { fetchCronJobs } from '@/lib/cron-api'
 import { toggleAgentPause } from '@/lib/gateway-api'
 import { toast } from '@/components/ui/toast'
-import { t } from '@/lib/i18n'
 import { AgentHubLayout } from './agent-hub-layout'
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh'
 
@@ -949,7 +948,7 @@ export function AgentsScreen({ variant = 'mission-control' }: AgentsScreenProps)
       config: AgentConfigPatchPayload
     }) => patchAgentConfig(agentId, config),
     onSuccess: async (_, variables) => {
-      toast(t('toast.agentConfigSaved'), { type: 'success' })
+      toast('Agent config saved', { type: 'success' })
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ['gateway', 'agents', 'config', variables.agentId],
@@ -1087,7 +1086,7 @@ export function AgentsScreen({ variant = 'mission-control' }: AgentsScreenProps)
   ) {
     const controlKey = readString(agent.controlKey)
     if (!controlKey) {
-      toast(t('toast.noControlKeyAvailable'), { type: 'warning' })
+      toast('No control key available for this agent', { type: 'warning' })
       return
     }
 
@@ -1333,7 +1332,7 @@ export function AgentsScreen({ variant = 'mission-control' }: AgentsScreenProps)
               </h2>
               <ul className="mt-3 space-y-2 text-sm text-neutral-600 dark:text-neutral-300">
                 <li>Create an agent profile</li>
-                <li>{t('gateway.connectGateway')}</li>
+                <li>Connect a gateway</li>
                 <li>Spawn your first session</li>
               </ul>
               <button
@@ -1597,7 +1596,7 @@ export function AgentsScreen({ variant = 'mission-control' }: AgentsScreenProps)
                                 </span>
                               ))
                             ) : (
-                              <span className="text-sm text-primary-500">{t('gateway.noFallbackModels')}</span>
+                              <span className="text-sm text-primary-500">No fallback models</span>
                             )}
                           </div>
                         </div>
@@ -1628,7 +1627,7 @@ export function AgentsScreen({ variant = 'mission-control' }: AgentsScreenProps)
                             }}
                             className="mt-2 h-10 w-full rounded-xl border border-primary-200 bg-primary-50 px-3 text-sm text-primary-900 outline-none transition focus:border-primary-300"
                           >
-                            <option value="">{t('settings.useAgentDefault')}</option>
+                            <option value="">Use agent default</option>
                             {modelOverrideOptions.map((option) => (
                               <option key={option} value={option}>
                                 {formatModelName(option)}

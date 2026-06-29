@@ -1091,7 +1091,7 @@ function ChatSidebarComponent({
         {/* Navigation sections */}
         <div className={cn('shrink-0 space-y-0.5 px-2', isMobile && 'order-2')}>
           <SectionLabel
-            label={t('label.main')}
+            label="Main"
             isCollapsed={isVisuallyCollapsed}
             transition={transition}
             collapsible
@@ -1108,7 +1108,7 @@ function ChatSidebarComponent({
           />
 
           <SectionLabel
-            label={t('label.knowledge')}
+            label="Knowledge"
             isCollapsed={isVisuallyCollapsed}
             transition={transition}
             collapsible

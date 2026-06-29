@@ -17,7 +17,6 @@ import {
   MenuTrigger,
 } from '@/components/ui/menu'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import { toast } from '@/components/ui/toast'
 import { SEARCH_MODAL_EVENTS } from '@/hooks/use-search-modal'
 
@@ -499,7 +498,7 @@ export function UsageMeter({ visible = true }: { visible?: boolean }) {
       const silent =
         /unauthorized/i.test(errorMessage) || /not found/i.test(errorMessage)
       if (!silent) {
-        toast(t('toast.failedToFetchUsage'), { type: 'error' })
+        toast('Failed to fetch usage data', { type: 'error' })
       }
     }
   }, [statusSessionKey])
@@ -807,7 +806,7 @@ export function UsageMeter({ visible = true }: { visible?: boolean }) {
           )
         }
         return (
-          <span className="text-[10px] text-primary-500">{t('usage.noProviderData')}</span>
+          <span className="text-[10px] text-primary-500">No provider data</span>
         )
       }
 

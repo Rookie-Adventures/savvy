@@ -3,7 +3,6 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { Add01Icon, Chat01Icon } from '@hugeicons/core-free-icons'
 import type { SessionMeta } from '@/screens/chat/types'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 type Props = {
   open: boolean
@@ -97,7 +96,7 @@ export function MobileSessionsPanel({
       >
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-primary-200 px-4 py-3">
-            <h2 className="text-sm font-semibold text-ink">{t('page.sessions')}</h2>
+            <h2 className="text-sm font-semibold text-ink">Sessions</h2>
             <button
               type="button"
               onClick={onNewChat}

@@ -5,7 +5,6 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { getUnavailableReason } from '@/lib/feature-gates'
-import { t } from '@/lib/i18n'
 
 const MemoryBrowserScreen = lazy(async () => {
   const module = await import('@/screens/memory/memory-browser-screen')
@@ -48,7 +47,7 @@ export const Route = createFileRoute('/memory')({
             >
               <TabsTab value="memory">Memory</TabsTab>
               <TabsTab value="knowledge">Knowledge</TabsTab>
-              <TabsTab value="external">{t('settings.externalProviders')}</TabsTab>
+              <TabsTab value="external">External providers</TabsTab>
             </TabsList>
           </div>
 

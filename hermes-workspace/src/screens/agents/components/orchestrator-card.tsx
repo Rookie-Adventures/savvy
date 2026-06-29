@@ -5,7 +5,6 @@ import { AgentProgress } from '@/components/agent-view/agent-progress'
 import { PixelAvatar } from '@/components/agent-swarm/pixel-avatar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 const ChatScreen = lazy(() =>
   import('@/screens/chat/chat-screen').then((m) => ({ default: m.ChatScreen })),
@@ -52,8 +51,8 @@ export function OrchestratorCard({
                     'h-2.5 w-2.5 rounded-full bg-emerald-500',
                     totalAgents > 0 && 'animate-pulse',
                   )}
-                  aria-label={t('label.active')}
-                  title={t('label.active')}
+                  aria-label="Active"
+                  title="Active"
                 />
               </span>
             </h2>
@@ -63,8 +62,8 @@ export function OrchestratorCard({
                 type="button"
                 onClick={openSettings}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--theme-muted)] transition-colors hover:text-[var(--theme-text)]"
-                aria-label={t('ui.orchestratorSettings')}
-                title={t('ui.orchestratorSettings')}
+                aria-label="Orchestrator settings"
+                title="Orchestrator settings"
               >
                 <HugeiconsIcon icon={Settings01Icon} size={16} strokeWidth={1.8} />
               </button>

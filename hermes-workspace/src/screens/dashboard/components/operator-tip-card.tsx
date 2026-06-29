@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { t } from '@/lib/i18n'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Idea01Icon, Refresh01Icon } from '@hugeicons/core-free-icons'
 import type { DashboardOverview } from '@/server/dashboard-aggregator'
@@ -310,8 +309,8 @@ export function OperatorTipCard({
             <button
               type="button"
               onClick={handleNext}
-              aria-label={t('label.operatorTipNext')}
-              title={t('label.operatorTipNext')}
+              aria-label="Next tip"
+              title="Next tip"
               className="inline-flex size-6 items-center justify-center rounded-full border transition-all hover:scale-[1.05] hover:bg-[var(--theme-card)]/70"
               style={{
                 borderColor: 'var(--theme-border)',

@@ -24,7 +24,6 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { t } from '@/lib/i18n'
 
 export function ChatPanel() {
   const isOpen = useWorkspaceStore((s) => s.chatPanelOpen)
@@ -181,7 +180,7 @@ export function ChatPanel() {
                         </Button>
                       }
                     />
-                    <TooltipContent side="bottom">{t('chat.newChat')}</TooltipContent>
+                    <TooltipContent side="bottom">New chat</TooltipContent>
                   </TooltipRoot>
                   <TooltipRoot>
                     <TooltipTrigger
@@ -201,7 +200,7 @@ export function ChatPanel() {
                         </Button>
                       }
                     />
-                    <TooltipContent side="bottom">{t('chat.fullView')}</TooltipContent>
+                    <TooltipContent side="bottom">Full view</TooltipContent>
                   </TooltipRoot>
                 </TooltipProvider>
                 <Button

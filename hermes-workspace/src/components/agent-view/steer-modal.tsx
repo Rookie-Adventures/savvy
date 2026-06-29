@@ -8,7 +8,6 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/toast'
 import { steerAgent } from '@/lib/gateway-api'
-import { t } from '@/lib/i18n'
 
 type SteerModalProps = {
   open: boolean
@@ -41,7 +40,7 @@ export function SteerModal({
     setPending(true)
     try {
       await steerAgent(normalizedSessionKey, trimmedMessage)
-      toast(t('toast.directiveSent', { agent: agentName }), { type: 'success' })
+      toast(`Directive sent to ${agentName}`, { type: 'success' })
       setMessage('')
       onOpenChange(false)
     } catch (error) {
@@ -67,7 +66,7 @@ export function SteerModal({
           <textarea
             value={message}
             rows={5}
-            placeholder={t('placeholder.sendDirectiveToAgent')}
+            placeholder="Send a directive to this agent..."
             disabled={pending}
             onChange={function onChangeMessage(event) {
               setMessage(event.target.value)

@@ -1,5 +1,4 @@
 import { PlaygroundHeroCanvas } from './components/playground-hero-canvas'
-import { t } from '@/lib/i18n'
 
 const HERMES_REPO_URL = 'https://github.com/outsourc-e/hermes-workspace'
 const HERMES_ROADMAP_URL = 'https://github.com/outsourc-e/hermes-workspace/blob/main/docs/hermesworld/master-roadmap.md'
@@ -119,9 +118,9 @@ export function HermesWorldLanding() {
           </div>
 
           <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#bfb49a]/60">
-            <span>{t('playground.previewBuild')}</span>
+            <span>Preview build</span>
             <span className="text-[#d9b35f]/55">✦</span>
-            <span>{t('playground.persistentAgents')}</span>
+            <span>Persistent agents</span>
             <span className="text-[#d9b35f]/55">✦</span>
             <span>Zones, quests, sigils</span>
           </div>
@@ -130,7 +129,7 @@ export function HermesWorldLanding() {
             <div className="flex items-center gap-3">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#d9b35f]/35 bg-[#d9b35f]/12 text-lg shadow-[0_0_28px_rgba(217,179,95,.16)]">🏆</span>
               <div>
-                <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[#d9b35f]/70">{t('playground.droppingToday')}</div>
+                <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[#d9b35f]/70">Dropping today</div>
                 <div className="mt-1 text-sm font-bold leading-5 text-[#fff6df]">HermesWorld landing page, roadmap, feature list, and the first public build notes.</div>
               </div>
             </div>
@@ -210,8 +209,8 @@ function HeroWorldFrame() {
           </div>
           <div className="absolute bottom-4 right-4 hidden rounded-xl border border-violet-200/20 bg-[#05080e]/70 p-3 text-xs text-[#d7d0bd]/62 shadow-2xl backdrop-blur-xl sm:block">
             <div className="text-[9px] font-black uppercase tracking-[0.18em] text-violet-100/72">Launch Focus</div>
-            <div className="mt-1">{t('playground.agoraBelievable')}</div>
-            <div>{t('playground.characterPipeline')}</div>
+            <div className="mt-1">Agora believable</div>
+            <div>Character pipeline</div>
             <div>Graphics + HUD pass</div>
           </div>
         </div>
@@ -273,7 +272,7 @@ function ZonesSection() {
   return (
     <section id="world" className="relative mx-auto max-w-[1560px] px-4 py-20 sm:px-6 lg:px-8">
       <div className="text-center">
-        <div className="text-[11px] font-black uppercase tracking-[0.24em] text-[#d9b35f]/70">{t('playground.theWorldMap')}</div>
+        <div className="text-[11px] font-black uppercase tracking-[0.24em] text-[#d9b35f]/70">The world map</div>
         <h2 className="mx-auto mt-3 max-w-4xl font-serif text-4xl font-bold tracking-[-0.055em] text-[#fff6df] sm:text-6xl">Six zones. One persistent agent world.</h2>
         <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[#d7d0bd]/58 sm:text-base">Every zone teaches a different part of the agent loop: training, crafting, strategy, memory, prophecy, and evaluation.</p>
       </div>
@@ -382,7 +381,7 @@ function FinalCta() {
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(3,6,10,.18),#03060a),url('/hermesworld-world.png')] bg-cover bg-center opacity-45" />
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_20%,rgba(217,179,95,.2),transparent_42%),linear-gradient(90deg,#03060a_0%,rgba(3,6,10,.58)_50%,#03060a_100%)]" />
       <div className="mx-auto max-w-[880px] rounded-[2rem] border border-[#d9b35f]/24 bg-[#05080e]/78 p-8 text-center shadow-[0_40px_140px_rgba(0,0,0,.52)] backdrop-blur-xl sm:p-12">
-        <div className="text-[11px] font-black uppercase tracking-[0.24em] text-cyan-100/62">{t('playground.enterTheWorld')}</div>
+        <div className="text-[11px] font-black uppercase tracking-[0.24em] text-cyan-100/62">Enter the world</div>
         <h2 className="mt-3 font-serif text-4xl font-bold tracking-[-0.055em] text-[#fff6df] sm:text-6xl">Build with agents in a world, not a chat box.</h2>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-[#d7d0bd]/62">Enter HermesWorld and explore the first playable layer of Hermes Workspace: zones, quests, companions, sigils, and persistent agent progression.</p>
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">

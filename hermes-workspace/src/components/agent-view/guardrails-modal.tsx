@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { DialogContent, DialogDescription, DialogRoot, DialogTitle } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/toast'
-import { t } from '@/lib/i18n'
 
 type GuardrailsModalProps = {
   open: boolean
@@ -88,7 +87,7 @@ export function GuardrailsModal({ open, agentName, agentId, sessionKey, onOpenCh
       stopOnTokenLimit,
     }
     window.localStorage.setItem(`hermessuite:guardrails:${normalizedId}`, JSON.stringify(config))
-    toast(t('toast.guardrailsUpdated', { agent: agentName }), { type: 'success' })
+    toast(`Guardrails updated for ${agentName}`, { type: 'success' })
     onOpenChange(false)
   }
 

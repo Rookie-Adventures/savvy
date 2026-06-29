@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { CronJob } from '@/components/cron-manager/cron-types'
 import { toast } from '@/components/ui/toast'
-import { t } from '@/lib/i18n'
 import { fetchCronJobs } from '@/lib/cron-api'
 import { fetchSessions, type GatewaySession } from '@/lib/gateway-api'
 import { formatModelName, formatRelativeTime } from '@/screens/dashboard/lib/formatters'
@@ -674,7 +673,7 @@ export function useOperations() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['operations', 'config'] })
-      toast(t('toast.agentCreated'), { type: 'success' })
+      toast('Agent created', { type: 'success' })
     },
     onError: (error) => {
       toast(error instanceof Error ? error.message : 'Failed to create agent', {
@@ -709,7 +708,7 @@ export function useOperations() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['operations', 'config'] })
-      toast(t('toast.agentSettingsSaved'), { type: 'success' })
+      toast('Agent settings saved', { type: 'success' })
     },
     onError: (error) => {
       toast(error instanceof Error ? error.message : 'Failed to save agent', {
@@ -731,7 +730,7 @@ export function useOperations() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['operations', 'config'] })
       await queryClient.invalidateQueries({ queryKey: ['operations', 'sessions'] })
-      toast(t('toast.agentDeleted'), { type: 'success' })
+      toast('Agent deleted', { type: 'success' })
     },
     onError: (error) => {
       toast(error instanceof Error ? error.message : 'Failed to delete agent', {
@@ -749,7 +748,7 @@ export function useOperations() {
   function saveSettings(nextSettings: OperationsSettings) {
     setSettings(nextSettings)
     persistSettings(nextSettings)
-    toast(t('toast.operationsSettingsSaved'), { type: 'success' })
+    toast('Operations settings saved', { type: 'success' })
   }
 
   return {

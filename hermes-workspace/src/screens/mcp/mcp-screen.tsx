@@ -10,7 +10,6 @@ import { useMcpHub } from './hooks/use-mcp-hub'
 import { SourcesManagerDialog } from './components/sources-manager-dialog'
 import type { HubMcpEntry } from './hooks/use-mcp-hub'
 import type { McpClientInput, McpServer } from '@/types/mcp'
-import { t } from '@/lib/i18n'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 
@@ -251,7 +250,7 @@ function ServerList({ query, onEdit }: ServerListProps) {
   if (query.isLoading) {
     return (
       <EmptyCard
-        title={t('loading.servers')}
+        title="Loading servers…"
         description="Fetching MCP servers from Hermes Agent."
       />
     )
@@ -259,7 +258,7 @@ function ServerList({ query, onEdit }: ServerListProps) {
   if (query.isError) {
     return (
       <EmptyCard
-        title={t('ui.failedToLoadServers')}
+        title="Failed to load servers"
         description={query.error.message}
         tone="danger"
       />
@@ -268,7 +267,7 @@ function ServerList({ query, onEdit }: ServerListProps) {
   if (servers.length === 0) {
     return (
       <EmptyCard
-        title={t('empty.noMcpServers')}
+        title="No MCP servers configured"
         description="Add a server from the My Presets tab or click Add Server above."
       />
     )
@@ -364,7 +363,7 @@ function MarketplaceGrid({
   if (entries.length === 0) {
     return (
       <EmptyCard
-        title={t('ui.noResults')}
+        title="No results"
         description="Try a different search term. The registry may be unavailable — local presets are used as fallback."
       />
     )

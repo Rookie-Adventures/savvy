@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 function formatRelativeTime(ts: number): string {
   const diffMs = Math.max(0, Date.now() - ts)
@@ -214,7 +213,7 @@ function AgentRow({
               type="button"
               onClick={(e) => { e.stopPropagation(); onRespawn() }}
               className="shrink-0 text-xs text-neutral-500 transition-colors hover:text-neutral-700"
-              title={t('ui.respawnAgent')}
+              title="Respawn agent"
             >
               ↻
             </button>

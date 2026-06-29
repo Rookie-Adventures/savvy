@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { HERMESWORLD_SETTINGS_KEY, loadHermesWorldSettings, saveHermesWorldSettings } from './hermesworld-settings'
-import { t } from '@/lib/i18n'
 
 const WARNING_DISMISSED_KEY = 'hermesworld:photosensitive-warning-dismissed'
 
@@ -48,7 +47,7 @@ export function PhotosensitiveWarningSplash({ onOpenSettings }: Props) {
         style={{ borderColor: 'rgba(241,197,109,.72)', background: 'linear-gradient(180deg, rgba(15,22,34,.98), rgba(4,7,12,.98))', boxShadow: '0 0 60px rgba(241,197,109,.18), 0 30px 100px rgba(0,0,0,.8)' }}
       >
         <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-amber-200/70">Safety Notice</div>
-        <h2 className="mt-2 text-2xl font-black text-[#F1C56D]">{t('ui.photosensitiveSeizureWarning')}</h2>
+        <h2 className="mt-2 text-2xl font-black text-[#F1C56D]">Photosensitive seizure warning</h2>
         <p className="mt-4 text-sm leading-7 text-white/76">
           This game contains flashing lights and rapid color changes. If you have a history of seizures,
           photosensitive epilepsy, or motion sensitivity, enable Photosensitive Mode in Settings (Esc) before continuing.

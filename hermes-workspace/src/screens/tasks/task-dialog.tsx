@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { ClaudeTask, CreateTaskInput, TaskColumn, TaskPriority, TaskAssignee } from '@/lib/tasks-api'
 import { COLUMN_LABELS, COLUMN_ORDER } from '@/lib/tasks-api'
-import { t } from '@/lib/i18n'
 
 type Props = {
   open: boolean
@@ -96,7 +95,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumn, assignees,
                 className={inputClass}
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                placeholder={t('placeholder.whatNeedsToBeDone')}
+                placeholder="What needs to be done?"
                 required
                 autoFocus
               />
@@ -109,7 +108,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumn, assignees,
                 rows={3}
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                placeholder={t('placeholder.optionalDetails')}
+                placeholder="Optional details..."
               />
             </div>
 

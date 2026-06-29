@@ -10,7 +10,6 @@ import { TaskCard } from './task-card'
 import { TaskDialog } from './task-dialog'
 import type { ClaudeTask, CreateTaskInput, TaskAssignee, TaskColumn } from '@/lib/tasks-api'
 import { toast } from '@/components/ui/toast'
-import { t } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import {
   COLUMN_COLORS,
@@ -118,19 +117,19 @@ export function TasksScreen() {
 
   const createMutation = useMutation({
     mutationFn: createTask,
-    onSuccess: () => { invalidate(); toast(t('toast.taskCreated')); setShowCreate(false) },
+    onSuccess: () => { invalidate(); toast('Task created'); setShowCreate(false) },
     onError: (e) => toast(e instanceof Error ? e.message : 'Failed to create task', { type: 'error' }),
   })
 
   const updateMutation = useMutation({
     mutationFn: ({ id, input }: { id: string; input: CreateTaskInput }) => updateTask(id, input),
-    onSuccess: () => { invalidate(); toast(t('toast.taskUpdated')); setEditingTask(null) },
+    onSuccess: () => { invalidate(); toast('Task updated'); setEditingTask(null) },
     onError: (e) => toast(e instanceof Error ? e.message : 'Failed to update task', { type: 'error' }),
   })
 
   const deleteMutation = useMutation({
     mutationFn: deleteTask,
-    onSuccess: () => { invalidate(); toast(t('toast.taskDeleted')) },
+    onSuccess: () => { invalidate(); toast('Task deleted') },
     onError: (e) => toast(e instanceof Error ? e.message : 'Failed to delete task', { type: 'error' }),
   })
 
@@ -337,7 +336,7 @@ export function TasksScreen() {
                         className="flex flex-col items-center justify-center py-8 gap-2 text-[var(--theme-muted)] opacity-60"
                       >
                         <HugeiconsIcon icon={CheckListIcon} size={22} />
-                        <p className="text-xs font-medium">{t('tasks.noTasks')}</p>
+                        <p className="text-xs font-medium">No tasks</p>
                         <p className="text-[10px]">Drop here or click + to add</p>
                       </motion.div>
                     ) : (

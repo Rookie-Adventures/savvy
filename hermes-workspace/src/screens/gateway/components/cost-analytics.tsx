@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 export type MissionReportEntry = {
   id: string
@@ -42,7 +41,7 @@ function relativeDay(dateStr: string): string {
 type BarEntry = { label: string; value: number; pct: number }
 
 function CSSBarChart({ entries, unit = '', color = 'bg-accent-500' }: { entries: BarEntry[]; unit?: string; color?: string }) {
-  if (entries.length === 0) return <p className="text-xs text-neutral-400 italic">{t('common.noData')}</p>
+  if (entries.length === 0) return <p className="text-xs text-neutral-400 italic">No data</p>
   return (
     <div className="space-y-1.5">
       {entries.map((e) => (
@@ -200,13 +199,13 @@ export function CostAnalyticsDashboard({ missionReports, compact = false }: Cost
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* By Agent */}
         <div className={CARD}>
-          <h3 className={chartTitleClass}>{t('page.costByAgent')}</h3>
+          <h3 className={chartTitleClass}>Cost by Agent</h3>
           <CSSBarChart entries={stats.agentBars} unit="$" color="bg-violet-500" />
         </div>
 
         {/* By Model */}
         <div className={CARD}>
-          <h3 className={chartTitleClass}>{t('page.costByModel')}</h3>
+          <h3 className={chartTitleClass}>Cost by Model</h3>
           <CSSBarChart entries={stats.modelBars} unit="$" color="bg-sky-500" />
         </div>
 

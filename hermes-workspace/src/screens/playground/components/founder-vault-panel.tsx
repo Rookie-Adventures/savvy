@@ -1,5 +1,3 @@
-import { t } from '@/lib/i18n'
-
 type FounderReward = {
   id: string
   name: string
@@ -68,7 +66,7 @@ export function FounderVaultPanel({ eligible = false, claimedRewardIds = [], onC
 
       <footer className="mt-5 flex flex-col gap-3 rounded-3xl border border-[#d9b35f]/24 bg-black/24 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-black text-[#ffe7a3]">{t('playground.founderCondition')}</p>
+          <p className="text-sm font-black text-[#ffe7a3]">Founder condition</p>
           <p className="text-xs text-[#f9e7b5]/64">Reserve name + complete launch tutorial. Eligibility syncs from the account ledger.</p>
         </div>
         <button

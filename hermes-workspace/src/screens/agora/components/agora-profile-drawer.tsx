@@ -4,7 +4,6 @@
  */
 import { motion, AnimatePresence } from 'motion/react'
 import { useEffect, useState } from 'react'
-import { t } from '@/lib/i18n'
 import type { AgoraAvatarId, AgoraProfile, AgoraStatus, AgoraUser } from '../lib/agora-types'
 
 const ALL_AVATARS: { id: AgoraAvatarId; label: string; tier: 'greek' | 'emoji' }[] = [
@@ -171,7 +170,7 @@ export function AgoraProfileDrawer({
                   value={editBio}
                   onChange={(e) => setEditBio(e.target.value)}
                   onBlur={() => onSaveProfile({ bio: editBio.slice(0, 240) })}
-                  placeholder={t('placeholder.saySomethingAboutYourself')}
+                  placeholder="Say something about yourself…"
                   rows={3}
                   maxLength={240}
                   className="w-full rounded-md px-2 py-1.5 text-[12px] outline-none resize-none"

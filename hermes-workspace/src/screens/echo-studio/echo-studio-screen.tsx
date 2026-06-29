@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 type Tab = 'create' | 'manage' | 'theme'
 
@@ -70,7 +69,7 @@ export function EchoStudioScreen() {
       <div className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight">{t('page.echoStudio')}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Echo Studio</h1>
           <p className="mt-1 text-sm text-primary-500">
             Describe what you want. I'll build the full page with backend API.
           </p>

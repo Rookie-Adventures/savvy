@@ -13,7 +13,6 @@ import {
 } from '@hugeicons/core-free-icons'
 import type { CrewMember } from '@/hooks/use-crew-status'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 
 type Mode = 'auto' | 'manual' | 'broadcast'
 
@@ -509,7 +508,7 @@ export function RouterChat({
         {!embedded && results ? (
           <div className="max-h-64 overflow-y-auto border-t border-[var(--theme-border)] px-5 py-3">
             <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-[var(--theme-muted)]">
-              <span>{t('swarm.dispatchResults')}</span>
+              <span>Dispatch results</span>
               <span className="inline-flex items-center gap-1 text-[var(--theme-muted)]">
                 <HugeiconsIcon icon={Clock01Icon} size={11} />
                 {((results.completedAt - results.dispatchedAt) / 1000).toFixed(

@@ -51,7 +51,6 @@ import { cn } from '@/lib/utils'
 import { applyTheme, useSettingsStore } from '@/hooks/use-settings'
 import { openHamburgerMenu } from '@/components/mobile-hamburger-menu'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
-import { t } from '@/lib/i18n'
 
 // `IconSvgObject` isn't exported from @hugeicons/react; reuse the
 // inferred type from a real icon import for prop typing.
@@ -288,7 +287,7 @@ function ActivityChart({
 
   return (
     <GlassCard
-      title={t('ui.activity')}
+      title="Activity"
       titleRight={<span className="text-[10px] text-muted">14 days</span>}
       accentColor={palette.accent}
       className="h-full"
@@ -406,7 +405,7 @@ function SkillsWidget({
   if (!skillsAvailable) {
     return (
       <UnavailableWidget
-        title={t('label.skills')}
+        title="Skills"
         description={getUnavailableReason('skills')}
       />
     )
@@ -445,7 +444,7 @@ function SkillsWidget({
           className="text-[10px] font-semibold uppercase tracking-[0.18em]"
           style={{ color: 'var(--theme-muted)' }}
         >
-            {t('label.skills')}
+          Skills
         </h3>
         <span
           className="font-mono text-[9px] uppercase tracking-[0.15em]"
@@ -965,7 +964,7 @@ export function DashboardScreen() {
             onClick={() => navigate({ to: '/terminal' })}
           />
           <SecondaryAction
-            label={t('label.skills')}
+            label="Skills"
             icon={PuzzleIcon}
             onClick={() => navigate({ to: '/skills' })}
             disabled={!skillsAvailable}
@@ -999,8 +998,8 @@ export function DashboardScreen() {
           </button>
           <button
             type="button"
-            aria-label={t('nav.settings')}
-            title={t('nav.settings')}
+            aria-label="Settings"
+            title="Settings"
             onClick={() => navigate({ to: '/settings', search: {} })}
             className="inline-flex size-9 items-center justify-center rounded-lg border transition-all hover:scale-[1.05] hover:bg-[var(--theme-card)]/70 hover:text-[var(--theme-text)]"
             style={{
@@ -1145,7 +1144,7 @@ export function DashboardScreen() {
               <WidgetShell id="sessions_intelligence" layout={layout}>
                 {sessionsQuery.isError || sessionsUnavailable ? (
                   <UnavailableWidget
-                    title={t('ui.recentSessions')}
+                    title="Recent Sessions"
                     description={
                       sessionsQuery.isError
                         ? getUnavailableReason('sessions')

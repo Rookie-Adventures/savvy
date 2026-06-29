@@ -11,7 +11,6 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import { toast } from '@/components/ui/toast'
-import { t } from '@/lib/i18n'
 import { runCronJob } from '@/lib/cron-api'
 import { cn } from '@/lib/utils'
 import { formatRelativeTime } from '@/screens/dashboard/lib/formatters'
@@ -144,7 +143,7 @@ function OutputCard({ output }: { output: AgentOutput }) {
 
   async function copyText(value: string, label: string) {
     if (!value.trim()) {
-      toast(t('toast.noLabelFound', { label: label.toLowerCase() }), { type: 'warning' })
+      toast(`No ${label.toLowerCase()} found`, { type: 'warning' })
       return
     }
 
@@ -163,7 +162,7 @@ function OutputCard({ output }: { output: AgentOutput }) {
     try {
       if (!output.jobId) throw new Error('No job ID associated with this output')
       await runCronJob(output.jobId)
-      toast(t('toast.cronJobStarted'), { type: 'success' })
+      toast('Cron job started', { type: 'success' })
     } catch (error) {
       toast(error instanceof Error ? error.message : 'Failed to retry cron job', {
         type: 'error',
@@ -299,7 +298,7 @@ function OutputCard({ output }: { output: AgentOutput }) {
           <Button
             variant="secondary"
             className="border border-[var(--theme-border)] bg-[var(--theme-card)] text-[var(--theme-text)] hover:bg-[var(--theme-card2)]"
-            onClick={() => toast(t('toast.signalsViewComingSoon'), { type: 'info' })}
+            onClick={() => toast('Signals view coming soon', { type: 'info' })}
           >
             View Signals
           </Button>
@@ -340,7 +339,7 @@ export function FullOutputsView() {
   if (loading) {
     return (
       <section className="rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-card)] px-6 py-14 text-center text-sm text-[var(--theme-muted)] shadow-[0_24px_80px_var(--theme-shadow)]">
-        {t('loading.outputs')}
+        Loading outputs…
       </section>
     )
   }
@@ -387,7 +386,7 @@ export function FullOutputsView() {
 
       <div className="mt-4 flex items-center justify-between px-1">
         <div>
-          <h2 className="text-lg font-semibold text-[var(--theme-text)]">{t('page.outputs')}</h2>
+          <h2 className="text-lg font-semibold text-[var(--theme-text)]">Outputs</h2>
           <p className="mt-1 text-sm text-[var(--theme-muted-2)]">
             {outputs.length} recent {outputs.length === 1 ? 'run' : 'runs'} across the team
           </p>

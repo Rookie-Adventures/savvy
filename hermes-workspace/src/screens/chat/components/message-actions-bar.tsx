@@ -8,7 +8,6 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { t } from '@/lib/i18n'
 import { writeTextToClipboard } from '@/lib/clipboard'
 import { cn } from '@/lib/utils'
 
@@ -89,7 +88,7 @@ export function MessageActionsBar({
               <HugeiconsIcon icon={RefreshIcon} size={14} strokeWidth={1.6} />
               <span className="text-[11px] font-medium">Retry</span>
             </TooltipTrigger>
-            <TooltipContent side="top">{t('chat.resendFailedMessage')}</TooltipContent>
+            <TooltipContent side="top">Resend failed message</TooltipContent>
           </TooltipRoot>
         </TooltipProvider>
       )}

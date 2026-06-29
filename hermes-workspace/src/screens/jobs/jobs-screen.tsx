@@ -20,7 +20,6 @@ import { CreateJobDialog } from './create-job-dialog'
 import { EditJobDialog } from './edit-job-dialog'
 import type { ClaudeJob } from '@/lib/jobs-api'
 import { toast } from '@/components/ui/toast'
-import { t } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import {
   createJob,
@@ -329,35 +328,35 @@ export function JobsScreen() {
     mutationFn: pauseJob,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
-      toast(t('toast.jobPaused'))
+      toast('Job paused')
     },
   })
   const resumeMutation = useMutation({
     mutationFn: resumeJob,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
-      toast(t('toast.jobResumed'))
+      toast('Job resumed')
     },
   })
   const triggerMutation = useMutation({
     mutationFn: triggerJob,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
-      toast(t('toast.jobTriggered'))
+      toast('Job triggered')
     },
   })
   const deleteMutation = useMutation({
     mutationFn: deleteJob,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
-      toast(t('toast.jobDeleted'))
+      toast('Job deleted')
     },
   })
   const createMutation = useMutation({
     mutationFn: createJob,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
-      toast(t('toast.jobCreated'))
+      toast('Job created')
       setShowCreate(false)
     },
     onError: (error) => {
@@ -381,7 +380,7 @@ export function JobsScreen() {
     }) => updateJob(payload.jobId, payload.updates),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
-      toast(t('toast.jobUpdated'))
+      toast('Job updated')
       setEditingJob(null)
     },
     onError: (error) => {
@@ -473,7 +472,7 @@ export function JobsScreen() {
             />
             <input
               type="text"
-              placeholder={t('placeholder.searchJobs')}
+              placeholder="Search jobs..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] py-1.5 pl-8 pr-3 text-xs text-[var(--theme-text)] placeholder:text-[var(--theme-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
@@ -512,7 +511,7 @@ export function JobsScreen() {
                 size={32}
                 className="mb-3 opacity-40"
               />
-              <p className="text-sm font-medium">{t('jobs.noScheduledJobs')}</p>
+              <p className="text-sm font-medium">No scheduled jobs</p>
               <p className="mt-1 text-xs">
                 No cron jobs found across Hermes profiles
               </p>
@@ -528,7 +527,7 @@ export function JobsScreen() {
                   onTrigger={(id) => triggerMutation.mutate(id)}
                   onEdit={(selectedJob) => setEditingJob(selectedJob)}
                   onDelete={(id) => {
-                    if (confirm(t('confirm.deleteJob', { name: job.name }))) {
+                    if (confirm(`Delete job "${job.name}"?`)) {
                       deleteMutation.mutate(id)
                     }
                   }}

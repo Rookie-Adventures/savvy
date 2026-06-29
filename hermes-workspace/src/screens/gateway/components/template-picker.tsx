@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react'
-import { t } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import {
   type WorkflowTemplate,
@@ -107,7 +106,7 @@ export function TemplatePicker({ onSelect, onClose }: TemplatePickerProps) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('placeholder.searchTemplates')}
+            placeholder="Search templates..."
             className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
             autoFocus
           />
@@ -154,7 +153,7 @@ export function TemplatePicker({ onSelect, onClose }: TemplatePickerProps) {
 
           {filtered.length === 0 && (
             <p className="py-8 text-center text-sm text-neutral-400">
-              {t('empty.noTemplates')}
+              No templates found
             </p>
           )}
         </div>

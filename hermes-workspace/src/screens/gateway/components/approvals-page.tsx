@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchGatewayApprovals, type GatewayApprovalEntry } from '@/lib/gateway-api'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import type { ApprovalRequest } from '../lib/approvals-store'
 
 type ApprovalsPageProps = {
@@ -218,7 +217,7 @@ export function ApprovalsPage({ approvals, onApprove, onDeny }: ApprovalsPagePro
         <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-3 shadow-sm dark:border-neutral-800 dark:bg-[var(--theme-panel,#111520)]">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">{t('page.approvals')}</h2>
+              <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">Approvals</h2>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">Live gateway queue with local approval history</p>
             </div>
             <div className="flex items-center gap-2">
@@ -240,7 +239,7 @@ export function ApprovalsPage({ approvals, onApprove, onDeny }: ApprovalsPagePro
         <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)]">
           <section className="min-h-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-[var(--theme-panel,#111520)]">
             <div className="border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{t('page.pendingQueue')}</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">Pending Queue</h3>
             </div>
 
             <div className="h-full max-h-full overflow-y-auto p-3 sm:p-4">
@@ -251,7 +250,7 @@ export function ApprovalsPage({ approvals, onApprove, onDeny }: ApprovalsPagePro
               {!loading && pendingRows.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-14 text-center">
                   <span className="text-3xl">✅</span>
-                  <p className="mt-2 text-sm font-medium text-neutral-700 dark:text-neutral-200">{t('gateway.noPendingApprovals')}</p>
+                  <p className="mt-2 text-sm font-medium text-neutral-700 dark:text-neutral-200">No pending approvals</p>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">Agents can continue without intervention</p>
                 </div>
               ) : null}
@@ -325,8 +324,8 @@ export function ApprovalsPage({ approvals, onApprove, onDeny }: ApprovalsPagePro
 
           <section className="min-h-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-[var(--theme-panel,#111520)]">
             <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{t('page.history')}</h3>
-              <span className="text-[10px] text-neutral-400">{t('gateway.fromApprovalsStore')}</span>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">History</h3>
+              <span className="text-[10px] text-neutral-400">From approvals store</span>
             </div>
 
             <div className="h-full max-h-full overflow-y-auto p-3 sm:p-4">

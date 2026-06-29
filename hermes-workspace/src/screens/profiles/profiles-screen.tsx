@@ -18,7 +18,6 @@ import { Button } from '@/components/ui/button'
 import { DialogContent, DialogRoot, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
-import { t } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 type ProfileSummary = {
@@ -210,7 +209,7 @@ export function ProfilesScreen() {
         ...(wizardModel ? { model: wizardModel } : {}),
         ...(wizardProvider ? { provider: wizardProvider } : {}),
       })
-      toast(t('toast.createdProfile', { name: newProfileName.trim() }), { type: 'success' })
+      toast(`Created profile ${newProfileName.trim()}`, { type: 'success' })
       setCreateOpen(false)
       resetWizard()
       await refreshProfiles()
@@ -228,7 +227,7 @@ export function ProfilesScreen() {
     setBusyName(name)
     try {
       await postJson('/api/profiles/activate', { name })
-      toast(t('toast.activatedProfile', { name }), { type: 'success' })
+      toast(`Activated profile ${name}`, { type: 'success' })
       await refreshProfiles()
     } catch (error) {
       toast(
@@ -243,13 +242,13 @@ export function ProfilesScreen() {
   async function handleDelete(name: string) {
     if (
       typeof window !== 'undefined' &&
-      !window.confirm(t('confirm.deleteProfile', { name }))
+      !window.confirm(`Delete profile ${name}?`)
     )
       return
     setBusyName(name)
     try {
       await postJson('/api/profiles/delete', { name })
-      toast(t('toast.deletedProfile', { name }), { type: 'success' })
+      toast(`Deleted profile ${name}`, { type: 'success' })
       await refreshProfiles()
     } catch (error) {
       toast(
@@ -269,7 +268,7 @@ export function ProfilesScreen() {
         oldName: renameTarget.name,
         newName: renameValue.trim(),
       })
-      toast(t('toast.renamed', { from: renameTarget.name, to: renameValue.trim() }), {
+      toast(`Renamed ${renameTarget.name} → ${renameValue.trim()}`, {
         type: 'success',
       })
       setRenameTarget(null)
@@ -293,7 +292,7 @@ export function ProfilesScreen() {
         name: detailsName,
         patch: { description: descriptionDraft.trim() || null },
       })
-      toast(t('toast.savedDescription', { name: detailsName }), { type: 'success' })
+      toast(`Saved description for ${detailsName}`, { type: 'success' })
       await Promise.all([
         refreshProfiles(),
         queryClient.invalidateQueries({ queryKey: ['profiles', 'read', detailsName] }),
@@ -947,7 +946,7 @@ export function ProfilesScreen() {
                   <textarea
                     value={descriptionDraft}
                     onChange={(event) => setDescriptionDraft(event.target.value)}
-                    placeholder={t('placeholder.profileDescription')}
+                    placeholder="What this profile is for, how it should behave, or what makes it different"
                     className="min-h-[96px] w-full rounded-lg border border-primary-200 bg-primary-100/70 p-3 text-sm text-primary-900 outline-none transition-colors focus:border-accent-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
                   />
                   <p className="mt-2 text-xs text-primary-400 dark:text-neutral-500">

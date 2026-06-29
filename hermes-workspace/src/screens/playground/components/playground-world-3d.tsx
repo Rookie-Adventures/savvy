@@ -16,7 +16,6 @@ import { loadAvatarConfig, type AvatarConfig } from '../lib/avatar-config'
 import { PlaygroundNpcGlb } from './playground-npc-glb'
 import { SpeechBubble } from './speech-bubble'
 import { useHermesWorldSettings } from './hermesworld-settings'
-import { t } from '@/lib/i18n'
 
 /**
  * Module-level GLB presence probe. Returns:
@@ -3122,7 +3121,7 @@ function PerfDebugOverlay() {
   return (
     <Html fullscreen prepend>
       <div style={{ position: 'fixed', left: 12, top: 12, zIndex: 1000, width: 190, border: '1px solid rgba(94,234,212,.35)', borderRadius: 14, background: 'rgba(2,8,13,.78)', color: '#dffcff', padding: '10px 12px', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11, lineHeight: 1.55, pointerEvents: 'none', boxShadow: '0 14px 40px rgba(0,0,0,.35)', backdropFilter: 'blur(10px)' }}>
-        <div style={{ color: '#facc15', fontWeight: 900, letterSpacing: '.12em', textTransform: 'uppercase', marginBottom: 4 }}>{t('playground.perfDebug')}</div>
+        <div style={{ color: '#facc15', fontWeight: 900, letterSpacing: '.12em', textTransform: 'uppercase', marginBottom: 4 }}>Perf debug</div>
         <div>FPS: {stats.fps}</div>
         <div>Frame: {stats.frameMs}ms</div>
         <div>Max: {stats.maxFrameMs}ms</div>

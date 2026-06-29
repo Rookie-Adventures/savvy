@@ -36,7 +36,6 @@ import {
   useChatSettingsStore,
 } from '@/hooks/use-chat-settings'
 import { cn } from '@/lib/utils'
-import { t } from '@/lib/i18n'
 import { CHAT_SUBMIT_SELECTION_EVENT } from '@/screens/chat/chat-events'
 
 const WORDS_PER_TICK = 4
@@ -1366,7 +1365,7 @@ function MarkdownDocumentCard({
           <div className="truncate text-sm font-medium text-primary-900">
             {title}
           </div>
-          <div className="text-[11px] text-primary-600">{t('files.markdownDocument')}</div>
+          <div className="text-[11px] text-primary-600">Markdown document</div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {hasContent ? (
@@ -1457,7 +1456,7 @@ function extractStandaloneMarkdownFence(text: string): string | null {
 function MarkdownMessageCard({ content }: { content: string }) {
   return (
     <MarkdownDocumentCard
-      title={t('ui.markdownPreview')}
+      title="Markdown preview"
       content={content}
       className="max-w-full"
     />
@@ -1962,7 +1961,7 @@ function InlineToolSectionItem({
           {/* Fallback when no args or output available */}
           {!isArtifact && !hasInputData && !hasOutputData && !isRunning && (
             <div className="text-[10px] text-primary-400 italic">
-              {t('empty.noDetailForTool')}
+              No detail available for this tool call
             </div>
           )}
         </div>

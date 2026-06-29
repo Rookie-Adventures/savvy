@@ -59,7 +59,7 @@ import {
 
 // ── Language ────────────────────────────────────────────────────────────
 
-import { LOCALE_LABELS,  getLocale, setLocale } from '@/lib/i18n'
+import { LOCALE_LABELS, getLocale, setLocale, t } from '@/lib/i18n'
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -74,14 +74,14 @@ type SectionId =
   | 'language'
 
 const SECTIONS: Array<{ id: SectionId; label: string; icon: any }> = [
-  { id: 'claude', label: 'Model & Provider', icon: CloudIcon },
-  { id: 'agent', label: 'Agent', icon: Settings02Icon },
-  { id: 'voice', label: 'Voice', icon: VolumeHighIcon },
-  { id: 'display', label: 'Display', icon: PaintBoardIcon },
-  { id: 'appearance', label: 'Theme', icon: PaintBoardIcon },
-  { id: 'chat', label: 'Chat', icon: MessageMultiple01Icon },
-  { id: 'notifications', label: 'Alerts', icon: Notification03Icon },
-  { id: 'language', label: 'Language', icon: MessageMultiple01Icon },
+  { id: 'claude', label: t('settings.modelAndProvider'), icon: CloudIcon },
+  { id: 'agent', label: t('settings.agentSection'), icon: Settings02Icon },
+  { id: 'voice', label: t('settings.voiceSection'), icon: VolumeHighIcon },
+  { id: 'display', label: t('settings.displaySection'), icon: PaintBoardIcon },
+  { id: 'appearance', label: t('settings.themeSection'), icon: PaintBoardIcon },
+  { id: 'chat', label: t('settings.chatSection'), icon: MessageMultiple01Icon },
+  { id: 'notifications', label: t('settings.alertsSection'), icon: Notification03Icon },
+  { id: 'language', label: t('settings.languageSectionTitle'), icon: MessageMultiple01Icon },
 ]
 
 const DARK_ENTERPRISE_THEMES = new Set<ThemeId>([
@@ -109,7 +109,7 @@ function SectionHeader({
   return (
     <div className="mb-2">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
-        Settings
+        {t('settings.title')}
       </p>
       <h3 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
         {title}
@@ -1449,18 +1449,18 @@ function AppearanceContent() {
   return (
     <div className="space-y-4">
       <SectionHeader
-        title="Appearance"
+        title={t('settings.appearance')}
         description="Theme and color accents."
       />
       <div className={SETTINGS_CARD_CLASS}>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
-          Theme Mode
+          {t('settings.themeMode')}
         </p>
         <div className="inline-flex rounded-lg border border-primary-200 p-1">
           {[
-            { value: 'light', label: 'Light', icon: Sun01Icon },
-            { value: 'dark', label: 'Dark', icon: Moon01Icon },
-            { value: 'system', label: 'System', icon: ComputerIcon },
+            { value: 'light', label: t('settings.light'), icon: Sun01Icon },
+            { value: 'dark', label: t('settings.dark'), icon: Moon01Icon },
+            { value: 'system', label: t('settings.system'), icon: ComputerIcon },
           ].map((option) => (
             <button
               key={option.value}
@@ -1482,14 +1482,14 @@ function AppearanceContent() {
       {/* Accent color removed — themes control accent */}
       <div className={SETTINGS_CARD_CLASS}>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
-          Enterprise Theme
+          {t('settings.enterpriseTheme')}
         </p>
         <EnterpriseThemePicker />
       </div>
       <div className={SETTINGS_CARD_CLASS}>
         <Row
-          label="System metrics footer"
-          description="Show a persistent footer with CPU, RAM, disk, and Hermes Agent status."
+          label={t('settings.systemMetricsFooter')}
+          description={t('settings.showSystemMetricsFooter')}
         >
           <Switch
             checked={settings.showSystemMetricsFooter}
@@ -1810,7 +1810,7 @@ function ChatContent() {
   return (
     <div className="space-y-4">
       <SectionHeader
-        title="Chat"
+        title={t('settings.chatSection')}
         description="Message visibility and response loader style."
       />
       <div className={SETTINGS_CARD_CLASS}>
@@ -1876,7 +1876,7 @@ function ChatContent() {
           >
             <option value="comfortable">Comfortable (900px)</option>
             <option value="wide">Wide (1200px)</option>
-            <option value="full">Full width</option>
+            <option value="full">{t('settings.fullWidth')}</option>
           </select>
         </Row>
         <Row

@@ -44,6 +44,10 @@ def generate_access_token(
 
 def verify_access_token(token: str) -> dict | None:
     try:
+        from urllib.parse import unquote
+        # URL decode the token to restore Base64 padded chars like %3D%3D into ==
+        token = unquote(token)
+
         parts = token.split(".")
         if len(parts) != 2:
             return None

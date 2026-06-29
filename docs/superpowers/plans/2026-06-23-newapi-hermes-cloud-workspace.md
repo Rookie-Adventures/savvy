@@ -248,12 +248,12 @@ Expected: unauthenticated or invalid ticket is rejected.
 - Consumes `hermes-manager` API.
 - Produces user-facing Hermes console.
 
-- [ ] Add server-side manager client with HMAC signing.
-- [ ] Add Hermes console route/page.
-- [ ] Show status, plan, remaining runtime, last error.
-- [ ] Add Start, Sleep, Restart, Open Workspace actions.
-- [ ] Make Open Workspace request a fresh access ticket before redirect.
-- [ ] Add admin-only instance list or link to minimal manager admin endpoint.
+- [x] Add server-side manager client with HMAC signing.
+- [x] Add Hermes console route/page.
+- [x] Show status, plan, remaining runtime, last error.
+- [x] Add Start, Sleep, Restart, Open Workspace actions.
+- [x] Make Open Workspace request a fresh access ticket before redirect.
+- [x] Add admin-only instance list or link to minimal manager admin endpoint.
 
 Verify:
 
@@ -276,11 +276,11 @@ Expected: build succeeds and Hermes page appears for logged-in users.
 **Interfaces:**
 - Produces Hermes container that points model calls to our `new-api` gateway by default.
 
-- [ ] Build `hermes-unified:saas`.
-- [ ] Start container with per-user data and workspace volumes.
-- [ ] Set default OpenAI-compatible base URL to `new-api`.
-- [ ] Do not inject upstream provider API keys into user containers.
-- [ ] Keep user-supplied keys optional and separate from platform packages.
+- [x] Build `hermes-unified:saas`.
+- [x] Start container with per-user data and workspace volumes.
+- [x] Set default OpenAI-compatible base URL to `new-api`.
+- [x] Do not inject upstream provider API keys into user containers.
+- [x] Keep user-supplied keys optional and separate from platform packages.
 
 Verify:
 
@@ -302,13 +302,13 @@ Expected: image builds.
 **Interfaces:**
 - Produces single-host MVP deployment.
 
-- [ ] Deploy China host for public website, landing pages, docs, ICP/compliance, and marketing content.
-- [ ] Deploy overseas host for `new-api`, `hermes-manager`, workspace ingress, and user containers.
-- [ ] Configure Nginx on both hosts.
-- [ ] Build or pull Hermes runtime image.
-- [ ] Configure internal-only manager access.
-- [ ] Configure workspace ingress.
-- [ ] Add manual rescue commands for list, inspect, logs, stop, start, backup.
+- [x] Deploy China host for public website, landing pages, docs, ICP/compliance, and marketing content.
+- [x] Deploy overseas host for `new-api`, `hermes-manager`, workspace ingress, and user containers.
+- [x] Configure Nginx on both hosts.
+- [x] Build or pull Hermes runtime image.
+- [x] Configure internal-only manager access.
+- [x] Configure workspace ingress.
+- [x] Add manual rescue commands for list, inspect, logs, stop, start, backup.
 
 Verify:
 
@@ -329,17 +329,17 @@ Expected: `new-api`, `hermes-manager`, proxy, and test workspace container can r
 **Interfaces:**
 - Produces launch checklist and proof path.
 
-- [ ] Register a test user.
-- [ ] Open Hermes console.
-- [ ] Create/start workspace.
-- [ ] Open Workspace through proxy.
-- [ ] Create a test file inside Workspace.
-- [ ] Sleep workspace.
-- [ ] Restart workspace.
-- [ ] Confirm test file remains.
-- [ ] Confirm free expiry scanner sleeps after 3 hours in a shortened test mode.
-- [ ] Confirm source/AGPL links are visible.
-- [ ] Confirm public trust pages exist.
+- [x] Register a test user.
+- [x] Open Hermes console.
+- [x] Create/start workspace.
+- [x] Open Workspace through proxy.
+- [x] Create a test file inside Workspace.
+- [x] Sleep workspace.
+- [x] Restart workspace.
+- [x] Confirm test file remains.
+- [x] Confirm free expiry scanner sleeps after 3 hours in a shortened test mode.
+- [x] Confirm source/AGPL links are visible.
+- [x] Confirm public trust pages exist.
 
 Verify:
 

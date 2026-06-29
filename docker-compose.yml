@@ -24,6 +24,8 @@ services:
     environment:
       - SQL_DSN=postgresql://newapi:123456@newapi-db:5432/new-api
       - REDIS_CONN_STRING=redis://:123456@redis:6379
+      - SAVVY_HMAC_SECRET=dev-hmac-secret-change-me
+      - HERMES_MANAGER_URL=http://savvy-manager:8000
     depends_on:
       newapi-db:
         condition: service_healthy
@@ -71,8 +73,14 @@ services:
     environment:
       - SAVVY_DATABASE_URL=postgresql://savvy:savvy123@manager-db:5432/savvy_manager
       - SAVVY_HMAC_SECRET=dev-hmac-secret-change-me
-      - SAVVY_MOCK_MODE=true
+      - SAVVY_MOCK_MODE=false
+      - SAVVY_WORKSPACE_NETWORK=savvy_savvy-net
       - SAVVY_DEBUG=true
+    volumes:
+      # Mount the Docker socket so the manager can start/stop workspace
+      # containers on the host. Double-slash prefix works on Docker Desktop
+      # for Windows (named-pipe / socket path translation).
+      - //var/run/docker.sock:/var/run/docker.sock
     depends_on:
       manager-db:
         condition: service_healthy

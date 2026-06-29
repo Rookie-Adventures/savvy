@@ -1,8 +1,39 @@
+import os
+
 import docker
-from docker.errors import NotFound, APIError
+from docker.errors import NotFound, APIError, DockerException
 from .config import settings
 
-client = docker.from_env() if not settings.mock_mode else None
+# Lazily initialized so importing this module never touches the Docker daemon.
+# (The container may run without a Docker socket mounted in mock mode.)
+_client = None
+
+
+def _get_client():
+    """Return a Docker client, created on first use. None in mock mode."""
+    global _client
+    if settings.mock_mode:
+        return None
+    if _client is None:
+        _client = docker.from_env()
+    return _client
+
+
+def _client_or_none():
+    """Like _get_client() but returns None if the daemon is unreachable,
+    so callers can degrade gracefully instead of raising."""
+    try:
+        return _get_client()
+    except DockerException:
+        return None
+
+
+def _workspace_network() -> str | None:
+    """Docker network that workspace containers must join so Nginx (running in
+    the compose stack) can resolve them by container name. Configurable via env,
+    defaults to the network that docker-compose creates for this project
+    (<project>_<network-name> = savvy_savvy-net)."""
+    return os.environ.get("SAVVY_WORKSPACE_NETWORK", "savvy_savvy-net")
 
 
 def create_container(
@@ -44,6 +75,9 @@ def create_container(
         # Safe fallback to FREE if plan is invalid/unsupported
         limit_cfg = limits.get(plan, limits["FREE"])
 
+        client = _client_or_none()
+        if client is None:
+            return {"error": "docker daemon unavailable (socket not mounted?)"}
         container = client.containers.run(
             "hermes-unified:saas",
             name=container_name,
@@ -56,6 +90,7 @@ def create_container(
                 "expires_at": expires_at or "",
             },
             detach=True,
+            network=_workspace_network(),
             mem_limit=limit_cfg["mem_limit"],
             memswap_limit=limit_cfg["mem_limit"],  # memory swap = memory limit
             cpu_quota=limit_cfg["cpu_quota"],
@@ -73,11 +108,18 @@ def create_container(
         return {"id": container.id, "name": container.name, "status": container.status}
     except APIError as e:
         return {"error": str(e)}
+    except DockerException as e:
+        # Daemon unreachable / socket not mounted: surface a clear error instead of 500.
+        return {"error": f"docker daemon unavailable: {e}"}
 
 
 def stop_container(container_name: str) -> bool:
     if settings.mock_mode:
         return True
+
+    client = _client_or_none()
+    if client is None:
+        return False
 
     try:
         container = client.containers.get(container_name)
@@ -93,6 +135,10 @@ def start_container(container_name: str) -> bool:
     if settings.mock_mode:
         return True
 
+    client = _client_or_none()
+    if client is None:
+        return False
+
     try:
         container = client.containers.get(container_name)
         container.start()
@@ -107,6 +153,10 @@ def remove_container(container_name: str) -> bool:
     if settings.mock_mode:
         return True
 
+    client = _client_or_none()
+    if client is None:
+        return False
+
     try:
         container = client.containers.get(container_name)
         container.remove(force=True)
@@ -119,6 +169,10 @@ def remove_container(container_name: str) -> bool:
 
 def list_managed_containers() -> list[dict]:
     if settings.mock_mode:
+        return []
+
+    client = _client_or_none()
+    if client is None:
         return []
 
     try:

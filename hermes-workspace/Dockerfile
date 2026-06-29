@@ -17,7 +17,11 @@ WORKDIR /app
 
 # Install deps (cache-friendly: copy only manifests first)
 COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile
+RUN echo "only-built-dependencies[]=esbuild" > .npmrc && \
+    echo "only-built-dependencies[]=unrs-resolver" >> .npmrc && \
+    echo "only-built-dependencies[]=electron" >> .npmrc && \
+    echo "only-built-dependencies[]=electron-winstaller" >> .npmrc && \
+    pnpm install --frozen-lockfile
 
 # Copy sources and build
 COPY . .

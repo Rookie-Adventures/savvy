@@ -82,6 +82,7 @@ def create_container(
             "hermes-unified:saas",
             name=container_name,
             volumes={volume_name: {"bind": "/workspace", "mode": "rw"}},
+            environment={"HERMES_ALLOW_INSECURE_REMOTE": "1"},
             labels={
                 "hermes.managed": "true",
                 "user_id": user_id,

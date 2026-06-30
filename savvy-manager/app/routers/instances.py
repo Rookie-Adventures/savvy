@@ -54,7 +54,28 @@ async def start_instance(instance_id: str, auth=Depends(require_hmac), db: Sessi
 
     docker_result = start_container(inst.container_name)
     if not docker_result:
-        raise HTTPException(status_code=500, detail="Failed to start container")
+        # Fallback: container might not exist yet. Try creating it first.
+        from ..docker_manager import create_container
+        create_res = create_container(
+            container_name=inst.container_name,
+            volume_name=inst.volume_name,
+            user_id=inst.user_id,
+            workspace_id=inst.instance_id,
+            plan=inst.plan.name if hasattr(inst.plan, "name") else str(inst.plan),
+            expires_at=expires_at.isoformat() if expires_at else None,
+        )
+        if "error" in create_res:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to create container: {create_res['error']}",
+            )
+
+        # Try starting again
+        if not start_container(inst.container_name):
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to start container after creation",
+            )
 
     inst.status = InstanceStatus.RUNNING
     inst.started_at = now

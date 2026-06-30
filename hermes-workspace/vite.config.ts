@@ -432,6 +432,7 @@ const config = defineConfig(({ mode, command }) => {
   }
 
   return {
+    base: '/workspace/',
     test: {
       exclude: [
         '**/node_modules/**',

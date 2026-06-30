@@ -109,7 +109,12 @@ async function tryServeStatic(req, res) {
     req.url || '/',
     `http://${req.headers.host || 'localhost'}`,
   )
-  const pathname = decodeURIComponent(url.pathname)
+  let pathname = decodeURIComponent(url.pathname)
+
+  // Strip sub-path prefix /workspace if present to map assets/images correctly to CLIENT_DIR
+  if (pathname.startsWith('/workspace')) {
+    pathname = pathname.substring(10) || '/'
+  }
 
   // Prevent directory traversal
   if (pathname.includes('..')) return false

@@ -8,6 +8,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "41000-41099:41000-41099"
     volumes:
       - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./deploy/ssl:/etc/nginx/ssl:ro
@@ -80,6 +81,10 @@ services:
       - SAVVY_DATABASE_URL=postgresql://savvy:savvy123@manager-db:5432/savvy_manager
       - SAVVY_HMAC_SECRET=change-me-in-production
       - SAVVY_MOCK_MODE=false
+      - SAVVY_PUBLIC_HOST=localhost
+      - SAVVY_WORKSPACE_PORT_START=41000
+      - SAVVY_WORKSPACE_PORT_END=41099
+      - SAVVY_WORKSPACE_NETWORK=savvy_savvy-net
       - SAVVY_DEBUG=false
     depends_on:
       manager-db:

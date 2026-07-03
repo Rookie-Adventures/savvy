@@ -38,11 +38,28 @@ COPY --from=workspace_builder --chown=hermes:hermes /workspace-src/server-entry.
 COPY --from=workspace_builder --chown=hermes:hermes /workspace-src/skills ./skills
 
 # ─── Stage 3: s6-overlay Process Supervision Wiring ──────────────────────
+# Declare 'gateway' service: runs the Hermes messaging+OpenAI-compat gateway
+# (api_server on :8642 when API_SERVER_ENABLED=1). Base image ships a
+# gateway-default s6 slot that stays 'down' by default (interactive TUI is
+# the default CMD); we declare our own always-up 'gateway' service so
+# workspace server finds :8642 reachable without a TUI.
+RUN mkdir -p /etc/s6-overlay/s6-rc.d/gateway /etc/s6-overlay/s6-rc.d/gateway/dependencies.d && \
+    echo "longrun" > /etc/s6-overlay/s6-rc.d/gateway/type && \
+    touch /etc/s6-overlay/s6-rc.d/gateway/dependencies.d/base && \
+    touch /etc/s6-overlay/s6-rc.d/user/contents.d/gateway
+RUN printf '#!/command/with-contenv sh\n\
+export HOME=/opt/data\n\
+cd /opt/data\n\
+. /opt/hermes/.venv/bin/activate\n\
+exec s6-setuidgid hermes hermes gateway run --replace\n' > /etc/s6-overlay/s6-rc.d/gateway/run && \
+    chmod +x /etc/s6-overlay/s6-rc.d/gateway/run
+
 # Declare 'workspace' as a new service directory for s6-overlay
 RUN mkdir -p /etc/s6-overlay/s6-rc.d/workspace /etc/s6-overlay/s6-rc.d/workspace/dependencies.d && \
     # 1. Define service type as 'longrun'
     echo "longrun" > /etc/s6-overlay/s6-rc.d/workspace/type && \
-    # 2. Set dependency on 'dashboard' (workspace must wait until agent is fully ready)
+    # 2. Set dependencies: gateway (:8642) + dashboard (:9119) must be ready
+    touch /etc/s6-overlay/s6-rc.d/workspace/dependencies.d/gateway && \
     touch /etc/s6-overlay/s6-rc.d/workspace/dependencies.d/dashboard && \
     # 3. Enable the service by linking it inside the 'user' bundle
     touch /etc/s6-overlay/s6-rc.d/user/contents.d/workspace

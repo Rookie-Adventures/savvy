@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from ..auth import require_hmac
+from ..config import settings
 from ..database import get_db
 from ..models import Instance, WorkspaceState, InstanceStatus, PlanType
 from ..docker_manager import start_container, stop_container
@@ -132,10 +133,27 @@ async def issue_access_token(instance_id: str, auth=Depends(require_hmac), db: S
     if inst.status != InstanceStatus.RUNNING:
         raise HTTPException(status_code=409, detail="Instance is not running")
 
+    # 回填：升级前已存在的旧行 assigned_port 为 NULL
+    if not inst.assigned_port:
+        used_ports = {
+            p[0] for p in db.query(Instance.assigned_port)
+            .filter(Instance.assigned_port.isnot(None)).all() if p[0]
+        }
+        port = next(
+            (p for p in range(settings.workspace_port_start, settings.workspace_port_end + 1)
+             if p not in used_ports), None,
+        )
+        if port is None:
+            raise HTTPException(status_code=503, detail="No available workspace ports")
+        inst.assigned_port = port
+        db.commit()
+
     result = generate_access_token(
         instance_id=instance_id,
         user_id=auth["user_id"],
         expires_in_minutes=30,
+        workspace_host=settings.public_host,
+        workspace_port=inst.assigned_port,
     )
 
     return AccessTokenResponse(

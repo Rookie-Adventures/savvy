@@ -82,7 +82,24 @@ def create_container(
             "hermes-unified:saas",
             name=container_name,
             volumes={volume_name: {"bind": "/workspace", "mode": "rw"}},
-            environment={"HERMES_ALLOW_INSECURE_REMOTE": "1"},
+            environment={
+                "HERMES_ALLOW_INSECURE_REMOTE": "1",
+                "HOST": "0.0.0.0",
+                # 启用容器内 OpenAI-compat backend（:8642），workspace server 经
+                # HERMES_API_URL=http://127.0.0.1:8642 调用。API_SERVER_KEY 是
+                # api_server 鉴权密钥（≥16 字符），HERMES_API_TOKEN 是 workspace
+                # 调用时携带的 bearer（两值必须一致）。回环内网，固定 secret 即可。
+                "API_SERVER_ENABLED": "1",
+                "API_SERVER_KEY": "saas-dev-api-server-secret-change-me-32byte",
+                "HERMES_API_TOKEN": "saas-dev-api-server-secret-change-me-32byte",
+                # dashboard backs the workspace's Sessions/Skills/Config APIs (:9119)
+                "HERMES_DASHBOARD": "1",
+                # dashboard bind 回环避开 auth gate（非回环需 auth provider）
+                "HERMES_DASHBOARD_HOST": "127.0.0.1",
+            },
+            # CMD 保持 base 默认 TUI；tty=True 让 TUI 等待存续（仅占位保活）。
+            # gateway + dashboard 由 s6 服务（Dockerfile.unified）supervise，独立于 CMD。
+            tty=True,
             labels={
                 "hermes.managed": "true",
                 "user_id": user_id,

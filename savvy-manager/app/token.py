@@ -15,6 +15,8 @@ def generate_access_token(
     instance_id: str,
     user_id: str,
     expires_in_minutes: int = 30,
+    workspace_host: str = "localhost",
+    workspace_port: int = 41000,
 ) -> dict:
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(minutes=expires_in_minutes)
@@ -38,7 +40,7 @@ def generate_access_token(
     return {
         "token": token,
         "expires_at": expires_at.isoformat(),
-        "workspace_url": f"/workspace/{user_id}/",
+        "workspace_url": f"http://{workspace_host}:{workspace_port}/",
     }
 
 

@@ -7,6 +7,7 @@ services:
     image: nginx:alpine
     ports:
       - "80:80"
+      - "41000-41099:41000-41099"
     volumes:
       - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
@@ -75,6 +76,9 @@ services:
       - SAVVY_HMAC_SECRET=dev-hmac-secret-change-me
       - SAVVY_MOCK_MODE=false
       - SAVVY_WORKSPACE_NETWORK=savvy_savvy-net
+      - SAVVY_PUBLIC_HOST=localhost
+      - SAVVY_WORKSPACE_PORT_START=41000
+      - SAVVY_WORKSPACE_PORT_END=41099
       - SAVVY_DEBUG=true
     volumes:
       # Mount the Docker socket so the manager can start/stop workspace

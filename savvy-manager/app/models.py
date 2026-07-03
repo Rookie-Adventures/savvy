@@ -1,6 +1,6 @@
 from enum import Enum
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, DateTime, Enum as SQLEnum, JSON, ForeignKey, Integer
+from sqlalchemy import Column, String, DateTime, Enum as SQLEnum, JSON, ForeignKey, Integer, Text
 from sqlalchemy.orm import relationship
 from .database import Base
 
@@ -40,6 +40,9 @@ class Instance(Base):
     container_name = Column(String)
     volume_name = Column(String)
     assigned_port = Column(Integer, nullable=True)
+    provider_config_enc = Column(Text, nullable=True)
+    provider_config_alg = Column(String(32), nullable=True)
+    provider_key_set_at = Column(DateTime, nullable=True)
     started_at = Column(DateTime, nullable=True)
     expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

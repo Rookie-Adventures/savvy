@@ -48,6 +48,16 @@ temp/
 package-lock.json
 yarn.lock
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.db
+.venv/
+venv/
+
 # Test coverage
 coverage/
 .nyc_output/
@@ -60,3 +70,7 @@ dist-electron/
 *.pid
 *.seed
 *.pid.lock
+
+# Claude Code worktrees (local agent isolation, not for VCS)
+.claude/worktrees/
+

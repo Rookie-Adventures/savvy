@@ -38,3 +38,15 @@ export interface HermesAccessToken {
   workspaceUrl: string
   expiresAt: string
 }
+
+export interface HermesProviderState {
+  source: 'ours' | 'user' | 'none'
+  model: string | null
+  keySetAt: string | null
+}
+
+export interface StartHermesInstancePayload {
+  providerApiKey: string
+  providerBaseUrl?: string
+  providerModel?: string
+}

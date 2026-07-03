@@ -29,35 +29,71 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Dialog } from '@/components/dialog'
+import { PasswordInput } from '@/components/password-input'
 import {
   createHermesInstance,
   ensureHermesUser,
   getHermesAccessToken,
   getHermesInstance,
+  getHermesProviderState,
+  revokeHermesProviderKey,
   sleepHermesInstance,
   startHermesInstance,
 } from './api'
-import type { HermesInstance } from './types'
+import type { HermesInstance, StartHermesInstancePayload } from './types'
 
 function InstanceStatus({ instance }: { instance: HermesInstance }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [openingWorkspace, setOpeningWorkspace] = useState(false)
+  const [startOpen, setStartOpen] = useState(false)
+  const [revokeOpen, setRevokeOpen] = useState(false)
+  const [providerApikey, setProviderApikey] = useState('')
 
   const invalidateInstance = () =>
     queryClient.invalidateQueries({ queryKey: ['hermes', 'instance'] })
 
+  const invalidateProviderState = () =>
+    queryClient.invalidateQueries({
+      queryKey: ['hermes', 'providerState', instance.id],
+    })
+
+  const providerState = useQuery({
+    queryKey: ['hermes', 'providerState', instance.id],
+    queryFn: () => getHermesProviderState(instance.id),
+    enabled: instance.status === 'running',
+  })
+
   const startMutation = useMutation({
-    mutationFn: () => startHermesInstance(instance.id),
+    mutationFn: (payload: StartHermesInstancePayload) =>
+      startHermesInstance(instance.id, payload),
     onSuccess: (res) => {
       if (res.success) {
         toast.success(t('Workspace started'))
+        setStartOpen(false)
+        setProviderApikey('')
         invalidateInstance()
       } else {
         toast.error(res.message || t('Failed to start workspace'))
       }
     },
     onError: () => toast.error(t('Failed to start workspace')),
+  })
+
+  const revokeMutation = useMutation({
+    mutationFn: () => revokeHermesProviderKey(instance.id),
+    onSuccess: (res) => {
+      if (res.success) {
+        toast.success(t('Revoke provider key'))
+        setRevokeOpen(false)
+        invalidateProviderState()
+        invalidateInstance()
+      } else {
+        toast.error(res.message || t('Revoke provider key'))
+      }
+    },
+    onError: () => toast.error(t('Revoke provider key')),
   })
 
   const sleepMutation = useMutation({
@@ -100,6 +136,39 @@ function InstanceStatus({ instance }: { instance: HermesInstance }) {
     error: 'destructive',
   }[instance.status] as 'default' | 'secondary' | 'outline' | 'destructive'
 
+  // creating = NOT_CREATED yet (first start, key REQUIRED).
+  // sleeping = wake (key OPTIONAL — empty key means backend uses DB snapshot).
+  const canStart = instance.status === 'creating' || instance.status === 'sleeping'
+  const isFirstStart = instance.status === 'creating'
+
+  const handleStartSubmit = () => {
+    if (isFirstStart && !providerApikey.trim()) {
+      toast.error(t('First start requires an API key'))
+      return
+    }
+    startMutation.mutate({ providerApiKey: providerApikey })
+  }
+
+  const providerStateNote =
+    providerState.data?.data && instance.status === 'running'
+      ? (() => {
+          const { source } = providerState.data!.data!
+          if (source === 'ours') {
+            return t(
+              "Currently using: this platform's key (billed to your balance)"
+            )
+          }
+          if (source === 'user') {
+            return t(
+              'Currently using: your custom provider key (billed by your provider)'
+            )
+          }
+          return t(
+            'No provider key configured — chat will fail. Restart and provide a key.'
+          )
+        })()
+      : null
+
   return (
     <Card>
       <CardHeader>
@@ -130,15 +199,71 @@ function InstanceStatus({ instance }: { instance: HermesInstance }) {
           )}
         </div>
 
-        <div className='flex gap-2'>
-          {instance.status === 'sleeping' && (
-            <Button
-              size='sm'
-              onClick={() => startMutation.mutate()}
-              disabled={startMutation.isPending}
-            >
-              {startMutation.isPending ? t('Starting...') : t('Start')}
-            </Button>
+        {providerStateNote && (
+          <p className='text-muted-foreground text-xs'>{providerStateNote}</p>
+        )}
+
+        <div className='flex flex-wrap gap-2'>
+          {canStart && (
+            <>
+              <Button
+                size='sm'
+                onClick={() => setStartOpen(true)}
+                disabled={startMutation.isPending}
+              >
+                {startMutation.isPending ? t('Starting...') : t('Start')}
+              </Button>
+              <Dialog
+                open={startOpen}
+                onOpenChange={(open) => {
+                  setStartOpen(open)
+                  if (!open) setProviderApikey('')
+                }}
+                title={
+                  isFirstStart
+                    ? t('First start requires an API key')
+                    : t('Start')
+                }
+                description={t(
+                  'You can generate one on the API Keys page and paste it here. We recommend the key you generated on this platform (billed to your account balance).'
+                )}
+                contentClassName='sm:max-w-md'
+                bodyClassName='space-y-4'
+                footer={
+                  <>
+                    <Button
+                      type='button'
+                      variant='outline'
+                      onClick={() => setStartOpen(false)}
+                      disabled={startMutation.isPending}
+                    >
+                      {t('Cancel')}
+                    </Button>
+                    <Button
+                      type='button'
+                      onClick={handleStartSubmit}
+                      disabled={startMutation.isPending}
+                    >
+                      {startMutation.isPending
+                        ? t('Starting...')
+                        : t('Start')}
+                    </Button>
+                  </>
+                }
+              >
+                <div className='space-y-2'>
+                  <label className='text-sm font-medium'>
+                    {t('Provider key (required on first start)')}
+                  </label>
+                  <PasswordInput
+                    value={providerApikey}
+                    onChange={(e) => setProviderApikey(e.target.value)}
+                    placeholder='sk-...'
+                    autoComplete='off'
+                  />
+                </div>
+              </Dialog>
+            </>
           )}
           {instance.status === 'running' && (
             <Button
@@ -159,6 +284,53 @@ function InstanceStatus({ instance }: { instance: HermesInstance }) {
             >
               {openingWorkspace ? t('Opening...') : t('Open Workspace')}
             </Button>
+          )}
+          {instance.status === 'running' && (
+            <>
+              <Button
+                size='sm'
+                variant='destructive'
+                onClick={() => setRevokeOpen(true)}
+              >
+                {t('Revoke provider key')}
+              </Button>
+              <Dialog
+                open={revokeOpen}
+                onOpenChange={setRevokeOpen}
+                title={t('Confirm revoke')}
+                description={t(
+                  'Revoke clears all LLM provider keys on this workspace. Your data is kept; chat will fail until you restart with a key.'
+                )}
+                contentClassName='sm:max-w-md'
+                bodyClassName='space-y-4'
+                footer={
+                  <>
+                    <Button
+                      type='button'
+                      variant='outline'
+                      onClick={() => setRevokeOpen(false)}
+                      disabled={revokeMutation.isPending}
+                    >
+                      {t('Cancel')}
+                    </Button>
+                    <Button
+                      type='button'
+                      variant='destructive'
+                      onClick={() => revokeMutation.mutate()}
+                      disabled={revokeMutation.isPending}
+                    >
+                      {t('Revoke provider key')}
+                    </Button>
+                  </>
+                }
+              >
+                <p className='text-muted-foreground text-sm'>
+                  {t(
+                    'Your data (sessions, files, memory, skills) is preserved. Revoking only clears the key — sending messages will fail until you re-enter a key.'
+                  )}
+                </p>
+              </Dialog>
+            </>
           )}
         </div>
       </CardContent>

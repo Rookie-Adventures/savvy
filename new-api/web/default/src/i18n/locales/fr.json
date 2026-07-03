@@ -1134,6 +1134,12 @@
     "Custom Epay method": "Méthode Epay personnalisée",
     "Custom Error Response": "Réponse d'erreur personnalisée",
     "Custom Home Page": "Page d'accueil personnalisée",
+    "Custom Pages": "Custom Pages",
+    "Configure content for custom pages. Content supports Markdown and HTML.": "Configure content for custom pages. Content supports Markdown and HTML.",
+    "Enter page content (supports Markdown/HTML)": "Enter page content (supports Markdown/HTML)",
+    "Custom pages saved successfully": "Custom pages saved successfully",
+    "Failed to save custom pages": "Failed to save custom pages",
+    "Contact": "Contact",
     "Custom message shown when access is denied": "Message personnalisé affiché lorsque l'accès est refusé",
     "Custom model (comma-separated)": "Modèle personnalisé (séparé par des virgules)",
     "Custom module": "Module personnalisé",
@@ -4811,6 +4817,16 @@
     "Zero retention": "Aucune rétention",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "First start requires an API key": "First start requires an API key",
+    "You can generate one on the API Keys page and paste it here. We recommend the key you generated on this platform (billed to your account balance).": "You can generate one on the API Keys page and paste it here. We recommend the key you generated on this platform (billed to your account balance).",
+    "Your data (sessions, files, memory, skills) is preserved. Revoking only clears the key — sending messages will fail until you re-enter a key.": "Your data (sessions, files, memory, skills) is preserved. Revoking only clears the key — sending messages will fail until you re-enter a key.",
+    "Provider key (required on first start)": "Provider key (required on first start)",
+    "Revoke provider key": "Revoke provider key",
+    "Revoke clears all LLM provider keys on this workspace. Your data is kept; chat will fail until you restart with a key.": "Revoke clears all LLM provider keys on this workspace. Your data is kept; chat will fail until you restart with a key.",
+    "Confirm revoke": "Confirm revoke",
+    "Currently using: this platform's key (billed to your balance)": "Currently using: this platform's key (billed to your balance)",
+    "Currently using: your custom provider key (billed by your provider)": "Currently using: your custom provider key (billed by your provider)",
+    "No provider key configured — chat will fail. Restart and provide a key.": "No provider key configured — chat will fail. Restart and provide a key."
   }
 }

@@ -1,0 +1,136 @@
+import base64
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from app.main import app
+from app.database import Base, get_db
+from app.models import Instance, InstanceStatus, PlanType, User
+
+
+SQLALCHEMY_DATABASE_URL = "sqlite:///./test_instances_router.db"
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+@pytest.fixture(name="db_session")
+def fixture_db_session(monkeypatch):
+    Base.metadata.create_all(bind=engine)
+    monkeypatch.setenv("SAVVY_PROVIDER_ENC_KEY", base64.urlsafe_b64encode(b"0" * 32).decode())
+    from importlib import reload
+    from app import config, crypto
+    reload(config); reload(crypto)
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture(name="client")
+def fixture_client(db_session):
+    def override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+    app.dependency_overrides[get_db] = override_get_db
+    # Bypass HMAC by overriding dependency
+    from app.auth import require_hmac
+    app.dependency_overrides[require_hmac] = lambda: {"user_id": "1"}
+    yield TestClient(app)
+    app.dependency_overrides.clear()
+
+
+def _create_test_instance(db, instance_id="inst-1", status=InstanceStatus.NOT_CREATED):
+    u = User(user_id="1", plan=PlanType.FREE)
+    db.add(u)
+    inst = Instance(
+        instance_id=instance_id, user_id="1", status=status, plan=PlanType.FREE,
+        container_name="savvy-u1-w1", volume_name="savvy-u1-data", assigned_port=41000,
+    )
+    db.add(inst)
+    db.commit()
+    return inst
+
+
+def test_start_requires_provider_key_on_first_start(client, db_session):
+    """Spec §4 Path A: first-start hard lock — 400 (enveloped) if no key when
+    provider_config_enc is None. Error message must mention provider_api_key."""
+    _create_test_instance(db_session, status=InstanceStatus.NOT_CREATED)
+    res = client.post("/internal/instances/inst-1/start", json={})
+    body = res.json()
+    # Envelope maps HTTPException(400) to {success: false, message: <detail>} status 200.
+    assert body["success"] is False
+    assert "provider_api_key" in body["message"]
+
+
+def test_start_with_provider_key_encrypts_snapshot(client, db_session, monkeypatch):
+    """Spec §4: providing key on first-start → DB snapshot encrypted, source='ours'."""
+    _create_test_instance(db_session, status=InstanceStatus.NOT_CREATED)
+    # Stub docker create/start: skip real docker
+    from app import docker_manager
+    monkeypatch.setattr(docker_manager, "start_container", lambda name: True)
+    monkeypatch.setattr(docker_manager.settings, "mock_mode", True)
+
+    res = client.post("/internal/instances/inst-1/start", json={
+        "provider_api_key": "sk-abc1234567890123",
+    })
+    body = res.json()
+    assert body["success"] is True, res.text
+    # Reload instance from session and check encrypted snapshot persisted
+    db_session.expire_all()
+    inst = db_session.query(Instance).filter(Instance.instance_id == "inst-1").first()
+    assert inst.provider_config_enc is not None
+    assert inst.provider_config_alg == "fernet"
+    from app import crypto
+    snap = crypto.decrypt_provider_config(inst.provider_config_enc, inst.provider_config_alg)
+    assert snap["api_key"] == "sk-abc1234567890123"
+    assert snap["source"] == "ours"
+
+
+def test_revoke_clears_snapshot(client, db_session, monkeypatch):
+    """Spec §4 C: revoke clears DB snapshot + key_set_at (best-effort container clear)."""
+    _create_test_instance(db_session, status=InstanceStatus.RUNNING)
+    # Seed an encrypted snapshot
+    from app import crypto
+    snap = {"provider": "custom", "base_url": "http://new-api:3000/v1", "api_key": "sk-x", "model": "claude-sonnet-4", "source": "ours"}
+    enc, alg = crypto.encrypt_provider_config(snap)
+    inst = db_session.query(Instance).filter(Instance.instance_id == "inst-1").first()
+    inst.provider_config_enc = enc
+    inst.provider_config_alg = alg
+    db_session.commit()
+
+    # Stub docker so revoke's exec works
+    from app import docker_manager
+    fake_container = type("C", (), {"exec_run": lambda self, cmd: type("R", (), {"exit_code": 0})()})()
+    fake_client = type("K", (), {"containers": type("CC", (), {"get": lambda self, n: fake_container})()})()
+    monkeypatch.setattr(docker_manager, "_client", fake_client)
+
+    res = client.post("/internal/instances/inst-1/revoke-provider-key")
+    body = res.json()
+    assert body["success"] is True
+    db_session.expire_all()
+    inst = db_session.query(Instance).filter(Instance.instance_id == "inst-1").first()
+    assert inst.provider_config_enc is None
+    assert inst.provider_key_set_at is None
+
+
+def test_provider_state_returns_source(client, db_session):
+    """Spec §4: provider-state returns source/model/key_set_at, NEVER api_key."""
+    _create_test_instance(db_session, status=InstanceStatus.RUNNING)
+    from app import crypto
+    snap = {"provider": "custom", "base_url": "http://new-api:3000/v1", "api_key": "sk-x", "model": "claude-sonnet-4", "source": "user"}
+    enc, alg = crypto.encrypt_provider_config(snap)
+    inst = db_session.query(Instance).filter(Instance.instance_id == "inst-1").first()
+    inst.provider_config_enc = enc
+    inst.provider_config_alg = alg
+    db_session.commit()
+
+    res = client.get("/internal/instances/inst-1/provider-state")
+    body = res.json()
+    # Envelope wraps the endpoint dict into data.
+    data = body["data"]
+    assert data["source"] == "user"
+    assert "api_key" not in res.text  # secret must not leak

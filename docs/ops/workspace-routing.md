@@ -455,3 +455,25 @@ docker exec savvy-nginx-1 nginx -t
 - [ ] 步骤 8：`docker-compose.yml` + `docker-compose.prod.yml` 端口范围 + env
 - [ ] 步骤 9：new-api 无改动（确认）
 - [ ] 验收：全部通过
+
+---
+
+### 模型密钥注入端到端验收
+
+前置:
+- `SAVVY_PROVIDER_ENC_KEY` 已在 .env 设置(32 字节 urlsafe base64)
+- `docker compose up -d --build` 已重启 manager + 容器
+
+1. 全新用户首启 workspace
+   - 启动弹窗——不填 provider key,点启动 → 期望:400 "provider_api_key is required on first start"
+   - 填入 new-api 生成的 sk-xxx → 启动成功
+   - 进入工作区 → DevTools Network → `/api/sessions` 200
+2. 发消息 → 流式返回(验证 B 层密钥真注入)
+3. Settings → 改成自己的 Anthropic key → 仍能调模型
+4. sleep → 唤醒 → 用新 key 仍能调用(验证唤醒对账回写 DB,source=user)
+5. 工作区控制台点"撤销供应商密钥"
+   - 状态显示:未配置
+   - workspace UI 仍可访问 + 发消息 → 401/无凭证(预期)
+   - docker exec savvy-u1-w1 cat /opt/data/config.yaml → provider/api_key 字段已空
+   - volume 数据未变:`docker exec savvy-u1-w1 ls /workspace` 文件原样
+6. 回控制台重填我们的 new-api sk → 恢复聊天

@@ -39,3 +39,84 @@ def test_instance_has_provider_config_columns(upgraded_db):
     assert "provider_config_enc" in cols
     assert "provider_config_alg" in cols
     assert "provider_key_set_at" in cols
+
+
+# --- Task 3: provider_config module snapshot/yaml/reconcile tests ---
+
+from app import provider_config as pc
+
+
+def test_build_snapshot_defaults():
+    snap = pc.build_snapshot(api_key="sk-xxx", base_url=None, model=None, source="ours")
+    assert snap == {
+        "base_url": "http://new-api:3000/v1",   # patched via settings monkeypatch below
+        "api_key": "sk-xxx",
+        "model": "claude-sonnet-4",
+        "provider": "custom",
+        "source": "ours",
+    }
+
+
+def test_render_config_yaml_shape():
+    snap = {"base_url": "http://new-api:3000/v1", "api_key": "sk-xxx", "model": "claude-sonnet-4", "provider": "custom", "source": "ours"}
+    yaml_text = pc.render_config_yaml(snap)
+    assert "model:" in yaml_text
+    assert "provider: custom" in yaml_text
+    assert "base_url: http://new-api:3000/v1" in yaml_text
+    assert "api_key: sk-xxx" in yaml_text
+    assert "default: claude-sonnet-4" in yaml_text
+    assert "source:" not in yaml_text  # metadata-only, never written
+
+
+def test_parse_container_config_yaml_round_trip():
+    snap = {"base_url": "http://new-api:3000/v1", "api_key": "sk-xxx", "model": "claude-sonnet-4", "provider": "custom", "source": "ours"}
+    yaml_text = pc.render_config_yaml(snap)
+    parsed = pc.parse_container_config_yaml(yaml_text)
+    assert parsed == {"provider": "custom", "base_url": "http://new-api:3000/v1", "api_key": "sk-xxx", "model": "claude-sonnet-4"}
+
+
+def test_reconcile_detects_user_change():
+    db_snap = {"provider": "custom", "base_url": "http://new-api:3000/v1", "api_key": "sk-xxx", "model": "claude-sonnet-4", "source": "ours"}
+    container_yaml = """
+model:
+  provider: custom
+  default: gpt-5
+  base_url: https://api.openai.com/v1
+  api_key: sk-user-own
+"""
+    new_snap, changed = pc.reconcile_snapshot(db_snapshot=db_snap, container_yaml=container_yaml)
+    assert changed is True
+    assert new_snap["source"] == "user"
+    assert new_snap["api_key"] == "sk-user-own"
+    assert new_snap["base_url"] == "https://api.openai.com/v1"
+
+
+def test_reconcile_no_change():
+    snap = {"provider": "custom", "base_url": "http://new-api:3000/v1", "api_key": "sk-xxx", "model": "claude-sonnet-4", "source": "ours"}
+    yaml_text = pc.render_config_yaml(snap)
+    new_snap, changed = pc.reconcile_snapshot(db_snapshot=snap, container_yaml=yaml_text)
+    assert changed is False
+    assert new_snap == snap
+
+
+def test_reconcile_both_empty():
+    new_snap, changed = pc.reconcile_snapshot(db_snapshot=None, container_yaml=None)
+    assert changed is False
+    assert new_snap is None
+
+
+def test_clear_provider_fields_yaml():
+    yaml_text = """
+model:
+  provider: custom
+  default: claude-sonnet-4
+  base_url: http://new-api:3000/v1
+  api_key: sk-xxx
+other_section:
+  keep: me
+"""
+    cleared = pc.clear_provider_fields_yaml(yaml_text)
+    assert "provider:" not in cleared.replace("other_section:", "")
+    assert "api_key: sk-xxx" not in cleared
+    assert "other_section:" in cleared
+    assert "keep: me" in cleared

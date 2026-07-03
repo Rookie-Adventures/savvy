@@ -188,9 +188,27 @@ async def revoke_provider_key(instance_id: str, auth=Depends(require_hmac), db: 
             if getattr(res, "exit_code", 1) == 0 and res.output:
                 yaml_text = res.output.decode("utf-8", errors="ignore") if isinstance(res.output, bytes) else str(res.output)
                 cleared = clear_provider_fields_yaml(yaml_text)
-                import base64
-                b64 = base64.b64encode(cleared.encode("utf-8")).decode("ascii")
-                c.exec_run(["sh", "-c", f"echo '{b64}' | base64 -d > /opt/data/config.yaml"])
+                # Best-effort preserve: do NOT truncate the user's config.yaml.
+                # Skip the write-back when (a) the clear produced an empty result
+                # while the original was non-empty (parse failure path that
+                # returned "" — old behavior; also covers empty original), or
+                # (b) the clear produced the SAME text as the original (nothing
+                # safely clearable, e.g. parse-broken yaml returned unchanged by
+                # clear_provider_fields_yaml — no point writing identical bytes).
+                # In both cases DB cleared is the canonical state; the container
+                # config stays as-is until the user fixes the parse error.
+                if (cleared.strip() == "" and yaml_text.strip() != "") or cleared == yaml_text:
+                    import logging
+                    logging.warning(
+                        "revoke_provider_key: skipped config.yaml write-back for "
+                        "instance %s — container config parse-broken or unchanged; "
+                        "refusing to truncate. DB cleared is canonical.",
+                        instance_id,
+                    )
+                else:
+                    import base64
+                    b64 = base64.b64encode(cleared.encode("utf-8")).decode("ascii")
+                    c.exec_run(["sh", "-c", f"echo '{b64}' | base64 -d > /opt/data/config.yaml"])
         except Exception:
             pass  # Container not present / not running — DB cleared is canonical.
 

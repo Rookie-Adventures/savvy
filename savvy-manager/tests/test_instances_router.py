@@ -117,6 +117,50 @@ def test_revoke_clears_snapshot(client, db_session, monkeypatch):
     assert inst.provider_key_set_at is None
 
 
+def test_revoke_skips_writeback_on_parse_failure(client, db_session, monkeypatch):
+    """Spec §4 C guard: when container config.yaml is parse-broken, revoke must
+    clear DB (canonical) but SKIP the docker exec write-back so it doesn't
+    truncate the user's config to empty. Container config stays as-is."""
+    _create_test_instance(db_session, status=InstanceStatus.RUNNING)
+    from app import crypto
+    snap = {"provider": "custom", "base_url": "http://new-api:3000/v1", "api_key": "sk-x", "model": "claude-sonnet-4", "source": "ours"}
+    enc, alg = crypto.encrypt_provider_config(snap)
+    inst = db_session.query(Instance).filter(Instance.instance_id == "inst-1").first()
+    inst.provider_config_enc = enc
+    inst.provider_config_alg = alg
+    db_session.commit()
+
+    from app import docker_manager
+    monkeypatch.setattr(docker_manager.settings, "mock_mode", False)
+    broken_yaml = b": : :\n  model:\n    provider: custom"
+    calls = []
+
+    def fake_exec_run(self, cmd):
+        calls.append(cmd)
+        # First call is the read (cat ...). Return the broken yaml bytes.
+        if isinstance(cmd, list) and len(cmd) >= 3 and "cat" in str(cmd[2]) and "base64 -d" not in str(cmd[2]):
+            return type("R", (), {"exit_code": 0, "output": broken_yaml})()
+        # Any subsequent call would be the write-back ('echo ... | base64 -d > ...').
+        return type("R", (), {"exit_code": 0, "output": b""})()
+
+    fake_container = type("C", (), {"exec_run": fake_exec_run})()
+    fake_client = type("K", (), {"containers": type("CC", (), {"get": lambda self, n: fake_container})()})()
+    monkeypatch.setattr(docker_manager, "_client", fake_client)
+
+    res = client.post("/internal/instances/inst-1/revoke-provider-key")
+    assert res.json()["success"] is True
+
+    # DB cleared (canonical).
+    db_session.expire_all()
+    inst = db_session.query(Instance).filter(Instance.instance_id == "inst-1").first()
+    assert inst.provider_config_enc is None
+    assert inst.provider_key_set_at is None
+
+    # The write-back exec_run (echo '<b64>' | base64 -d > /opt/data/config.yaml) must NOT fire.
+    writeback = [c for c in calls if isinstance(c, list) and "base64 -d > /opt/data/config.yaml" in str(c[2] if len(c) > 2 else "")]
+    assert len(writeback) == 0, f"write-back should be skipped, but saw: {writeback}"
+
+
 def test_provider_state_returns_source(client, db_session):
     """Spec §4: provider-state returns source/model/key_set_at, NEVER api_key."""
     _create_test_instance(db_session, status=InstanceStatus.RUNNING)

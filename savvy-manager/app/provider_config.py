@@ -128,16 +128,26 @@ def reconcile_snapshot(
 
 def clear_provider_fields_yaml(yaml_text: str) -> str:
     """Strip provider-bearing lines from model: section. Other sections
-    and other keys under model: (e.g. context_length) are preserved."""
+    and other keys under model: (e.g. context_length) are preserved.
+
+    Parse-failure / non-dict branch: return the original ``yaml_text``
+    UNCHANGED. We cannot safely clear what we cannot parse, and preserving
+    the user's data (incl. non-`model` sections they edited) takes priority
+    over aggressive clearing. Callers (revoke_provider_key) detect this
+    case (the returned text equals the input / is non-empty after strip of
+    an empty clear) and skip the write-back so the container config is not
+    truncated to empty."""
     if not yaml_text:
         return ""
     try:
         doc = yaml.safe_load(yaml_text)
     except yaml.YAMLError:
-        # On parse failure, just blank the whole model section safely.
-        return ""
+        # Parse failure: return original unchanged — do NOT destroy user data.
+        return yaml_text
     if not isinstance(doc, dict):
-        return ""
+        # Non-dict doc (scalar/list): return original unchanged — nothing to
+        # safely clear; preserve user's file.
+        return yaml_text
     model_section = doc.get("model")
     if isinstance(model_section, dict):
         for key in ("provider", "default", "base_url", "api_key", "api_mode"):

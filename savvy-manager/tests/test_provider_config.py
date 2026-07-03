@@ -120,3 +120,22 @@ other_section:
     assert "api_key: sk-xxx" not in cleared
     assert "other_section:" in cleared
     assert "keep: me" in cleared
+
+
+def test_clear_provider_fields_yaml_parse_fail_returns_original():
+    """Parse-fail branch must return the original yaml_text unchanged,
+    NOT '' — so the revoke write-back guard can detect it and skip
+    truncating the user's config.yaml."""
+    broken = ": : : broken\n  model:\n    provider: custom"
+    cleared = pc.clear_provider_fields_yaml(broken)
+    assert cleared == broken
+    assert cleared != ""
+
+
+def test_clear_provider_fields_yaml_non_dict_returns_original():
+    """A YAML scalar (not a dict) doc must return the original text unchanged,
+    NOT '' — same preserve-user-data invariant as parse-fail."""
+    scalar = "just a string\n"
+    cleared = pc.clear_provider_fields_yaml(scalar)
+    assert cleared == scalar
+    assert cleared != ""

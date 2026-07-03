@@ -25,3 +25,6 @@ dist-ssr
 *.sln
 *.sw?
 .tanstack/*
+
+# i18n sync 生成的临时统计,每次 `bun run i18n:sync` 重建,不该入库
+src/i18n/locales/_reports/

@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     # 返回给前端的公网 host（dev=localhost，prod=真实域名）
     public_host: str = "localhost"
 
+    # Workspace 模型 provider 默认端点与模型（首启注入 agent）
+    openai_base_url: str = "http://new-api:3000/v1"
+    provider_default_model: str = "claude-sonnet-4"
+    # Fernet 加密用户 provider key 的密钥（32 字节 urlsafe base64）。缺失→fail-closed
+    provider_enc_key: str = ""
+
     class Config:
         env_prefix = "SAVVY_"
 

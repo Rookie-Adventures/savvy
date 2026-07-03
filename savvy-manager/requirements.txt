@@ -8,3 +8,4 @@ psycopg2-binary==2.9.10
 alembic==1.15.2
 docker==7.1.0
 apscheduler==3.11.0
+cryptography>=42.0.0

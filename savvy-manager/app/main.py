@@ -90,6 +90,22 @@ app.include_router(workspace.router)
 
 @app.on_event("startup")
 async def startup():
+    # Fail-closed guard: refuse to start if the provider-config encryption key
+    # is not configured. Spec §5 risk 3: no plaintext fallback.
+    # NOTE: We raise RuntimeError instead of the brief's `sys.exit(1)` because
+    # FastAPI startup handlers run inside uvicorn's lifecycle manager — a raised
+    # exception is caught by uvicorn and prevents the app from serving, which
+    # achieves fail-closed without killing the pytest runner when TestClient
+    # constructs the app (sys.exit during startup would terminate the test
+    # process). The alembic env.py imports app.config at module scope; placing
+    # the guard inside startup() (not at module top level) ensures import-time
+    # side effects do not fire for alembic/tests that never start the app.
+    from . import crypto
+    if crypto.provider_enc_key_missing():
+        raise RuntimeError(
+            "FATAL: SAVVY_PROVIDER_ENC_KEY is not configured. "
+            "Refusing to start (no plaintext fallback)."
+        )
     Base.metadata.create_all(bind=engine)
     start_scanner()
 

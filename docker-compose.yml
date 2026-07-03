@@ -80,6 +80,11 @@ services:
       - SAVVY_WORKSPACE_PORT_START=41000
       - SAVVY_WORKSPACE_PORT_END=41099
       - SAVVY_DEBUG=true
+      # Provider-config encryption key (32-byte urlsafe base64). dev default-empty
+      # so the starter works without it; prod uses bare ${...} (fail-closed).
+      - SAVVY_PROVIDER_ENC_KEY=${SAVVY_PROVIDER_ENC_KEY:-}
+      - SAVVY_OPENAI_BASE_URL=http://new-api:3000/v1
+      - SAVVY_PROVIDER_DEFAULT_MODEL=claude-sonnet-4
     volumes:
       # Mount the Docker socket so the manager can start/stop workspace
       # containers on the host. Double-slash prefix works on Docker Desktop

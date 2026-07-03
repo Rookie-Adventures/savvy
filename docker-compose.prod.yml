@@ -86,6 +86,12 @@ services:
       - SAVVY_WORKSPACE_PORT_END=41099
       - SAVVY_WORKSPACE_NETWORK=savvy_savvy-net
       - SAVVY_DEBUG=false
+      # Provider-config encryption key (32-byte urlsafe base64). Bare ${...} so
+      # compose startup fails loudly if operator forgot to set it (belt-and-
+      # suspenders with the startup guard in app/main.py).
+      - SAVVY_PROVIDER_ENC_KEY=${SAVVY_PROVIDER_ENC_KEY}
+      - SAVVY_OPENAI_BASE_URL=https://${SAVVY_PUBLIC_HOST}/v1
+      - SAVVY_PROVIDER_DEFAULT_MODEL=claude-sonnet-4
     depends_on:
       manager-db:
         condition: service_healthy

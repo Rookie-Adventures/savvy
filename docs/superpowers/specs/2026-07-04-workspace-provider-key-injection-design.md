@@ -100,27 +100,26 @@ savvy-manager POST /internal/instances/{id}/start  (params 扩展)
   │ 4. 写 DB
   │ 5. 启动容器:docker_manager 传 env
   ▼
-docker_manager.create_container  (environment 扩展,仅首启传)
-  │ OPENAI_API_KEY = 解密后的 api_key
-  │ OPENAI_BASE_URL = 解密后的 base_url
-  │ HERMES_MODEL = 解密后的 model(默认 claude-sonnet-4)
+docker_manager.create_container  (A 层 env 不变;不传 B 层 env)
+  │ 容器启动成功后:
+  │ docker exec <容器名> sh -c "cat > /opt/data/config.yaml" 写入模板
+  │   模板含 provider:custom + base_url + api_key + model(从 DB 解密后填入)
+  │   用 base64 编码避免 shell escape 风险
   ▼
-容器启动 → s6 run 前置 hermes setup --provider custom --base-url $OPENAI_BASE_URL --api-key $OPENAI_API_KEY --model $HERMES_MODEL
-  │ 仅当 /opt/data/config.yaml 不存在时跑(避免覆盖用户运行时改的)
-  │ 写 /opt/data/config.yaml,agent 用 config 不用 env(见 §7.1 优先级事实)
-  ▼
+agent gateway 读 /opt/data/config.yaml → provider=custom 生效
+  │
 agent gateway :8642 ready
 ```
 
-**注**:首启后 wake 不再传 env(传了也会被 config.yaml 跳过 — agent 解析顺序 config 优先 env)。容器内 config.yaml 是唯一真相源。
+**注**:首启后 wake 不传 env、不重写 config.yaml(除非容器内文件不存在)。容器内 config.yaml 是唯一真相源,见 §7.1。
 
 ### 路径 B1:运行时改密钥(用户在 Settings 改,被动同步)
 
 用户在 workspace Settings 改自己的 provider 配置时,workspace **只改容器内 `/opt/data/config.yaml`**(用 hermes 自带 vanilla 逻辑,我们不动)。savvy-manager DB 仍存旧快照。
 
 **唤醒时对账**:每次 stop→wake 容器启动前(或在 start_container 调用前),savvy-manager:
-1. 读容器内 `/opt/data/config.yaml`(经 docker exec cat)
-2. 跟 DB 加密快照解密后比对
+1. `docker exec <容器名> cat /opt/data/config.yaml`(容器若 stop 不可读,跳过本周期)
+2. 解析 yaml,跟 DB 加密快照解密后的内容比对(对比 `provider`/`base_url`/`api_key`/`model` 四字段)
 3. 不一致 → 把容器新内容加密回写 DB,标 `source="user"`
 4. 一致 → 不动作
 
@@ -230,20 +229,30 @@ UI 保留(用户能看到工作区界面),但发消息调模型 401。重填 →
 
 ## 7. 关键实现决策
 
-### 7.1 B 层密钥怎么注入容器 — config.yaml 是真相源,env 仅首启触发
+### 7.1 B 层密钥怎么注入容器 — config.yaml 直接写入(env 不用)
 
-**关键事实**(已在 `hermes-agent/agent/auxiliary_client.py:1949-1978` 验证):agent 的 `provider: "custom"` 解析顺序是 `resolve_runtime_provider(requested="custom")` → **优先读 config.yaml**,失败才 fallback 到 env `OPENAI_API_KEY`/`OPENAI_BASE_URL`。即:
+**关键事实**(已在 `hermes-agent/agent/agent/auxiliary_client.py:1949-1978` 验证):agent 的 `provider: "custom"` 解析顺序是 `resolve_runtime_provider(requested="custom")` → **优先读 config.yaml**,失败才 fallback 到 env `OPENAI_API_KEY`/`OPENAI_BASE_URL`。即 config.yaml 一旦存在并被解析,env 完全失效。
 
-- config.yaml 存在且能解析 → 用 config,env 被忽略
-- config.yaml 不存在/解析失败 → 才用 env
+**`hermes setup` 是交互式 CLI**(见 `hermes-agent/cli.py:6206` 的 "Run 'hermes setup' to configure" 提示),不适合 s6 run 自动化无 stdin 场景。
 
-**这意味着 env 注入只在第一次容器创建时有用**(触发 `hermes setup` 写 config.yaml),之后所有 wake 时 env 与 config.yaml 冲突时 config.yaml 赢。
+**因此最简单可靠的方式**:savvy-manager 在容器启动后通过 `docker exec` 直接写一份完整的 `/opt/data/config.yaml`,完全跳过 env 与 setup。config.yaml 模板:
+
+```yaml
+model:
+  provider: custom
+  default: claude-sonnet-4     # 由 settings.provider_default_model 决定
+  base_url: http://new-api:3000/v1   # dev 内网名 / prod 公网域名,由 settings.openai_base_url 决定
+  api_key: <解密后的用户 sk-xxx>
+  api_mode: chat_completions
+```
 
 设计:
 
-- **首次创建容器**(`docker_manager.create_container`):传 `OPENAI_API_KEY`/`OPENAI_BASE_URL`/`HERMES_MODEL` env + s6 gateway run 脚本前置 `hermes setup --provider custom --base-url $OPENAI_BASE_URL --api-key $OPENAI_API_KEY --model $HERMES_MODEL`。setup 只在 config.yaml 不存在时跑(`[ -f /opt/data/config.yaml ] || hermes setup ...`),写完后 agent 用 config。
-- **wake(stop→start)**:不传 env(或传也无用,会被 config.yaml 跳过)。容器内 config.yaml 是唯一真相源,s6 run 因 config 已存在跳过 setup。agent 直接用上次的 config。
-- **B1 对账**:§7.2 修订为"读容器 config → 比对 DB → 不一致加密回写 DB",**不再涉及 env 重新注入**。
+- **首次创建容器**(`docker_manager.create_container`):照旧传 A 层 env(`API_SERVER_KEY` 等不变);**不传 B 层 env**。容器启动成功后,savvy-manager 调用 `docker exec <容器名> sh -c "cat > /opt/data/config.yaml"` 写入模板(用 base64 编码避免 shell escape 风险)。Agent 启动读 config,调模型走 custom+base_url。
+- **wake(stop→start)**:容器内 config.yaml 已持久化(volume),s6 run 不动它,agent 直接用。savvy-manager 跑 §7.2 对账,不一致则加密回写 DB(`source=user`)。**不再传 env,不再写文件**(books up only)。
+- **不需要改 Dockerfile.unified 的 s6 run 脚本** — 不依赖 `hermes setup`,s6 现有 gateway/dashboard 配置不变。
+
+### 7.2 唤醒对账时机 — start_container 前,只读不改写容器
 
 ### 7.2 唤醒对账时机 — start_container 前,只读不改写容器
 

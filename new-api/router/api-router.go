@@ -358,6 +358,8 @@ func SetApiRouter(router *gin.Engine) {
 			hermesRoute.POST("/instance/:instance_id/start", controller.StartHermesInstance)
 			hermesRoute.POST("/instance/:instance_id/sleep", controller.SleepHermesInstance)
 			hermesRoute.POST("/instance/:instance_id/access-token", controller.GetHermesAccessToken)
+			hermesRoute.POST("/instance/:instance_id/revoke-provider-key", controller.RevokeHermesProviderKey)
+			hermesRoute.GET("/instance/:instance_id/provider-state", controller.GetHermesProviderState)
 			hermesRoute.GET("/manager/status", controller.GetHermesManagerStatus)
 			hermesRoute.POST("/stream", controller.StreamHermesMessage)
 		}

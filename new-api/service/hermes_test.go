@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -9,8 +10,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -136,7 +139,104 @@ func TestStartHermesInstance_Signed(t *testing.T) {
 	defer server.Close()
 	setupManagerEnv(t, server.URL)
 
-	require.NoError(t, StartHermesInstance(123, "test-instance"))
+	require.NoError(t, StartHermesInstance(123, "test-instance", "", "", ""))
+}
+
+// captureBody reads r.Body fully and restores it so subsequent readers
+// (requireSigned / managerVerify both io.ReadAll the body) still see bytes.
+func captureBody(t *testing.T, r *http.Request) []byte {
+	t.Helper()
+	raw, err := io.ReadAll(r.Body)
+	require.NoError(t, err)
+	r.Body = io.NopCloser(bytes.NewReader(raw))
+	return raw
+}
+
+// TestStartHermesInstanceForwardsProviderKey asserts the provider key (and
+// optional base URL / model overrides) reach the manager inside the signed
+// JSON body under the snake_case keys manager expects.
+func TestStartHermesInstanceForwardsProviderKey(t *testing.T) {
+	var gotBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw := captureBody(t, r)
+		requireSigned(t, r)
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/internal/instances/inst-1/start", r.URL.Path)
+
+		require.NoError(t, common.Unmarshal(raw, &gotBody))
+		writeEnvelope(w, nil)
+	}))
+	defer server.Close()
+	setupManagerEnv(t, server.URL)
+
+	require.NoError(t, StartHermesInstance(2, "inst-1", "sk-abc1234567890123", "", ""))
+	require.Equal(t, "sk-abc1234567890123", gotBody["provider_api_key"], "provider key must be forwarded under snake_case key")
+	_, hasURL := gotBody["provider_base_url"]
+	assert.False(t, hasURL, "empty base URL must be omitted")
+	_, hasModel := gotBody["provider_model"]
+	assert.False(t, hasModel, "empty model must be omitted")
+}
+
+// TestStartHermesInstanceForwardsAllOverrides forwards base URL + model too.
+func TestStartHermesInstanceForwardsAllOverrides(t *testing.T) {
+	var gotBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw := captureBody(t, r)
+		requireSigned(t, r)
+		require.NoError(t, common.Unmarshal(raw, &gotBody))
+		writeEnvelope(w, nil)
+	}))
+	defer server.Close()
+	setupManagerEnv(t, server.URL)
+
+	require.NoError(t, StartHermesInstance(2, "inst-1", "sk-key", "https://base.example/v1", "gpt-5"))
+	assert.Equal(t, "sk-key", gotBody["provider_api_key"])
+	assert.Equal(t, "https://base.example/v1", gotBody["provider_base_url"])
+	assert.Equal(t, "gpt-5", gotBody["provider_model"])
+}
+
+// TestRevokeHermesProviderKey asserts the revoke route is hit with no body.
+func TestRevokeHermesProviderKey(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw := captureBody(t, r)
+		requireSigned(t, r)
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/internal/instances/inst-1/revoke-provider-key", r.URL.Path)
+		assert.Empty(t, raw, "revoke must send an empty body")
+		writeEnvelope(w, nil)
+	}))
+	defer server.Close()
+	setupManagerEnv(t, server.URL)
+
+	require.NoError(t, RevokeHermesProviderKey(2, "inst-1"))
+}
+
+// TestGetHermesProviderState asserts the provider-state envelope is parsed
+// and — critically — that no api_key leaks into the struct.
+func TestGetHermesProviderState(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requireSigned(t, r)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/internal/instances/inst-1/provider-state", r.URL.Path)
+		writeEnvelope(w, map[string]any{
+			"instance_id": "inst-1",
+			"source":      "user",
+			"model":       "gpt-5",
+			"key_set_at":  "2026-07-04T10:00:00Z",
+		})
+	}))
+	defer server.Close()
+	setupManagerEnv(t, server.URL)
+
+	state, err := GetHermesProviderState(2, "inst-1")
+	require.NoError(t, err)
+	require.NotNil(t, state)
+	assert.Equal(t, "user", state.Source)
+	assert.Equal(t, "gpt-5", state.Model)
+	assert.Equal(t, "2026-07-04T10:00:00Z", state.KeySetAt)
+	// api_key must never appear in the surfaced state; Model is the closest
+	// free-text field a leak could populate.
+	assert.False(t, strings.Contains(state.Model, "sk-"), "api_key should not appear in state")
 }
 
 func TestSleepHermesInstance_Signed(t *testing.T) {

@@ -134,6 +134,15 @@ func CreateHermesInstance(c *gin.Context) {
 	})
 }
 
+// startHermesReq is the camelCase (frontend convention) body for POST
+// /instance/:instance_id/start. The service layer translates to the
+// snake_case keys the manager expects.
+type startHermesReq struct {
+	ProviderAPIKey  string `json:"providerApiKey"`
+	ProviderBaseURL string `json:"providerBaseUrl"`
+	ProviderModel   string `json:"providerModel"`
+}
+
 func StartHermesInstance(c *gin.Context) {
 	userID, ok := getUserID(c)
 	if !ok {
@@ -149,7 +158,14 @@ func StartHermesInstance(c *gin.Context) {
 		return
 	}
 
-	if err := service.StartHermesInstance(userID, instanceID); err != nil {
+	var req startHermesReq
+	// Empty body is allowed (wake without override). ShouldBindJSON leaves req
+	// zero-valued on empty body; the manager 400s on first-start without a key,
+	// which is the correct contract. We intentionally do not branch on the
+	// bind error here — match repo style.
+	_ = c.ShouldBindJSON(&req)
+
+	if err := service.StartHermesInstance(userID, instanceID, req.ProviderAPIKey, req.ProviderBaseURL, req.ProviderModel); err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("failed to start hermes instance: %s", err.Error()))
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -161,6 +177,71 @@ func StartHermesInstance(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
+	})
+}
+
+// RevokeHermesProviderKey clears the provider key snapshot at the manager.
+func RevokeHermesProviderKey(c *gin.Context) {
+	userID, ok := getUserID(c)
+	if !ok {
+		return
+	}
+
+	instanceID := c.Param("instance_id")
+	if instanceID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "instance_id is required",
+		})
+		return
+	}
+
+	if err := service.RevokeHermesProviderKey(userID, instanceID); err != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("failed to revoke hermes provider key: %s", err.Error()))
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+	})
+}
+
+// GetHermesProviderState returns the provider source/model/key-set timestamp.
+// The api_key itself is never returned (manager contract + struct shape).
+func GetHermesProviderState(c *gin.Context) {
+	userID, ok := getUserID(c)
+	if !ok {
+		return
+	}
+
+	instanceID := c.Param("instance_id")
+	if instanceID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "instance_id is required",
+		})
+		return
+	}
+
+	state, err := service.GetHermesProviderState(userID, instanceID)
+	if err != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("failed to get hermes provider state: %s", err.Error()))
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    state,
 	})
 }
 

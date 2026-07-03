@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -38,6 +39,15 @@ type HermesAccessToken struct {
 	Token        string `json:"token"`
 	ExpiresAt    string `json:"expires_at"`
 	WorkspaceURL string `json:"workspace_url"`
+}
+
+// HermesProviderState mirrors manager's GET /provider-state response.
+// It deliberately surfaces only source/model/key_set_at — the api_key itself
+// is NEVER returned by the manager and is never present here.
+type HermesProviderState struct {
+	Source   string `json:"source"`     // ours | user | none
+	Model    string `json:"model"`      // currently configured model
+	KeySetAt string `json:"key_set_at"` // ISO time of last key set
 }
 
 // HermesUpsertResult mirrors manager's UserUpsertResponse.
@@ -202,8 +212,48 @@ func CreateHermesInstance(userID int) (*HermesInstance, error) {
 	return &inst, nil
 }
 
-func StartHermesInstance(userID int, instanceID string) error {
+// StartHermesInstance starts the workspace instance and forwards the provider
+// key (required on first start) to the manager. Empty providerBaseURL/Model
+// let the manager apply its defaults; providerAPIKey is forwarded as-is.
+//
+// The wire shape to manager is snake_case JSON:
+//
+//	{"provider_api_key": ..., "provider_base_url"?: ..., "provider_model"?: ...}
+func StartHermesInstance(userID int, instanceID, providerAPIKey, providerBaseURL, providerModel string) error {
+	body := map[string]any{
+		"provider_api_key": providerAPIKey,
+	}
+	if providerBaseURL != "" {
+		body["provider_base_url"] = providerBaseURL
+	}
+	if providerModel != "" {
+		body["provider_model"] = providerModel
+	}
+	bodyBytes, err := common.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("failed to marshal start body: %w", err)
+	}
+
 	url := fmt.Sprintf("%s/internal/instances/%s/start", getHermesManagerURL(), instanceID)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := signAndDo(req, userID, bodyBytes)
+	if err != nil {
+		return fmt.Errorf("failed to connect to hermes-manager: %w", err)
+	}
+	_, err = decodeManagerResponse(resp)
+	return err
+}
+
+// RevokeHermesProviderKey clears the LLM provider key snapshot (DB + container)
+// at the manager. Sends no body, expects the manager to revoke and respond
+// with a success envelope.
+func RevokeHermesProviderKey(userID int, instanceID string) error {
+	url := fmt.Sprintf("%s/internal/instances/%s/revoke-provider-key", getHermesManagerURL(), instanceID)
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
@@ -216,6 +266,32 @@ func StartHermesInstance(userID int, instanceID string) error {
 	}
 	_, err = decodeManagerResponse(resp)
 	return err
+}
+
+// GetHermesProviderState returns the current provider source/model/key-set
+// timestamp for the instance. The api_key itself is never surfaced by the
+// manager and is never present in HermesProviderState.
+func GetHermesProviderState(userID int, instanceID string) (*HermesProviderState, error) {
+	url := fmt.Sprintf("%s/internal/instances/%s/provider-state", getHermesManagerURL(), instanceID)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := signAndDo(req, userID, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to hermes-manager: %w", err)
+	}
+
+	data, err := decodeManagerResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+	var state HermesProviderState
+	if err := common.Unmarshal(data, &state); err != nil {
+		return nil, fmt.Errorf("failed to parse provider state: %w", err)
+	}
+	return &state, nil
 }
 
 func SleepHermesInstance(userID int, instanceID string) error {

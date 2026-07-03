@@ -43,6 +43,7 @@ def create_container(
     workspace_id: str,
     plan: str,
     expires_at: str | None = None,
+    provider_config: dict | None = None,
 ) -> dict:
     if settings.mock_mode:
         return {
@@ -123,6 +124,9 @@ def create_container(
             read_only=False,
             security_opt=["no-new-privileges:true"],
         )
+        if provider_config is not None:
+            from .provider_config import render_config_yaml
+            _write_container_config_yaml(container, render_config_yaml(provider_config))
         return {"id": container.id, "name": container.name, "status": container.status}
     except APIError as e:
         return {"error": str(e)}
@@ -209,3 +213,18 @@ def list_managed_containers() -> list[dict]:
         ]
     except APIError:
         return []
+
+
+def _write_container_config_yaml(container, yaml_text: str) -> bool:
+    """Write /opt/data/config.yaml inside the container via docker exec,
+    using base64 to avoid shell-escape risks. Logs nothing that contains
+    the api_key (yaml_text is never logged)."""
+    import base64
+    b64 = base64.b64encode(yaml_text.encode("utf-8")).decode("ascii")
+    # Single exec: decode b64 to file. /opt/data is the hermes-agent HOME.
+    cmd = ["sh", "-c", f"echo '{b64}' | base64 -d | cat > /opt/data/config.yaml"]
+    try:
+        result = container.exec_run(cmd)
+        return getattr(result, "exit_code", 1) == 0
+    except Exception:
+        return False

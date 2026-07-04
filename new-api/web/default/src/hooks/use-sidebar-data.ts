@@ -62,6 +62,11 @@ export function useSidebarData(): SidebarData {
             icon: MessageSquare,
             type: 'chat-presets',
           },
+          {
+            title: t('Hermes Workspace'),
+            url: '/hermes',
+            icon: Bot,
+          },
         ],
       },
       {
@@ -101,11 +106,6 @@ export function useSidebarData(): SidebarData {
         id: 'personal',
         title: t('Personal'),
         items: [
-          {
-            title: t('Hermes Workspace'),
-            url: '/hermes',
-            icon: Bot,
-          },
           {
             title: t('Wallet'),
             url: '/wallet',

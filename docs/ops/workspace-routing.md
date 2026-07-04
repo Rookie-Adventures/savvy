@@ -1,7 +1,7 @@
-# Workspace 路由与 404 修复方案
+# Workspace 路由与端口池隔离方案
 
-> 本文档供实施者按步骤修改代码。修改完成后，切换回原模型验证。
-> 日期：2026-07-03。背景：workspace 与 agent 无法通信，打开即 404。
+> **状态：已实施并跑通（2026-07-04 凌晨）**。真统一镜像 `hermes-unified:saas` 已构建（6.08GB）并部署，普通用户首启→填 provider key→发消息流式→sleep/wake 端到端通过。原 `workspace-stub/` 占位目录已移除（不可用于生产，见关键事实 1）。
+> 原草案日期：2026-07-03。背景：workspace 与 agent 无法通信，打开即 404（4 处断裂，见下）。本文档保留作架构参考与运维验收手册。
 
 ## 问题根因（4 处断裂）
 
@@ -21,7 +21,7 @@
    - workspace server `:3000`
    - s6 run 脚本硬编码 `HERMES_API_URL=http://127.0.0.1:8642`（容器内回环）
 
-   agent 通信在容器内完成，无跨容器网络问题。`workspace-stub/Dockerfile` 是占位（仅 nginx 无 agent），不可用于生产。
+   agent 通信在容器内完成，无跨容器网络问题。
 
 2. **workspace 容器不映射宿主端口**，仅在 `savvy_savvy-net` 内网通过容器名访问。nginx 已能通过 `proxy_pass $workspace_upstream` + resolver `127.0.0.11` 动态解析。
 
@@ -49,17 +49,20 @@ agent 通信（容器内 :8642）不受影响。
 
 ## 实施步骤
 
-### 步骤 0：前置检查（无代码改动）
+### 步骤 0：镜像状态（已构建，无需重复）
 
-1. 确认部署镜像是 `Dockerfile.unified` 构建的统一镜像，非 `workspace-stub/Dockerfile`：
-   ```bash
-   docker images hermes-unified:saas
-   docker history hermes-unified:saas | head -20
-   ```
-   若是 stub 或不存在，先构建统一镜像：
-   ```bash
-   docker build -f Dockerfile.unified -t hermes-unified:saas .
-   ```
+真统一镜像 `hermes-unified:saas` 已于 2026-07-04 凌晨构建并部署：
+
+```bash
+docker images hermes-unified:saas          # 确认存在（6.08GB）
+docker history hermes-unified:saas | head -20
+```
+
+仅当 `Dockerfile.unified` 变更后才需重建：
+
+```bash
+docker build -f Dockerfile.unified -t hermes-unified:saas .
+```
 
 ### 步骤 1：config.py — 端口池 + 公网 host
 
@@ -365,7 +368,9 @@ savvy-manager 服务 `environment` 添加：
 
 ---
 
-## 验收步骤（修改完成后执行）
+## 验收步骤（实施已通过）
+
+> **实测：2026-07-04 凌晨全部通过**。普通用户首启→填 provider key→发消息流式→sleep/wake→撤销重填，端到端通（见文末「模型密钥注入端到端验收」）。
 
 ### 前置
 ```bash
@@ -444,17 +449,18 @@ docker exec savvy-nginx-1 nginx -t
 
 ## 实施者检查清单
 
-- [ ] 步骤 0：统一镜像存在（非 stub）
-- [ ] 步骤 1：`config.py` 添加 3 个设置
-- [ ] 步骤 2：`models.py` Instance 添加 `assigned_port` 列
-- [ ] 步骤 3：`users.py` create_instance 分配端口 + InstanceResponse 字段
-- [ ] 步骤 4：`token.py` generate_access_token 接收 host/port 返回绝对 URL
-- [ ] 步骤 5：`instances.py` issue_access_token 传参 + 回填
-- [ ] 步骤 6：`docker_manager.py` environment 添加 HOST/PORT
-- [ ] 步骤 7：`nginx.conf` 端口池 server 块（100 个 listen）
-- [ ] 步骤 8：`docker-compose.yml` + `docker-compose.prod.yml` 端口范围 + env
-- [ ] 步骤 9：new-api 无改动（确认）
-- [ ] 验收：全部通过
+- [x] 步骤 0：统一镜像存在（非 stub）
+- [x] 步骤 1：`config.py` 添加 3 个设置
+- [x] 步骤 2：`models.py` Instance 添加 `assigned_port` 列
+- [x] 步骤 3：`users.py` create_instance 分配端口 + InstanceResponse 字段
+- [x] 步骤 4：`token.py` generate_access_token 接收 host/port 返回绝对 URL
+- [x] 步骤 5：`instances.py` issue_access_token 传参 + 回填
+- [x] 步骤 6：`docker_manager.py` environment 添加 HOST/PORT
+- [x] 步骤 7：`nginx.conf` 端口池 server 块（100 个 listen）
+- [x] 步骤 8：`docker-compose.yml` + `docker-compose.prod.yml` 端口范围 + env
+- [x] 步骤 9：new-api 无改动（确认）
+- [x] 验收：全部通过
+
 
 ---
 

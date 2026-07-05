@@ -211,7 +211,9 @@ function InstanceStatus({ instance }: { instance: HermesInstance }) {
                 onClick={() => setStartOpen(true)}
                 disabled={startMutation.isPending}
               >
-                {startMutation.isPending ? t('Starting...') : t('Start')}
+                {startMutation.isPending
+                  ? (isFirstStart ? t('Starting first setup…') : t('Waking up…'))
+                  : t('Start')}
               </Button>
               <Dialog
                 open={startOpen}
@@ -222,11 +224,21 @@ function InstanceStatus({ instance }: { instance: HermesInstance }) {
                 title={
                   isFirstStart
                     ? t('First start requires an API key')
-                    : t('Start')
+                    : t('Start workspace')
                 }
-                description={t(
-                  'You can generate one on the API Keys page and paste it here. We recommend the key you generated on this platform (billed to your account balance).'
-                )}
+                description={
+                  isFirstStart
+                    ? t(
+                        'First-time setup takes 10–30 seconds to configure the environment. Please wait.'
+                      ) +
+                    '\n' +
+                    t(
+                      'You can generate one on the API Keys page and paste it here. We recommend the key you generated on this platform (billed to your account balance).'
+                    )
+                    : t(
+                        'Waking up your workspace. This usually takes a few seconds.'
+                      )
+                }
                 contentClassName='sm:max-w-md'
                 bodyClassName='space-y-4'
                 footer={
@@ -245,8 +257,8 @@ function InstanceStatus({ instance }: { instance: HermesInstance }) {
                       disabled={startMutation.isPending}
                     >
                       {startMutation.isPending
-                        ? t('Starting...')
-                        : t('Start')}
+                        ? (isFirstStart ? t('Setting up environment…') : t('Waking up…'))
+                        : (isFirstStart ? t('Start setup') : t('Start'))}
                     </Button>
                   </>
                 }

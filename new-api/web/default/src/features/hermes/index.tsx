@@ -252,15 +252,25 @@ function InstanceStatus({ instance }: { instance: HermesInstance }) {
                 }
               >
                 <div className='space-y-2'>
-                  <label className='text-sm font-medium'>
-                    {t('Provider key (required on first start)')}
-                  </label>
-                  <PasswordInput
-                    value={providerApikey}
-                    onChange={(e) => setProviderApikey(e.target.value)}
-                    placeholder='sk-...'
-                    autoComplete='off'
-                  />
+                  {isFirstStart ? (
+                    <>
+                      <label className='text-sm font-medium'>
+                        {t('Provider key (required on first start)')}
+                      </label>
+                      <PasswordInput
+                        value={providerApikey}
+                        onChange={(e) => setProviderApikey(e.target.value)}
+                        placeholder='sk-...'
+                        autoComplete='off'
+                      />
+                    </>
+                  ) : (
+                    <p className='text-sm text-muted-foreground'>
+                      {t(
+                        'Leave empty to keep your current key. Fill to switch keys.'
+                      )}
+                    </p>
+                  )}
                 </div>
               </Dialog>
             </>

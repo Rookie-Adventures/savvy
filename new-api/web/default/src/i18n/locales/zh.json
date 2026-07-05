@@ -2279,6 +2279,7 @@
     "Leave empty to disable the privacy policy requirement. Supports Markdown, HTML, or a full URL to redirect users.": "留空以禁用隐私政策要求。支持 Markdown、HTML 或用于重定向用户的完整 URL。",
     "Leave empty to disband the tag": "留空以解散标签",
     "Leave empty to keep existing key": "留空以保留现有密钥",
+    "Leave empty to keep your current key. Fill to switch keys.": "留空沿用当前密钥,填写则更换",
     "Leave empty to keep unchanged": "留空以保持不变",
     "Leave empty to use account email": "留空以使用账户邮箱",
     "Leave empty to use default": "留空使用默认",

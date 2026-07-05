@@ -74,6 +74,8 @@ var DefaultCollapseSidebar = false // default value of collapse sidebar
 
 var SessionSecret = uuid.New().String()
 var CryptoSecret = uuid.New().String()
+var SessionCookieSecure = false
+var SessionCookieTrustedURLs []string
 
 var OptionMap map[string]string
 var OptionMapRWMutex sync.RWMutex
@@ -120,6 +122,8 @@ var InsecureTLSConfig = &tls.Config{InsecureSkipVerify: true}
 var SMTPServer = ""
 var SMTPPort = 587
 var SMTPSSLEnabled = false
+var SMTPStartTLSEnabled = false
+var SMTPInsecureSkipVerify = false
 var SMTPForceAuthLogin = false
 var SMTPAccount = ""
 var SMTPFrom = ""

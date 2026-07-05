@@ -13,7 +13,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/bytedance/gopkg/util/gopool"
 	"gorm.io/gorm"
 )
 
@@ -22,13 +21,39 @@ func applyExplicitLogTextFilter(tx *gorm.DB, column string, value string) (*gorm
 		return tx, nil
 	}
 	if strings.Contains(value, "%") {
-		pattern, err := sanitizeLikePattern(value)
+		condition, pattern, err := buildLogLikeCondition(column, value)
 		if err != nil {
 			return nil, err
 		}
-		return tx.Where(column+" LIKE ? ESCAPE '!'", pattern), nil
+		return tx.Where(condition, pattern), nil
 	}
 	return tx.Where(column+" = ?", value), nil
+}
+
+func buildLogLikeCondition(column string, value string) (string, string, error) {
+	if common.UsingLogDatabase(common.DatabaseTypeClickHouse) {
+		pattern, err := sanitizeClickHouseLikePattern(value)
+		if err != nil {
+			return "", "", err
+		}
+		return column + " LIKE ?", pattern, nil
+	}
+
+	pattern, err := sanitizeLikePattern(value)
+	if err != nil {
+		return "", "", err
+	}
+	return column + " LIKE ? ESCAPE '!'", pattern, nil
+}
+
+func sanitizeClickHouseLikePattern(input string) (string, error) {
+	input = strings.ReplaceAll(input, `\`, `\\`)
+	input = strings.ReplaceAll(input, `_`, `\_`)
+
+	if err := validateLikePattern(input); err != nil {
+		return "", err
+	}
+	return input, nil
 }
 
 type Log struct {
@@ -363,19 +388,17 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 		logger.LogError(c, "failed to record log: "+err.Error())
 	}
 	if common.DataExportEnabled {
-		gopool.Go(func() {
-			LogQuotaData(QuotaDataLogParams{
-				UserID:    userId,
-				Username:  username,
-				ModelName: params.ModelName,
-				Quota:     params.Quota,
-				CreatedAt: createdAt,
-				TokenUsed: params.PromptTokens + params.CompletionTokens,
-				UseGroup:  params.Group,
-				TokenID:   params.TokenId,
-				ChannelID: params.ChannelId,
-				NodeName:  common.NodeName,
-			})
+		LogQuotaData(QuotaDataLogParams{
+			UserID:    userId,
+			Username:  username,
+			ModelName: params.ModelName,
+			Quota:     params.Quota,
+			CreatedAt: createdAt,
+			TokenUsed: params.PromptTokens + params.CompletionTokens,
+			UseGroup:  params.Group,
+			TokenID:   params.TokenId,
+			ChannelID: params.ChannelId,
+			NodeName:  common.NodeName,
 		})
 	}
 }
@@ -390,6 +413,7 @@ type RecordTaskBillingLogParams struct {
 	TokenId   int
 	Group     string
 	Other     map[string]interface{}
+	NodeName  string // 任务发起节点；为空时回退当前节点
 }
 
 func RecordTaskBillingLog(params RecordTaskBillingLogParams) {
@@ -423,18 +447,20 @@ func RecordTaskBillingLog(params RecordTaskBillingLogParams) {
 		common.SysLog("failed to record task billing log: " + err.Error())
 	}
 	if params.LogType == LogTypeConsume && common.DataExportEnabled {
-		gopool.Go(func() {
-			LogQuotaData(QuotaDataLogParams{
-				UserID:    params.UserId,
-				Username:  username,
-				ModelName: params.ModelName,
-				Quota:     params.Quota,
-				CreatedAt: createdAt,
-				UseGroup:  params.Group,
-				TokenID:   params.TokenId,
-				ChannelID: params.ChannelId,
-				NodeName:  common.NodeName,
-			})
+		nodeName := params.NodeName
+		if nodeName == "" {
+			nodeName = common.NodeName
+		}
+		LogQuotaData(QuotaDataLogParams{
+			UserID:    params.UserId,
+			Username:  username,
+			ModelName: params.ModelName,
+			Quota:     params.Quota,
+			CreatedAt: createdAt,
+			UseGroup:  params.Group,
+			TokenID:   params.TokenId,
+			ChannelID: params.ChannelId,
+			NodeName:  nodeName,
 		})
 	}
 }

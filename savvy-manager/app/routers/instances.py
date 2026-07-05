@@ -60,7 +60,7 @@ async def start_instance(
         )
 
     from .. import crypto
-    from ..provider_config import build_snapshot, reconcile_snapshot, render_config_yaml
+    from ..provider_config import build_snapshot, reconcile_snapshot, render_config_yaml, merge_provider_into_yaml, probe_default_model
 
     if crypto.provider_enc_key_missing():
         raise HTTPException(status_code=500, detail="Provider encryption key not configured")
@@ -76,10 +76,25 @@ async def start_instance(
     # If a key is provided on any start, update snapshot (override).
     if body.provider_api_key:
         source = "ours"
+        # User never picks a model — the key decides. Probe new-api /v1/models
+        # and take the first available. Probe failure is fatal: refuse to ship
+        # a hardcoded default that may not be a real channel.
+        resolved_model = body.provider_model
+        if not resolved_model:
+            try:
+                resolved_model = probe_default_model(
+                    api_key=body.provider_api_key,
+                    base_url=body.provider_base_url,
+                )
+            except Exception as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Failed to list models from provider with this key: {e}",
+                )
         snap = build_snapshot(
             api_key=body.provider_api_key,
             base_url=body.provider_base_url,
-            model=body.provider_model,
+            model=resolved_model,
             source=source,
         )
         enc, alg = crypto.encrypt_provider_config(snap)
@@ -93,31 +108,12 @@ async def start_instance(
         expires_at = now + timedelta(hours=3)
 
     # Reconcile on wake: if NOT_CREATED we will create; if SLEEPING we may
-    # have a container-side config.yaml the user edited — adopt it.
+    # have a container-side config.yaml the user edited — adopt it AFTER the
+    # container is running (exec needs a running container; doing it pre-start
+    # hits 409 Conflict).
+    was_sleeping = inst.status == InstanceStatus.SLEEPING
     provider_config_for_create = None
-    if inst.status == InstanceStatus.SLEEPING:
-        # Read container config (best-effort) and reconcile.
-        from ..docker_manager import _client_or_none
-        client = _client_or_none()
-        if client is not None:
-            try:
-                c = client.containers.get(inst.container_name)
-                res = c.exec_run(["sh", "-c", "cat /opt/data/config.yaml 2>/dev/null || true"])
-                yaml_text = ""
-                if getattr(res, "exit_code", 1) == 0 and res.output:
-                    yaml_text = res.output.decode("utf-8", errors="ignore") if isinstance(res.output, bytes) else str(res.output)
-                db_snap = None
-                if inst.provider_config_enc:
-                    db_snap = crypto.decrypt_provider_config(inst.provider_config_enc, inst.provider_config_alg or "fernet")
-                new_snap, changed = reconcile_snapshot(db_snapshot=db_snap, container_yaml=yaml_text)
-                if changed and new_snap is not None:
-                    enc, alg = crypto.encrypt_provider_config(new_snap)
-                    inst.provider_config_enc = enc
-                    inst.provider_config_alg = alg
-                    inst.provider_key_set_at = datetime.now(timezone.utc)
-            except Exception:
-                pass  # Best-effort; container may be gone.
-    elif inst.status == InstanceStatus.NOT_CREATED and inst.provider_config_enc:
+    if inst.status == InstanceStatus.NOT_CREATED and inst.provider_config_enc:
         provider_config_for_create = crypto.decrypt_provider_config(
             inst.provider_config_enc, inst.provider_config_alg or "fernet"
         )
@@ -152,6 +148,48 @@ async def start_instance(
     inst.started_at = now
     inst.expires_at = expires_at
     db.commit()
+
+    # Reconcile + write back provider config into the now-running container's
+    # /opt/data/config.yaml. Done AFTER start because docker exec requires a
+    # running container (exec on a stopped container 409s). For SLEEPING wake
+    # this is the ONLY path that puts the DB key snapshot into the container —
+    # create-time injection only fires for NOT_CREATED. We merge (not clobber)
+    # so other sections (terminal/browser/...) in the live config.yaml survive.
+    if was_sleeping:
+        try:
+            from ..docker_manager import _client_or_none, _write_container_config_yaml
+            client = _client_or_none()
+            if client is not None:
+                c = client.containers.get(inst.container_name)
+                res = c.exec_run(["sh", "-c", "cat /opt/data/config.yaml 2>/dev/null || true"])
+                yaml_text = ""
+                if getattr(res, "exit_code", 1) == 0 and res.output:
+                    yaml_text = res.output.decode("utf-8", errors="ignore") if isinstance(res.output, bytes) else str(res.output)
+                db_snap = None
+                if inst.provider_config_enc:
+                    db_snap = crypto.decrypt_provider_config(
+                        inst.provider_config_enc, inst.provider_config_alg or "fernet"
+                    )
+                new_snap, changed = reconcile_snapshot(db_snapshot=db_snap, container_yaml=yaml_text)
+                print(f"[DEBUG_INJECT] yaml_len={len(yaml_text)} db_snap={'Y' if db_snap else 'N'} new_snap={'Y' if new_snap else 'N'} changed={changed}")
+                if changed and new_snap is not None:
+                    enc, alg = crypto.encrypt_provider_config(new_snap)
+                    inst.provider_config_enc = enc
+                    inst.provider_config_alg = alg
+                    inst.provider_key_set_at = datetime.now(timezone.utc)
+                    db.commit()
+                    db_snap = new_snap
+                if db_snap:
+                    merged = merge_provider_into_yaml(yaml_text, db_snap)
+                    ok = _write_container_config_yaml(c, merged)
+                    print(f"[DEBUG_INJECT] wrote merged len={len(merged)} ok={ok} snap_model={db_snap.get('model')} snap_base={db_snap.get('base_url')}")
+        except Exception as _e:
+            import traceback
+            print(f"[DEBUG_INJECT] EXCEPTION: {repr(_e)}")
+            print(traceback.format_exc())
+    # ponytail: global docker exec retry loop; per-instance retry if a fleet
+    # talks to manager concurrently and exec races start-up. Current single-
+    # instance dev path doesn't need it.
 
     return StartResponse(
         instance_id=instance_id,

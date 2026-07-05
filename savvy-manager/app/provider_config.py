@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Optional, Tuple
 
+import requests
 import yaml
 
 from .config import settings
@@ -35,6 +36,28 @@ def build_snapshot(
         "model": model or settings.provider_default_model,
         "source": source,
     }
+
+
+def probe_default_model(*, api_key: str, base_url: Optional[str]) -> str:
+    """Ask new-api which models this key can use; return the first one.
+
+    Users do not pick a model — the key decides. We probe /v1/models with the
+    key and take data[0].id as model.default. Probe failure is fatal: we refuse
+    to ship a guess that may not be a real channel (the bug that started this).
+    """
+    url = (base_url or settings.openai_base_url).rstrip("/")
+    if not url.endswith("/models"):
+        url = url + "/models"
+    resp = requests.get(
+        url,
+        headers={"Authorization": f"Bearer {api_key}"},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    data = resp.json().get("data", [])
+    if not data:
+        raise ValueError(f"new-api /v1/models returned no models for this key")
+    return data[0]["id"]
 
 
 def render_config_yaml(snapshot: dict) -> str:
@@ -93,6 +116,13 @@ def reconcile_snapshot(
     (None, False) — nothing to reconcile.
     """
     container_fields = parse_container_config_yaml(container_yaml) if container_yaml else None
+    # A container config with provider=='auto' is the image's untouched template
+    # default (openrouter / no real key). It is NOT a user edit — treating it as
+    # one would clobber the DB key snapshot on every wake-start, so the user's
+    # configured provider never reaches the container. Skip reconcile for the
+    # template case and let the DB snapshot drive the write-back.
+    if container_fields is not None and container_fields.get("provider") == "auto":
+        return db_snapshot, False
     if container_fields is None and db_snapshot is None:
         return None, False
     if container_fields is None:
@@ -124,6 +154,37 @@ def reconcile_snapshot(
                 True,
             )
     return db_snapshot, False
+
+
+def merge_provider_into_yaml(original_yaml: str, snapshot: dict) -> str:
+    """Replace ONLY the `model:` section in an existing config.yaml with the
+    provider snapshot, preserving every other section (terminal/browser/...).
+
+    Why not just write `render_config_yaml` over the file: that emits only the
+    `model:` block — overwriting with it would trash terminal/browser/agent
+    sections. On wake-start we have a live container whose config.yaml already
+    has the full template (or a user-edited copy), so we must merge, not clobber.
+
+    Parse-failure / non-dict fallback: return `render_config_yaml(snapshot)`
+    (model-only). This matches create_container's behavior on a fresh
+    container where the template hasn't materialized yet — safer than
+    preserving a broken file."""
+    if not original_yaml:
+        return render_config_yaml(snapshot)
+    try:
+        doc = yaml.safe_load(original_yaml)
+    except yaml.YAMLError:
+        return render_config_yaml(snapshot)
+    if not isinstance(doc, dict):
+        return render_config_yaml(snapshot)
+    doc["model"] = {
+        "provider": "custom",
+        "default": snapshot["model"],
+        "base_url": snapshot["base_url"],
+        "api_key": snapshot["api_key"],
+        "api_mode": "chat_completions",
+    }
+    return yaml.safe_dump(doc, sort_keys=False, allow_unicode=True)
 
 
 def clear_provider_fields_yaml(yaml_text: str) -> str:

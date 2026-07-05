@@ -25,7 +25,7 @@ services:
     environment:
       - SQL_DSN=postgresql://newapi:123456@newapi-db:5432/new-api
       - REDIS_CONN_STRING=redis://:123456@redis:6379
-      - SAVVY_HMAC_SECRET=dev-hmac-secret-change-me
+      - SAVVY_HMAC_SECRET=${SAVVY_HMAC_SECRET:-dev-hmac-secret-change-me}
       - HERMES_MANAGER_URL=http://savvy-manager:8000
     depends_on:
       newapi-db:
@@ -73,7 +73,7 @@ services:
     restart: unless-stopped
     environment:
       - SAVVY_DATABASE_URL=postgresql://savvy:savvy123@manager-db:5432/savvy_manager
-      - SAVVY_HMAC_SECRET=dev-hmac-secret-change-me
+      - SAVVY_HMAC_SECRET=${SAVVY_HMAC_SECRET:-dev-hmac-secret-change-me}
       - SAVVY_MOCK_MODE=false
       - SAVVY_WORKSPACE_NETWORK=savvy_savvy-net
       - SAVVY_PUBLIC_HOST=localhost

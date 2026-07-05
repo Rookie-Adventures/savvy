@@ -439,6 +439,40 @@ docker exec savvy-nginx-1 nginx -t
 ```
 预期：`syntax is ok` + `test is successful`。
 
+### Provider model 动态探测（2026-07-05 根本修复）
+
+**背景**：原 `build_snapshot` 在用户不填 model 时回退到 `settings.provider_default_model = "claude-sonnet-4"`。但 new-api 那把 sk-key 只配了 deepseek channel → base chat 命中 `No available channel for model claude-sonnet-4` → 503 → agent 无回复。现象：workspace UI 正常加载，发"你好"无 AI 响应，manager log 显示 `POST /internal/instances/{id}/start 200` 但 chat 到不了上游。
+
+**根因原则**：用户不选模型 — 由密钥决定。Manager 用这把 key 调 new-api `GET /v1/models`，取返回数组第一项作 `config.yaml model.default`。以后 new-api 增删 channel、换 model，manager 自动跟上，永不命中假频道。
+
+**代码改动**：
+- `savvy-manager/app/provider_config.py` `probe_default_model(api_key, base_url) -> str`：调 `/v1/models`，取 `data[0].id`。失败直接 raise（**无硬编码兜底** — 拒绝 ship 一个可能是假频道的猜测）。
+- `savvy-manager/app/routers/instances.py` `start_instance`：`body.provider_model` 空且 `provider_api_key` 在 → 调 probe，失败抛 400 `"Failed to list models..."` 让用户知道钥匙/网络问题。
+- `settings.provider_default_model` 现为死值（probe-or-fail 路径不触及），保留以兼容直接调 `build_snapshot` 的测试路径。
+
+**部署前提**：源码改动必须 `docker compose -f <file> up -d --build savvy-manager` 重建镜像生效 — manager 跑的是镜像内 `/app/app/*`，不是宿主 bind-mount。recreate 不带 `--build` 则旧行为静默保留。
+
+**验收**：reset 实例（DB `provider_config_enc=NULL, status=NOT_CREATED` + 删容器/卷）→ 前端首启带 key → 查 DB 快照 `snap['model']` == new-api `/v1/models` 首项；容器内 `config.yaml model.default` 同值。前往端发"你好" → agent 真回复。
+
+### HMAC secret 跨 compose 文件对齐（2026-07-05 根本修复）
+
+**背景**：现象类似 Model 不通 — 前端"创建工作区"报 `Invalid HMAC signature`，但错误出自 **new-api** log（`failed to get/create hermes instance: Invalid HMAC signature`），manager access log 无 401。
+
+**根因**：`docker-compose.yml`（dev）`SAVVY_HMAC_SECRET=dev-hmac-secret-change-me`；`docker-compose.prod.yml`（prod）`SAVVY_HMAC_SECRET=change-me-in-production`。本机 new-api 由 dev compose 起，而一次 manager 重建错用 prod compose → 两边 secret 不一致 → new-api 签名被 manager `verify_hmac_signature` 拒 → 全部 `/internal/*` 401。
+
+**同时暴露的 3 个 prod 隐 bug**：
+1. prod new-api 完全没设 `SAVVY_HMAC_SECRET`（Go 读 `os.Getenv("SAVVY_HMAC_SECRET")`，不读 prod 设的 `SESSION_SECRET`）→ prod 部署必然 HMAC 挂。
+2. prod new-api 没设 `HERMES_MANAGER_URL` → Go 默认 `http://localhost:8000`（容器内）→ 连不到 savvy-net 上的 `savvy-manager`。
+3. dev/prod secret 静默漂移，无强制。
+
+**根本修复**：
+- 两 compose 文件 `SAVVY_HMAC_SECRET` 改读 `.env`：dev `${SAVVY_HMAC_SECRET:-dev-hmac-secret-change-me}`（无 .env 也能跑），prod `${SAVVY_HMAC_SECRET:?required}`（**hard-fail** — 无 .env 时 `compose config` 退出非零，拒绝静默起错配 manager）。
+- prod new-api 补 `SAVVY_HMAC_SECRET` + `HERMES_MANAGER_URL=http://savvy-manager:8000`。
+- `.env`（gitignored）新增 `SAVVY_HMAC_SECRET`；生成 `python -c "import secrets;print(secrets.token_urlsafe(32))"`。
+- `SESSION_SECRET`（new-api gin session）与 HMAC 无关，不动。
+
+**部署铁律**：重建 manager 必须用正在运行的 new-api 同一个 compose 文件。判定：`docker inspect <ctr> --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}'`。文件不一致 → secret 不一致 → 静默 HMAC 401。
+
 ## 风险与备注
 
 - **端口暴露**：41000-41099 公网可达，但每个端口需 token（auth_request）。可接受。若后续有泛域名 DNS，可改子域名 `ws-<uid>.host` 保持 80 端口，auth_request 机制不变。
@@ -483,3 +517,5 @@ docker exec savvy-nginx-1 nginx -t
    - docker exec savvy-u1-w1 cat /opt/data/config.yaml → provider/api_key 字段已空
    - volume 数据未变:`docker exec savvy-u1-w1 ls /workspace` 文件原样
 6. 回控制台重填我们的 new-api sk → 恢复聊天
+7. **Provider model 动态探测**（2026-07-05 新增）：reset 实例（DB enc=NULL + 删容器/卷）→ 首启带 key 不填 model → 查 `docker exec savvy-manager python -c "from app.database import SessionLocal;from app.models import Instance;from app import crypto;db=SessionLocal();i=db.query(Instance).filter(Instance.instance_id=='inst-1').first();s=crypto.decrypt_provider_config(i.provider_config_enc,i.provider_config_alg or 'fernet');print(s['model'])"` 应等于 new-api `/v1/models` 返回 `data[0].id`（非写死 `claude-sonnet-4`）→ 前端发"你好" agent 真回复。
+8. **HMAC secret 对齐**：`docker inspect savvy-manager new-api --format '{{.Config.Env}}' | tr ' ' '\n' | grep SAVVY_HMAC_SECRET` 两侧值一致。重建 manager 用与 new-api 同一 compose 文件（`docker inspect new-api --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}'`）。prod 无 `.env` 时 `docker compose -f docker-compose.prod.yml config` 应退出非零（hard-fail 生效）。

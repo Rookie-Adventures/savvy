@@ -73,6 +73,9 @@ def test_start_with_provider_key_encrypts_snapshot(client, db_session, monkeypat
     from app import docker_manager
     monkeypatch.setattr(docker_manager, "start_container", lambda name: True)
     monkeypatch.setattr(docker_manager.settings, "mock_mode", True)
+    # Stub probe_default_model: avoid real network call to new-api /v1/models.
+    from app import provider_config
+    monkeypatch.setattr(provider_config, "probe_default_model", lambda **k: "deepseek-v4-flash")
 
     res = client.post("/internal/instances/inst-1/start", json={
         "provider_api_key": "sk-abc1234567890123",

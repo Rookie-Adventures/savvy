@@ -139,3 +139,53 @@ def test_clear_provider_fields_yaml_non_dict_returns_original():
     cleared = pc.clear_provider_fields_yaml(scalar)
     assert cleared == scalar
     assert cleared != ""
+
+
+def test_probe_default_model_takes_first(monkeypatch):
+    """probe_default_model returns data[0].id from /v1/models."""
+    class _R:
+        status_code = 200
+        def json(self):
+            return {"data": [{"id": "deepseek-v4-flash"}, {"id": "deepseek-v4-pro"}]}
+        def raise_for_status(self):
+            pass
+    captured = {}
+    def fake_get(url, headers=None, timeout=None):
+        captured["url"] = url
+        captured["auth"] = headers["Authorization"]
+        return _R()
+    import app.provider_config as _pc
+    monkeypatch.setattr(_pc.requests, "get", fake_get, raising=True)
+    model = _pc.probe_default_model(api_key="sk-ASx", base_url="http://new-api:3000/v1")
+    assert model == "deepseek-v4-flash"
+    assert captured["auth"] == "Bearer sk-ASx"
+    assert captured["url"] == "http://new-api:3000/v1/models"
+
+
+def test_probe_default_model_raises_on_empty(monkeypatch):
+    """Empty model list -> raise (refuse to ship a guess)."""
+    class _R:
+        status_code = 200
+        def json(self):
+            return {"data": []}
+        def raise_for_status(self):
+            pass
+    import app.provider_config as _pc
+    monkeypatch.setattr(_pc.requests, "get", lambda *a, **k: _R(), raising=True)
+    with pytest.raises(ValueError):
+        _pc.probe_default_model(api_key="sk-bad", base_url=None)
+
+
+def test_probe_default_model_raises_on_http_error(monkeypatch):
+    """Non-2xx -> raise_for_status re-raises (no fallback)."""
+    import requests as _requests
+    class _R:
+        status_code = 401
+        def json(self):
+            return {}
+        def raise_for_status(self):
+            raise _requests.HTTPError("401 Unauthorized")
+    import app.provider_config as _pc
+    monkeypatch.setattr(_pc.requests, "get", lambda *a, **k: _R(), raising=True)
+    with pytest.raises(_requests.HTTPError):
+        _pc.probe_default_model(api_key="sk-bad", base_url=None)

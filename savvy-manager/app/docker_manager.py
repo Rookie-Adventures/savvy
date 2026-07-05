@@ -1,4 +1,6 @@
 import os
+import time
+
 
 import docker
 from docker.errors import NotFound, APIError, DockerException
@@ -164,11 +166,26 @@ def start_container(container_name: str) -> bool:
     try:
         container = client.containers.get(container_name)
         container.start()
-        return True
     except NotFound:
         return False
     except APIError:
         return False
+
+    # ready: poll container.status until running (max 5 x 1s), then a fixed
+    # 8s buffer for the workspace node server-entry to bind :3000. Timeout is
+    # not fatal — the frontend shows "Starting…" until status flips to RUNNING,
+    # so a slow start degrades to a wait, not a broken workspace shell.
+    for _ in range(5):
+        try:
+            container.reload()
+            if container.status == "running":
+                break
+        except (NotFound, APIError):
+            break
+        time.sleep(1)
+
+    time.sleep(8)
+    return True
 
 
 def remove_container(container_name: str) -> bool:

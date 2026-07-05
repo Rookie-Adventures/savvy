@@ -73,3 +73,60 @@ def test_create_container_skips_config_write_when_none(monkeypatch):
     # When provider_config is None, no exec_run to write config should occur.
     calls = fake_container.exec_run.call_args_list
     assert not any("cat > /opt/data/config.yaml" in str(c) for c in calls)
+
+
+def test_start_container_old_start_with_mock_client():
+    fake_container = MagicMock()
+    # 模拟 docker start 后 status 从 pending 转 running
+    statuses = iter(["pending", "pending", "running"])
+
+    def fake_reload():
+        fake_container.status = next(statuses)
+
+    fake_container.reload.side_effect = fake_reload
+    fake_container.start = MagicMock()
+
+    fake_client = MagicMock()
+    fake_client.containers.get.return_value = fake_container
+
+    with patch("app.docker_manager._client_or_none", return_value=fake_client), \
+         patch("app.docker_manager.settings") as fake_settings, \
+         patch("app.docker_manager.time.sleep") as fake_sleep:  # 不真睡,加快测
+        fake_settings.mock_mode = False
+        from app.docker_manager import start_container
+        result = start_container("ws-test")
+
+    assert result is True
+    fake_container.start.assert_called_once()
+    # reload 至少调到看见 running
+    assert fake_container.reload.call_count >= 2
+    # 8s 固定缓冲被调用
+    assert 8 in [c.args[0] for c in fake_sleep.call_args_list if c.args]
+
+
+def test_start_container_timeout_returns_true():
+    # status 永远 pending → 5 次轮询超时 → 仍 True(不卡死)
+    fake_container = MagicMock()
+    fake_container.status = "pending"
+    fake_container.start = MagicMock()
+
+    fake_client = MagicMock()
+    fake_client.containers.get.return_value = fake_container
+
+    with patch("app.docker_manager._client_or_none", return_value=fake_client), \
+         patch("app.docker_manager.settings") as fake_settings, \
+         patch("app.docker_manager.time.sleep"):
+        fake_settings.mock_mode = False
+        from app.docker_manager import start_container
+        result = start_container("ws-test")
+
+    assert result is True
+    assert fake_container.reload.call_count == 5  # 最多 5 次
+
+
+def test_start_container_mock_mode_short_circuits():
+    with patch("app.docker_manager.settings") as fake_settings:
+        fake_settings.mock_mode = True
+        from app.docker_manager import start_container
+        assert start_container("any") is True
+

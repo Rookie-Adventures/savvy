@@ -52,7 +52,7 @@ function InstanceStatus({ instance }: { instance: HermesInstance }) {
   const [providerApikey, setProviderApikey] = useState('')
 
   const invalidateInstance = () =>
-    queryClient.invalidateQueries({ queryKey: ['hermes', 'instance'] })
+    queryClient.refetchQueries({ queryKey: ['hermes', 'instance'] })
 
   const invalidateProviderState = () =>
     queryClient.invalidateQueries({

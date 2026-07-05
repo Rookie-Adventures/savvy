@@ -23,9 +23,9 @@ class Settings(BaseSettings):
     # 返回给前端的公网 host（dev=localhost，prod=真实域名）
     public_host: str = "localhost"
 
-    # Workspace 模型 provider 默认端点与模型（首启注入 agent）
+    # Workspace 模型 provider 默认端点（首启注入 agent）。model 由 probe 从 new-api
+    # /v1/models 拉取首项决定，不再有写死默认值（曾导致命中不存在的 channel→503）。
     openai_base_url: str = "http://new-api:3000/v1"
-    provider_default_model: str = "claude-sonnet-4"
     # Fernet 加密用户 provider key 的密钥（32 字节 urlsafe base64）。缺失→fail-closed
     provider_enc_key: str = ""
 

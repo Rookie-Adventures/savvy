@@ -46,15 +46,24 @@ def test_instance_has_provider_config_columns(upgraded_db):
 from app import provider_config as pc
 
 
-def test_build_snapshot_defaults():
-    snap = pc.build_snapshot(api_key="sk-xxx", base_url=None, model=None, source="ours")
+def test_build_snapshot_uses_provided_model():
+    """build_snapshot takes model from caller (probe result), not a hardcoded default.
+    base_url still falls back to settings.openai_base_url when None."""
+    snap = pc.build_snapshot(api_key="sk-xxx", base_url=None, model="deepseek-v4-flash", source="ours")
     assert snap == {
         "base_url": "http://new-api:3000/v1",   # patched via settings monkeypatch below
         "api_key": "sk-xxx",
-        "model": "claude-sonnet-4",
+        "model": "deepseek-v4-flash",
         "provider": "custom",
         "source": "ours",
     }
+
+
+def test_build_snapshot_rejects_none_model():
+    """No hardcoded fallback: a None model is a programming error — probe must
+    have run first. Raises instead of silently shipping a non-existent channel."""
+    with pytest.raises(ValueError):
+        pc.build_snapshot(api_key="sk-xxx", base_url=None, model=None, source="ours")
 
 
 def test_render_config_yaml_shape():

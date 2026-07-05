@@ -12,7 +12,6 @@ def _settings_defaults(monkeypatch):
     """
     from app import config
     monkeypatch.setattr(config.settings, "openai_base_url", "http://new-api:3000/v1")
-    monkeypatch.setattr(config.settings, "provider_default_model", "claude-sonnet-4")
 
 
 @pytest.fixture(autouse=True)

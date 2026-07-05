@@ -29,11 +29,17 @@ def build_snapshot(
 ) -> dict:
     if source not in ("ours", "user"):
         raise ValueError(f"source must be 'ours' or 'user', got {source!r}")
+    # model MUST be provided by the caller — start_instance probes new-api
+    # /v1_models and passes the result; users never pick a model. No hardcoded
+    # fallback: a None here is a programming error, not "use a default" (the old
+    # default claude-sonnet-4 silently shipped a non-existent channel → 503).
+    if not model:
+        raise ValueError("model is required (probe new-api /v1/models first)")
     return {
         "provider": "custom",
         "base_url": base_url or settings.openai_base_url,
         "api_key": api_key,
-        "model": model or settings.provider_default_model,
+        "model": model,
         "source": source,
     }
 

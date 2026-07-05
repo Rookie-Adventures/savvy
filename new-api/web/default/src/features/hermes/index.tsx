@@ -111,12 +111,17 @@ function InstanceStatus({ instance }: { instance: HermesInstance }) {
 
   // Open Workspace: request a short-lived access token, then open the
   // manager-proxied workspace URL with the token as a query param.
+  // A short settle delay covers the window between docker reporting 'running'
+  // (status=RUNNING exposes the Open button) and the in-container HTTP server
+  // finishing boot — opening too fast hits a not-yet-listening workspace
+  // and the browser shows 401. 5s is enough in practice without feeling slow.
   const handleOpenWorkspace = async () => {
     setOpeningWorkspace(true)
     try {
       const res = await getHermesAccessToken(instance.id)
       if (res.success && res.data) {
         const { workspaceUrl, token } = res.data
+        await new Promise((r) => setTimeout(r, 5000))
         const url = `${workspaceUrl}?token=${encodeURIComponent(token)}`
         window.open(url, '_blank', 'noopener,noreferrer')
       } else {

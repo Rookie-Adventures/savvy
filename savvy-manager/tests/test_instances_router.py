@@ -206,3 +206,23 @@ def test_free_start_sets_2h_expiry(client, db_session, monkeypatch):
     delta = inst.expires_at - inst.started_at
     assert 7100 <= delta.total_seconds() <= 7260
 
+
+def test_create_instance_sets_not_created(client, db_session):
+    # A brand-new instance must start as NOT_CREATED (the frontend maps this to
+    # "creating" via normalizeStatus → isFirstStart=true → shows the key box).
+    # Setting SLEEPING here breaks first-start UX: the dialog renders in the
+    # wake branch (no key box). Regression guard for bug-2.
+    db_session.add(User(user_id="1", plan=PlanType.FREE))
+    db_session.commit()
+
+    res = client.post("/internal/users/1/instance")
+
+    assert res.status_code == 200
+    body = res.json()
+    assert body["success"] is True
+    assert body["data"]["status"] == "NOT_CREATED"
+    db_session.expire_all()
+    inst = db_session.query(Instance).filter(Instance.instance_id == "inst-1").first()
+    assert inst is not None
+    assert inst.status == InstanceStatus.NOT_CREATED
+

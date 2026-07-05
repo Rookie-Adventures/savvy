@@ -74,7 +74,7 @@ MVP container limits are fixed so capacity can be estimated before launch.
 
 | Plan | Runtime | CPU | Memory | PIDs | Storage | Logs | Price |
 |---|---|---:|---:|---:|---:|---|---|
-| Free | 3 hours per start, then sleep | 0.5 vCPU | 768MB | 128 | 10GB soft quota | 10MB x 3 files | Free |
+| Free | 2 hours per start, then sleep | 0.5 vCPU | 768MB | 128 | 10GB soft quota | 10MB x 3 files | Free |
 | Starter | Always on | 2 vCPU | 2GB | 512 | 30GB | 20MB x 5 files | ¥99/month |
 | Pro | Coming soon | 4 vCPU | 8GB | 1024 | 80GB | 50MB x 5 files | Coming Soon |
 | Enterprise | Custom | Custom | Custom | Custom | Custom | Custom | Contact Sales |
@@ -88,10 +88,10 @@ Implementation notes:
 Free plan behavior:
 
 - Start creates or starts the user's workspace.
-- `savvy-manager` records `started_at` and `expires_at = started_at + 3h`.
+- `savvy-manager` records `started_at` and `expires_at = started_at + 2h`.
 - A background scanner sleeps expired free workspaces with `docker stop`.
 - Volumes are not deleted.
-- User can manually start again and gets a fresh 3-hour window.
+- User can manually start again and gets a fresh 2-hour window.
 
 Paid behavior:
 

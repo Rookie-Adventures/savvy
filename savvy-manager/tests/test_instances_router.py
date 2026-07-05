@@ -181,3 +181,28 @@ def test_provider_state_returns_source(client, db_session):
     data = body["data"]
     assert data["source"] == "user"
     assert "api_key" not in res.text  # secret must not leak
+
+
+def test_free_start_sets_2h_expiry(client, db_session, monkeypatch):
+    _create_test_instance(db_session, status=InstanceStatus.NOT_CREATED)
+    # Stub docker create/start: skip real docker
+    from app import docker_manager
+    monkeypatch.setattr(docker_manager, "start_container", lambda name: True)
+    monkeypatch.setattr(docker_manager.settings, "mock_mode", True)
+    # Stub probe_default_model
+    from app import provider_config
+    monkeypatch.setattr(provider_config, "probe_default_model", lambda **k: "deepseek-v4-flash")
+
+    res = client.post("/internal/instances/inst-1/start", json={
+        "provider_api_key": "sk-abc1234567890123",
+    })
+    body = res.json()
+    assert body["success"] is True
+
+    db_session.expire_all()
+    inst = db_session.query(Instance).filter(Instance.instance_id == "inst-1").first()
+    assert inst.expires_at is not None
+    assert inst.started_at is not None
+    delta = inst.expires_at - inst.started_at
+    assert 7100 <= delta.total_seconds() <= 7260
+

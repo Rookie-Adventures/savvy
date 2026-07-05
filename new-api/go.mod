@@ -66,6 +66,7 @@ require (
 )
 
 require (
+	github.com/Azure/go-ntlmssp v0.1.1 // indirect
 	github.com/ClickHouse/ch-go v0.65.0 // indirect
 	github.com/ClickHouse/clickhouse-go/v2 v2.32.0 // indirect
 	github.com/go-faster/city v1.0.1 // indirect

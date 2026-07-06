@@ -17,11 +17,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
 import { useTranslation } from 'react-i18next'
 import { getSelf } from '@/lib/api'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { SectionPageLayout } from '@/components/layout'
+import { Button } from '@/components/ui/button'
+import { Dialog } from '@/components/dialog'
 import { AffiliateRewardsCard } from './components/affiliate-rewards-card'
 import { BillingHistoryDialog } from './components/dialogs/billing-history-dialog'
 import { CreemConfirmDialog } from './components/dialogs/creem-confirm-dialog'
@@ -73,6 +76,7 @@ export function Wallet(props: WalletProps) {
   const [selectedCreemProduct, setSelectedCreemProduct] =
     useState<CreemProduct | null>(null)
   const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(true)
+  const [wechatCodeUrl, setWechatCodeUrl] = useState<string | null>(null)
 
   const { status } = useStatus()
   const { currency } = useSystemConfig()
@@ -181,18 +185,42 @@ export function Wallet(props: WalletProps) {
     }
   }
 
+  // Handle Alipay/WeChat direct payment selection (same confirm flow)
+  const handleDirectPaymentSelect = async (method: PaymentMethod) => {
+    setSelectedPaymentMethod(method)
+    setPaymentLoading(method.type)
+    try {
+      const minTopup = getMinTopupAmount(topupInfo)
+      if (topupAmount < minTopup) return
+      await calculatePaymentAmount(topupAmount, method.type)
+      setConfirmDialogOpen(true)
+    } finally {
+      setPaymentLoading(null)
+    }
+  }
+
   // Handle payment confirmation
   const handlePaymentConfirm = async () => {
     if (!selectedPaymentMethod) return
 
     const isPancake = isWaffoPancakePayment(selectedPaymentMethod.type)
-    const success = isPancake
-      ? await processWaffoPancakePayment(topupAmount)
-      : await processPayment(topupAmount, selectedPaymentMethod.type)
+    if (isPancake) {
+      const ok = await processWaffoPancakePayment(topupAmount)
+      if (ok) {
+        setConfirmDialogOpen(false)
+        await fetchUser()
+      }
+      return
+    }
 
-    if (success) {
+    const result = await processPayment(topupAmount, selectedPaymentMethod.type)
+    if (result.ok) {
       setConfirmDialogOpen(false)
-      await fetchUser()
+      if (result.wechatCodeUrl) {
+        setWechatCodeUrl(result.wechatCodeUrl)
+      } else {
+        await fetchUser()
+      }
     }
   }
 
@@ -303,6 +331,9 @@ export function Wallet(props: WalletProps) {
                   enableWaffoPancakeTopup={
                     topupInfo?.enable_waffo_pancake_topup
                   }
+                  enableAlipayTopup={topupInfo?.enable_alipay_topup}
+                  enableWechatTopup={topupInfo?.enable_wechat_topup}
+                  onDirectPaymentSelect={handleDirectPaymentSelect}
                 />
               </div>
 
@@ -360,6 +391,32 @@ export function Wallet(props: WalletProps) {
         product={selectedCreemProduct}
         processing={creemProcessing}
       />
+
+      <Dialog
+        open={!!wechatCodeUrl}
+        onOpenChange={(open) => {
+          if (!open) setWechatCodeUrl(null)
+        }}
+        title={t('WeChat Pay')}
+        contentClassName='max-sm:w-[calc(100vw-1.5rem)] sm:max-w-sm'
+        bodyClassName='flex flex-col items-center gap-4 py-6'
+      >
+        <p className='text-muted-foreground text-sm'>
+          {t('Scan with WeChat to pay')}
+        </p>
+        {wechatCodeUrl && (
+          <QRCodeSVG value={wechatCodeUrl} size={200} includeMargin />
+        )}
+        <Button
+          variant='outline'
+          onClick={async () => {
+            setWechatCodeUrl(null)
+            await fetchUser()
+          }}
+        >
+          {t('I have completed payment')}
+        </Button>
+      </Dialog>
     </>
   )
 }

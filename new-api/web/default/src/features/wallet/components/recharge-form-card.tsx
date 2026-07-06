@@ -78,6 +78,9 @@ interface RechargeFormCardProps {
   waffoMinTopup?: number
   onWaffoMethodSelect?: (method: WaffoPayMethod, index: number) => void
   enableWaffoPancakeTopup?: boolean
+  enableAlipayTopup?: boolean
+  enableWechatTopup?: boolean
+  onDirectPaymentSelect?: (method: PaymentMethod) => void
 }
 
 export function RechargeFormCard({
@@ -108,6 +111,9 @@ export function RechargeFormCard({
   waffoMinTopup,
   onWaffoMethodSelect,
   enableWaffoPancakeTopup,
+  enableAlipayTopup,
+  enableWechatTopup,
+  onDirectPaymentSelect,
 }: RechargeFormCardProps) {
   const { t } = useTranslation()
   const [localAmount, setLocalAmount] = useState(topupAmount.toString())
@@ -128,7 +134,9 @@ export function RechargeFormCard({
     topupInfo?.enable_online_topup ||
     topupInfo?.enable_stripe_topup ||
     enableWaffoTopup ||
-    enableWaffoPancakeTopup
+    enableWaffoPancakeTopup ||
+    enableAlipayTopup ||
+    enableWechatTopup
   const hasAnyTopup = hasConfigurableTopup || enableCreemTopup
   const hasStandardPaymentMethods =
     Array.isArray(topupInfo?.pay_methods) && topupInfo.pay_methods.length > 0
@@ -452,6 +460,57 @@ export function RechargeFormCard({
                           button
                         )
                       })}
+                    </div>
+                  </div>
+                )}
+
+              {(enableAlipayTopup || enableWechatTopup) &&
+                onDirectPaymentSelect && (
+                  <div className='space-y-2.5 sm:space-y-3'>
+                    <Label className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
+                      {t('Direct Payment')}
+                    </Label>
+                    <div className='grid grid-cols-2 gap-1.5 sm:gap-3 lg:grid-cols-3'>
+                      {enableAlipayTopup && (
+                        <Button
+                          variant='outline'
+                          onClick={() =>
+                            onDirectPaymentSelect({
+                              name: t('Alipay'),
+                              type: 'alipay',
+                            })
+                          }
+                          disabled={!!paymentLoading}
+                          className='min-h-14 min-w-0 justify-start gap-2 rounded-lg px-3 py-2 text-left'
+                        >
+                          {paymentLoading === 'alipay' ? (
+                            <Loader2 className='h-4 w-4 animate-spin' />
+                          ) : (
+                            getPaymentIcon('alipay', 'h-4 w-4')
+                          )}
+                          <span className='truncate'>{t('Alipay')}</span>
+                        </Button>
+                      )}
+                      {enableWechatTopup && (
+                        <Button
+                          variant='outline'
+                          onClick={() =>
+                            onDirectPaymentSelect({
+                              name: t('WeChat Pay'),
+                              type: 'wxpay',
+                            })
+                          }
+                          disabled={!!paymentLoading}
+                          className='min-h-14 min-w-0 justify-start gap-2 rounded-lg px-3 py-2 text-left'
+                        >
+                          {paymentLoading === 'wxpay' ? (
+                            <Loader2 className='h-4 w-4 animate-spin' />
+                          ) : (
+                            getPaymentIcon('wxpay', 'h-4 w-4')
+                          )}
+                          <span className='truncate'>{t('WeChat Pay')}</span>
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )}

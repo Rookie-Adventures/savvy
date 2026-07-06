@@ -87,6 +87,20 @@ export function isWaffoPancakePayment(paymentType: string): boolean {
 }
 
 /**
+ * Check if payment method is Alipay direct (not epay-routed alipay)
+ */
+export function isAlipayPayment(paymentType: string): boolean {
+  return paymentType === PAYMENT_TYPES.ALIPAY
+}
+
+/**
+ * Check if payment method is WeChat Pay direct (not epay-routed wxpay)
+ */
+export function isWechatPayment(paymentType: string): boolean {
+  return paymentType === PAYMENT_TYPES.WECHAT
+}
+
+/**
  * Get default payment type from topup info
  */
 export function getDefaultPaymentType(topupInfo: TopupInfo | null): string {
@@ -109,6 +123,14 @@ export function getDefaultPaymentType(topupInfo: TopupInfo | null): string {
 
   if (topupInfo.enable_waffo_pancake_topup) {
     return PAYMENT_TYPES.WAFFO_PANCAKE
+  }
+
+  if (topupInfo.enable_alipay_topup) {
+    return PAYMENT_TYPES.ALIPAY
+  }
+
+  if (topupInfo.enable_wechat_topup) {
+    return PAYMENT_TYPES.WECHAT
   }
 
   return DEFAULT_PAYMENT_TYPE

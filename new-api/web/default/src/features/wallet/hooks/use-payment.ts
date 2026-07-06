@@ -25,17 +25,25 @@ import {
   calculateWaffoPancakeAmount,
   requestPayment,
   requestStripePayment,
+  requestAlipayPayment,
+  requestWechatPayment,
   isApiSuccess,
 } from '../api'
 import {
   isStripePayment,
   isWaffoPancakePayment,
+  isAlipayPayment,
+  isWechatPayment,
   submitPaymentForm,
 } from '../lib'
 
 // ============================================================================
 // Payment Hook
 // ============================================================================
+
+export type PaymentResult =
+  | { ok: true; wechatCodeUrl?: string }
+  | { ok: false }
 
 export function usePayment() {
   const [amount, setAmount] = useState<number>(0)
@@ -50,6 +58,7 @@ export function usePayment() {
 
         const isStripe = isStripePayment(paymentType)
         const isPancake = isWaffoPancakePayment(paymentType)
+        // Alipay/WeChat use the same amount calc as epay (local currency / USD).
         const response = isStripe
           ? await calculateStripeAmount({ amount: topupAmount })
           : isPancake
@@ -77,12 +86,53 @@ export function usePayment() {
 
   // Process payment
   const processPayment = useCallback(
-    async (topupAmount: number, paymentType: string) => {
+    async (topupAmount: number, paymentType: string): Promise<PaymentResult> => {
       try {
         setProcessing(true)
 
         const isStripe = isStripePayment(paymentType)
+        const isAlipay = isAlipayPayment(paymentType)
+        const isWechat = isWechatPayment(paymentType)
         const amount = Math.floor(topupAmount)
+
+        if (isAlipay) {
+          const response = await requestAlipayPayment({
+            amount,
+            payment_method: 'alipay',
+          })
+          if (!isApiSuccess(response)) {
+            toast.error(
+              response.message || i18next.t('Payment request failed')
+            )
+            return { ok: false }
+          }
+          if (response.data?.pay_link) {
+            toast.success(i18next.t('Redirecting to payment page...'))
+            // In-tab redirect — Alipay cashier expects the browser to land on
+            // its page; window.open across an await loses user-gesture context.
+            window.location.href = response.data.pay_link as string
+            return { ok: true }
+          }
+          return { ok: false }
+        }
+
+        if (isWechat) {
+          const response = await requestWechatPayment({
+            amount,
+            payment_method: 'wechat',
+          })
+          if (!isApiSuccess(response)) {
+            toast.error(
+              response.message || i18next.t('Payment request failed')
+            )
+            return { ok: false }
+          }
+          if (response.data?.code_url) {
+            // Caller renders the QR; no redirect.
+            return { ok: true, wechatCodeUrl: response.data.code_url }
+          }
+          return { ok: false }
+        }
 
         const response = isStripe
           ? await requestStripePayment({
@@ -96,14 +146,14 @@ export function usePayment() {
 
         if (!isApiSuccess(response)) {
           toast.error(response.message || i18next.t('Payment request failed'))
-          return false
+          return { ok: false }
         }
 
         // Handle Stripe payment
         if (isStripe && response.data?.pay_link) {
           window.open(response.data.pay_link as string, '_blank')
           toast.success(i18next.t('Redirecting to payment page...'))
-          return true
+          return { ok: true }
         }
 
         // Handle non-Stripe payment
@@ -112,14 +162,14 @@ export function usePayment() {
           if (url) {
             submitPaymentForm(url, response.data)
             toast.success(i18next.t('Redirecting to payment page...'))
-            return true
+            return { ok: true }
           }
         }
 
-        return false
+        return { ok: false }
       } catch (_error) {
         toast.error(i18next.t('Payment request failed'))
-        return false
+        return { ok: false }
       } finally {
         setProcessing(false)
       }

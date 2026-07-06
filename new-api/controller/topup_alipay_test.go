@@ -16,6 +16,8 @@ func TestRequestAlipayPayRejectsUnconfigured(t *testing.T) {
 	operation_setting.AlipayAppPrivateKey = ""
 	operation_setting.AlipayPublicKey = ""
 	operation_setting.AlipayIsCertMode = false
+	// ponytail: GetAlipayClient 短路包级单例 alipayClient,若前测初始化过则本测清空 config 也无效 → 返非 nil → handler 越过 nil-guard 到 GetUserGroup 无 DB fixture → panic。t.Cleanup 复位保顺序无关+fork-safe。
+	t.Cleanup(func() { alipayClient = nil })
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -24,8 +26,8 @@ func TestRequestAlipayPayRejectsUnconfigured(t *testing.T) {
 		strings.NewReader(`{"amount":10}`))
 
 	RequestAlipayPay(c)
-	if !strings.Contains(w.Body.String(), `"message":"error"`) &&
-		!strings.Contains(w.Body.String(), `"message":"fail"`) {
-		t.Fatalf("expected error when alipay unconfigured, got %s", w.Body.String())
+	// ponytail: 断言精确命中 nil-client guard 写的 message,证明真走到 config-missing gate,而非被 ShouldBindJSON 错误路径(同样写 "message":"error")掩盖。
+	if !strings.Contains(w.Body.String(), "当前管理员未配置支付信息") {
+		t.Fatalf("expected nil-client guard message, got %s", w.Body.String())
 	}
 }

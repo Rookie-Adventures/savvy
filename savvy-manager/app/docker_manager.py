@@ -6,6 +6,20 @@ import docker
 from docker.errors import NotFound, APIError, DockerException
 from .config import settings
 
+# Resource limits per plan (PRD §Plans And Resource Limits).
+# cpu_quota is in microseconds per 100k period (50000 = 0.5 vCPU).
+PLAN_RESOURCES = {
+    "FREE":    {"cpu_quota": 50000,  "mem_limit": "768m", "pids_limit": 128},
+    "STARTER": {"cpu_quota": 200000, "mem_limit": "2g",   "pids_limit": 512},
+    "PRO":     {"cpu_quota": 400000, "mem_limit": "8g",   "pids_limit": 1024},
+}
+PLAN_LOG_CONFIG = {
+    "FREE":    {"max-size": "10m", "max-file": "3"},
+    "STARTER": {"max-size": "20m", "max-file": "5"},
+    "PRO":     {"max-size": "50m", "max-file": "5"},
+}
+PLAN_STORAGE_GB = {"FREE": 10, "STARTER": 30, "PRO": 80}
+
 # Lazily initialized so importing this module never touches the Docker daemon.
 # (The container may run without a Docker socket mounted in mock mode.)
 _client = None
@@ -55,28 +69,13 @@ def create_container(
         }
 
     try:
-        # Define resource limits and log rotation limits per plan
-        # FREE: 0.5 CPU, 768m RAM, 128 pids, log 10m x 3
-        # PAID_RESIDENT: 2.0 CPU, 2g RAM, 512 pids, log 20m x 5
-        limits = {
-            "FREE": {
-                "mem_limit": "768m",
-                "cpu_quota": 50000,
-                "pids_limit": 128,
-                "log_max_size": "10m",
-                "log_max_file": "3"
-            },
-            "PAID_RESIDENT": {
-                "mem_limit": "2g",
-                "cpu_quota": 200000,
-                "pids_limit": 512,
-                "log_max_size": "20m",
-                "log_max_file": "5"
-            }
+        # Resource limits and log rotation per plan (see PLAN_RESOURCES / PLAN_LOG_CONFIG).
+        # ponytail: PLAN_LOG_CONFIG uses docker-log-driver keys (max-size/max-file);
+        # map to log_max_size/log_max_file so the run() call below stays unchanged.
+        limit_cfg = {
+            **PLAN_RESOURCES.get(plan, PLAN_RESOURCES["FREE"]),
+            **{f"log_{k.replace('-', '_')}": v for k, v in PLAN_LOG_CONFIG.get(plan, PLAN_LOG_CONFIG["FREE"]).items()},
         }
-
-        # Safe fallback to FREE if plan is invalid/unsupported
-        limit_cfg = limits.get(plan, limits["FREE"])
 
         client = _client_or_none()
         if client is None:
@@ -244,4 +243,33 @@ def _write_container_config_yaml(container, yaml_text: str) -> bool:
         result = container.exec_run(cmd)
         return getattr(result, "exit_code", 1) == 0
     except Exception:
+        return False
+
+
+def update_container_resources(
+    container_name: str,
+    cpu_quota: int,
+    mem_limit: str,
+    pids_limit: int,
+) -> bool:
+    """docker update 热改运行中容器资源。不重建,零中断。log_config 不改(留旧档,等 rebuild 闭合)。"""
+    if settings.mock_mode:
+        return True
+
+    client = _client_or_none()
+    if client is None:
+        return False
+
+    try:
+        container = client.containers.get(container_name)
+        container.update(
+            cpu_quota=cpu_quota,
+            mem_limit=mem_limit,
+            memswap_limit=mem_limit,  # memory swap = memory limit
+            pids_limit=pids_limit,
+        )
+        return True
+    except NotFound:
+        return False
+    except APIError:
         return False

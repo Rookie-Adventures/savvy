@@ -130,3 +130,48 @@ def test_start_container_mock_mode_short_circuits():
         from app.docker_manager import start_container
         assert start_container("any") is True
 
+
+def test_update_container_resources_calls_docker_update(monkeypatch):
+    from app import docker_manager
+    monkeypatch.setattr(docker_manager.settings, "mock_mode", False)
+
+    captured = {}
+    class FakeContainer:
+        def update(self, **kw):
+            captured["args"] = kw
+    class FakeClient:
+        class containers:
+            @staticmethod
+            def get(name):
+                return FakeContainer()
+    monkeypatch.setattr(docker_manager, "_client_or_none", lambda: FakeClient())
+
+    ok = docker_manager.update_container_resources("c1", 200000, "2g", 512)
+    assert ok is True
+    assert captured["args"] == {
+        "cpu_quota": 200000, "mem_limit": "2g",
+        "memswap_limit": "2g", "pids_limit": 512,
+    }
+
+
+def test_update_container_resources_returns_false_when_not_found(monkeypatch):
+    from app import docker_manager
+    from docker.errors import NotFound
+    monkeypatch.setattr(docker_manager.settings, "mock_mode", False)
+
+    class FakeClient:
+        class containers:
+            @staticmethod
+            def get(name):
+                raise NotFound("nope")
+    monkeypatch.setattr(docker_manager, "_client_or_none", lambda: FakeClient())
+
+    assert docker_manager.update_container_resources("c1", 200000, "2g", 512) is False
+
+
+def test_plan_resource_constants_present():
+    from app.docker_manager import PLAN_RESOURCES, PLAN_LOG_CONFIG, PLAN_STORAGE_GB
+    assert set(PLAN_RESOURCES) == {"FREE", "STARTER", "PRO"}
+    assert PLAN_RESOURCES["STARTER"] == {"cpu_quota": 200000, "mem_limit": "2g", "pids_limit": 512}
+    assert PLAN_STORAGE_GB == {"FREE": 10, "STARTER": 30, "PRO": 80}
+

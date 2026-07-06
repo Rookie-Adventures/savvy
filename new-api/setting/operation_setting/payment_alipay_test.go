@@ -21,6 +21,11 @@ func TestIsAlipayConfiguredPublicKeyMode(t *testing.T) {
 	if !IsAlipayConfigured() {
 		t.Fatal("public-key mode with appid+priv+pub should be configured")
 	}
+	// negative: appid+priv set but public key empty must be rejected (pub-key gate at payment_alipay.go:25)
+	AlipayPublicKey = ""
+	if IsAlipayConfigured() {
+		t.Fatal("public-key mode without PublicKey should not be configured")
+	}
 }
 
 func TestIsAlipayConfiguredCertMode(t *testing.T) {
@@ -40,5 +45,12 @@ func TestIsAlipayConfiguredCertMode(t *testing.T) {
 	}()
 	if !IsAlipayConfigured() {
 		t.Fatal("cert mode with appid+2certSN+priv should be configured")
+	}
+	// ponytail: locks the exact plan-bug — dropping any one of the 3 cert SNs must fail
+	// the gate at payment_alipay.go:23. The plan bug was: only 2 SNs set, 3rd (AlipayAlipayCertSN)
+	// missing → IsAlipayConfigured wrongly returned true. This regression test prevents that.
+	AlipayAlipayCertSN = ""
+	if IsAlipayConfigured() {
+		t.Fatal("cert mode missing AlipayAlipayCertSN should not be configured")
 	}
 }

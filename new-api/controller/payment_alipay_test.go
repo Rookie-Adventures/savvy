@@ -17,6 +17,8 @@ func TestSubscriptionRequestAlipayRejectsUnconfigured(t *testing.T) {
 	// ponytail: 解锁合规(同时设 ComplianceConfirmed+ComplianceTermsVersion 并 defer 复原),
 	// 让执行越过 requirePaymentCompliance 到达 nil-client guard(Step 4),而非停在合规 gate。
 	confirmPaymentComplianceForTest(t)
+	// ponytail: 复位单例(GetAlipayClient 短路 `if alipayClient != nil`),防其他测试初始化后本测试静默越过 nil-guard。
+	t.Cleanup(func() { alipayClient = nil })
 	// handler 在 nil-guard 前会 GetSubscriptionPlanById → 需要真实 DB + 一行启用套餐才能走到 guard。
 	db := setupModelListControllerTestDB(t)
 	require.NoError(t, db.AutoMigrate(&model.SubscriptionPlan{}))

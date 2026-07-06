@@ -26,9 +26,10 @@ func GetAlipayClient() *alipay.Client {
 	if !operation_setting.IsAlipayConfigured() {
 		return nil
 	}
-	// ponytail: SDK v3.2.29 New(appId, privateKey, production bool). Brief's signature matches.
-	// 生产环境 = true; 沙箱由 admin 不配置时自然不进这里。
-	c, err := alipay.New(operation_setting.AlipayAppId, operation_setting.AlipayAppPrivateKey, true)
+	// ponytail: production(沙箱 vs 正式网关)与 cert-mode(验签方案)是两个正交开关。
+	// 原实现硬编码 true → 沙箱也会指向正式网关且可能触发 SDK 在缺 verifier 时的自动下载证书回退。
+	// 改读 AlipayIsProduction:admin 按需各设各的。
+	c, err := alipay.New(operation_setting.AlipayAppId, operation_setting.AlipayAppPrivateKey, operation_setting.AlipayIsProduction)
 	if err != nil {
 		return nil
 	}

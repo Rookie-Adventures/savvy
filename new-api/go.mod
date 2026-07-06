@@ -61,7 +61,9 @@ require (
 )
 
 require (
+	github.com/smartwalle/alipay/v3 v3.2.29
 	github.com/waffo-com/waffo-pancake-sdk-go v0.3.1
+	github.com/wechatpay-apiv3/wechatpay-go v0.2.21
 	gorm.io/driver/clickhouse v0.6.0
 )
 
@@ -74,7 +76,6 @@ require (
 	github.com/paulmach/orb v0.10.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
-	github.com/smartwalle/alipay/v3 v3.2.29 // indirect
 	github.com/smartwalle/ncrypto v1.0.4 // indirect
 	github.com/smartwalle/ngx v1.1.0 // indirect
 	github.com/smartwalle/nsign v1.0.9 // indirect

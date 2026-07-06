@@ -6,7 +6,8 @@ from ..auth import require_hmac
 from ..config import settings
 from ..database import get_db
 from ..models import Instance, WorkspaceState, InstanceStatus, PlanType
-from ..docker_manager import start_container, stop_container
+from ..docker_manager import start_container, stop_container, PLAN_STORAGE_GB
+from .. import docker_manager  # module ref so tests can monkeypatch update_container_resources
 from ..token import generate_access_token, verify_access_token
 
 router = APIRouter(prefix="/internal/instances", tags=["instances"])
@@ -16,6 +17,32 @@ class StartResponse(BaseModel):
     instance_id: str
     status: InstanceStatus
     started_at: str
+    expires_at: str | None = None
+
+
+class UpgradeRequest(BaseModel):
+    plan: str
+    cpu_quota: int
+    mem_limit: str
+    pids_limit: int
+
+
+class UpgradeResponse(BaseModel):
+    instance_id: str
+    status: InstanceStatus
+    plan: PlanType
+    needs_upgrade: bool
+
+
+class DowngradeRequest(BaseModel):
+    plan: str
+    expires_at: str  # ISO8601
+
+
+class DowngradeResponse(BaseModel):
+    instance_id: str
+    status: InstanceStatus
+    plan: PlanType
     expires_at: str | None = None
 
 
@@ -399,4 +426,74 @@ async def update_workspace_state(instance_id: str, request: Request, auth=Depend
 
     db.commit()
     return {"status": "ok"}
+
+
+@router.post("/{instance_id}/upgrade", response_model=UpgradeResponse)
+async def upgrade_instance(
+    instance_id: str,
+    body: UpgradeRequest,
+    auth=Depends(require_hmac),
+    db: Session = Depends(get_db),
+):
+    """订阅生效:docker update 热改容器资源 + 改 plan + 清免费窗。
+    成功标 needs_rebuild(log 重建闭合);失败标 needs_upgrade(scanner 补)。"""
+    inst = _get_instance(instance_id, auth["user_id"], db)
+    try:
+        target_plan = PlanType(body.plan)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"invalid plan: {body.plan}")
+
+    ok = docker_manager.update_container_resources(
+        inst.container_name, body.cpu_quota, body.mem_limit, body.pids_limit
+    )
+    if ok:
+        inst.plan = target_plan
+        inst.expected_plan = target_plan
+        inst.expires_at = None
+        inst.needs_upgrade = False
+        inst.upgrade_retries = 0
+        # log_config 升档需重建闭合(漏洞 3);仅当新 plan 的 log 配置不同于 FREE(升级必变)
+        inst.needs_rebuild = True
+        db.commit()
+        return UpgradeResponse(
+            instance_id=inst.instance_id, status=inst.status,
+            plan=inst.plan, needs_upgrade=False,
+        )
+    else:
+        # docker update 失败:落 needs_upgrade 给 scanner 补;envelope 把 500 映射成 success=False。
+        inst.needs_upgrade = True
+        inst.expected_plan = target_plan
+        db.commit()
+        raise HTTPException(status_code=500, detail="upgrade failed; marked needs_upgrade for scanner")
+
+
+@router.post("/{instance_id}/downgrade", response_model=DowngradeResponse)
+async def downgrade_instance(
+    instance_id: str,
+    body: DowngradeRequest,
+    auth=Depends(require_hmac),
+    db: Session = Depends(get_db),
+):
+    """订阅过期:改 plan=FREE + 设免费 2h 窗。不碰运行容器(Q6 防止跑着任务 OOM)。
+    不调 docker update — 留给下次启动按 FREE 档起 / 现成免费睡 scanner stop。"""
+    inst = _get_instance(instance_id, auth["user_id"], db)
+    try:
+        target_plan = PlanType(body.plan)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"invalid plan: {body.plan}")
+
+    try:
+        expires_at = datetime.fromisoformat(body.expires_at.replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid expires_at ISO8601")
+
+    inst.plan = target_plan
+    inst.expected_plan = target_plan
+    inst.expires_at = expires_at
+    inst.storage_quota_gb = PLAN_STORAGE_GB.get(target_plan.value, PLAN_STORAGE_GB["FREE"])
+    db.commit()
+    return DowngradeResponse(
+        instance_id=inst.instance_id, status=inst.status,
+        plan=inst.plan, expires_at=body.expires_at,
+    )
 

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from ..auth import require_hmac
 from ..config import settings
 from ..database import get_db
+from ..docker_manager import PLAN_STORAGE_GB
 from ..models import Instance, InstanceStatus, PlanType, User
 
 router = APIRouter(prefix="/internal/users", tags=["users"])
@@ -122,6 +123,7 @@ async def create_instance(user_id: str, auth=Depends(require_hmac), db: Session 
         container_name=container_name,
         volume_name=volume_name,
         assigned_port=assigned_port,
+        storage_quota_gb=PLAN_STORAGE_GB.get(plan.value, PLAN_STORAGE_GB["FREE"]),
     )
     db.add(inst)
     db.commit()

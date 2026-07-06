@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/pkg/perf_metrics"
 	"github.com/google/uuid"
 )
@@ -27,7 +28,7 @@ type HermesInstance struct {
 	InstanceID    string `json:"instance_id"`
 	UserID        string `json:"user_id"`
 	Status        string `json:"status"` // manager returns UPPERCASE enum: RUNNING / SLEEPING / ...
-	Plan          string `json:"plan"`   // FREE / PAID_RESIDENT / ...
+	Plan          string `json:"plan"`   // FREE / STARTER / PRO
 	ContainerName string `json:"container_name,omitempty"`
 	VolumeName    string `json:"volume_name,omitempty"`
 	StartedAt     string `json:"started_at,omitempty"`
@@ -497,6 +498,136 @@ func CallHermesAgentStream(ctx context.Context, group string, message string, ag
 			}
 		}
 	}
+}
+
+// PlanResourceSpec mirrors manager's PLAN_RESOURCES per-tier CPU/RAM/PIDs.
+type PlanResourceSpec struct {
+	CPUQuota   int
+	MemLimit   string
+	PidsLimit  int
+}
+
+// PlanResources mirrors savvy-manager/app/docker_manager.py PLAN_RESOURCES.
+// Keyed by user group (default/starter/pro), matching SubscriptionPlan.UpgradeGroup.
+var PlanResources = map[string]PlanResourceSpec{
+	"default": {CPUQuota: 50000, MemLimit: "768m", PidsLimit: 128},
+	"starter": {CPUQuota: 200000, MemLimit: "2g", PidsLimit: 512},
+	"pro":     {CPUQuota: 400000, MemLimit: "8g", PidsLimit: 1024},
+}
+
+// groupToPlanName maps a user group to manager's PlanType string.
+var groupToPlanName = map[string]string{
+	"default": "FREE",
+	"starter": "STARTER",
+	"pro":     "PRO",
+}
+
+// GroupToPlanName maps a user group to the manager's PlanType string.
+// Exported wrapper over groupToPlanName so model can call into service without
+// importing the map directly (avoids leaking internals across the package line).
+func GroupToPlanName(group string) (string, bool) {
+	name, ok := groupToPlanName[group]
+	return name, ok
+}
+
+// NotifyManagerUpgrade finds the user's running instance and asks the manager
+// to hot-upgrade its container resources. Called from model after a
+// subscription order commits. Network failure does NOT roll back the order;
+// the manager scanner is the safety net.
+func NotifyManagerUpgrade(userID int, upgradeGroup string) error {
+	inst, err := GetHermesInstance(userID)
+	if err != nil {
+		return err
+	}
+	if inst == nil || !strings.EqualFold(inst.Status, "RUNNING") {
+		return nil // no running instance to upgrade; user.group already elevated
+	}
+	res, ok := PlanResources[upgradeGroup]
+	if !ok {
+		return nil // unknown group, nothing to send
+	}
+	planName, ok := GroupToPlanName(upgradeGroup)
+	if !ok {
+		return nil
+	}
+	return UpgradeHermesInstance(userID, inst.InstanceID, planName, res.CPUQuota, res.MemLimit, res.PidsLimit)
+}
+
+// NotifyManagerDowngrade finds the user's running instance and asks the manager
+// to downgrade to FREE with a 2h free window. Called from model after a
+// subscription expiry commits.
+func NotifyManagerDowngrade(userID int) error {
+	inst, err := GetHermesInstance(userID)
+	if err != nil {
+		return err
+	}
+	if inst == nil || !strings.EqualFold(inst.Status, "RUNNING") {
+		return nil
+	}
+	return DowngradeHermesInstance(userID, inst.InstanceID, time.Now().Add(2*time.Hour))
+}
+
+func init() {
+	// Wire the model-layer notify hooks to the real service impls. service
+	// already imports model, so this assignment lives here to avoid a model→
+	// service import cycle. Tests override the model vars directly.
+	model.NotifyManagerUpgradeFn = NotifyManagerUpgrade
+	model.NotifyManagerDowngradeFn = NotifyManagerDowngrade
+}
+
+// UpgradeHermesInstance 通知 manager 升级在跑容器资源 + 改 plan + 清免费窗。
+// plan 是 manager PlanType 字符串("STARTER"/"PRO");资源数值由 new-api 传入,manager 不反查。
+func UpgradeHermesInstance(userID int, instanceID, plan string, cpuQuota int, memLimit string, pidsLimit int) error {
+	body := map[string]any{
+		"plan":        plan,
+		"cpu_quota":   cpuQuota,
+		"mem_limit":   memLimit,
+		"pids_limit":  pidsLimit,
+	}
+	bodyBytes, err := common.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("failed to marshal upgrade body: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/internal/instances/%s/upgrade", getHermesManagerURL(), instanceID)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := signAndDo(req, userID, bodyBytes)
+	if err != nil {
+		return fmt.Errorf("failed to connect to hermes-manager: %w", err)
+	}
+	_, err = decodeManagerResponse(resp)
+	return err
+}
+
+// DowngradeHermesInstance 通知 manager 降级:改 plan=FREE + 设免费 2h 窗。不动运行容器。
+func DowngradeHermesInstance(userID int, instanceID string, expiresAt time.Time) error {
+	body := map[string]any{
+		"plan":       "FREE",
+		"expires_at": expiresAt.UTC().Format(time.RFC3339),
+	}
+	bodyBytes, err := common.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("failed to marshal downgrade body: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/internal/instances/%s/downgrade", getHermesManagerURL(), instanceID)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := signAndDo(req, userID, bodyBytes)
+	if err != nil {
+		return fmt.Errorf("failed to connect to hermes-manager: %w", err)
+	}
+	_, err = decodeManagerResponse(resp)
+	return err
 }
 
 // HealthCheckHermesManager is a lightweight GET /health used by the status

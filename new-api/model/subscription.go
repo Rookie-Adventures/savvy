@@ -492,7 +492,7 @@ func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *Subscriptio
 			return nil, errors.New("已达到该套餐购买上限")
 		}
 	}
-	nowUnix := GetDBTimestamp()
+	nowUnix := getDBTimestampTx(tx)
 	now := time.Unix(nowUnix, 0)
 	endUnix, err := calcPlanEndTime(now, plan)
 	if err != nil {
@@ -577,7 +577,10 @@ func CompleteSubscriptionOrder(tradeNo string, providerPayload string, expectedP
 		if order.Status != common.TopUpStatusPending {
 			return ErrSubscriptionOrderStatusInvalid
 		}
-		plan, err := GetSubscriptionPlanById(order.PlanId)
+		// ponytail: pass tx (not the global DB) so single-conn SQLite doesn't
+		// deadlock waiting for the conn this tx already holds. Root-cause fix:
+		// the prior GetSubscriptionPlanById call grabbed DB while inside the tx.
+		plan, err := getSubscriptionPlanByIdTx(tx, order.PlanId)
 		if err != nil {
 			return err
 		}
@@ -614,6 +617,15 @@ func CompleteSubscriptionOrder(tradeNo string, providerPayload string, expectedP
 	}
 	if upgradeGroup != "" && logUserId > 0 {
 		_ = UpdateUserGroupCache(logUserId, upgradeGroup)
+		// 配套②:订阅生效 → 异步通知 manager 升级在跑容器资源 + 改 plan + 清免费窗。
+		// 事务已提交,网络失败不阻塞订单成功,仅 SYSLOG;manager scanner 兜底(漏洞1)。
+		if NotifyManagerUpgradeFn != nil {
+			go func(uid int, group string) {
+				if err := NotifyManagerUpgradeFn(uid, group); err != nil {
+					common.SysError("hermes manager upgrade failed after subscription: " + err.Error())
+				}
+			}(logUserId, upgradeGroup)
+		}
 	}
 	if logUserId > 0 {
 		msg := fmt.Sprintf("订阅购买成功，套餐: %s，支付金额: %.2f，支付方式: %s", logPlanTitle, logMoney, logPaymentMethod)
@@ -1075,6 +1087,15 @@ func ExpireDueSubscriptions(limit int) (int, error) {
 		}
 		if cacheGroup != "" {
 			_ = UpdateUserGroupCache(userId, cacheGroup)
+			// 配套②:订阅过期 → 异步通知 manager 降级回 FREE + 2h 免费窗。
+			// 事务已提交,网络失败不阻塞过期流程,仅 SYSLOG;manager scanner 兜底(漏洞1)。
+			if NotifyManagerDowngradeFn != nil {
+				go func(uid int) {
+					if err := NotifyManagerDowngradeFn(uid); err != nil {
+						common.SysError("hermes manager downgrade failed after expiry: " + err.Error())
+					}
+				}(userId)
+			}
 		}
 	}
 	return expiredCount, nil

@@ -519,3 +519,127 @@ docker exec savvy-nginx-1 nginx -t
 6. 回控制台重填我们的 new-api sk → 恢复聊天
 7. **Provider model 动态探测**（2026-07-05 新增）：reset 实例（DB enc=NULL + 删容器/卷）→ 首启带 key 不填 model → 查 `docker exec savvy-manager python -c "from app.database import SessionLocal;from app.models import Instance;from app import crypto;db=SessionLocal();i=db.query(Instance).filter(Instance.instance_id=='inst-1').first();s=crypto.decrypt_provider_config(i.provider_config_enc,i.provider_config_alg or 'fernet');print(s['model'])"` 应等于 new-api `/v1/models` 返回 `data[0].id`（非写死 `claude-sonnet-4`）→ 前端发"你好" agent 真回复。
 8. **HMAC secret 对齐**：`docker inspect savvy-manager new-api --format '{{.Config.Env}}' | tr ' ' '\n' | grep SAVVY_HMAC_SECRET` 两侧值一致。重建 manager 用与 new-api 同一 compose 文件（`docker inspect new-api --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}'`）。prod 无 `.env` 时 `docker compose -f docker-compose.prod.yml config` 应退出非零（hard-fail 生效）。
+
+---
+
+## 付费档 + 订阅→容器升级链（D + 配套②）运维验收
+
+> **状态：已实现 + 端到端联调验通（2026-07-07）**。分支 `feat/hermes-paid-plan`（commits `e556c32ee..3dab5b9f5`），PR #2 base dev OPEN。真 Docker 非 mock 全链闭环。
+> spec：`docs/superpowers/specs/2026-07-06-hermes-paid-plan-billing-and-container-upgrade-design.md`；plan：`docs/superpowers/plans/2026-07-06-hermes-paid-plan.md`。
+
+### 三档 PlanType（manager 侧）
+
+`FREE` / `STARTER` / `PRO`（删 `PAID_RESIDENT`）。资源梯度（`savvy-manager/app/docker_manager.py` `PLAN_RESOURCES`）：
+
+| 档 | cpu_quota | mem_limit | pids_limit | storage_quota_gb |
+|----|-----------|-----------|------------|------------------|
+| FREE | 50000 | 768m | 128 | 10 |
+| STARTER | 200000 | 2g | 512 | 30 |
+| PRO | 400000 | 8g | 1024 | 80 |
+
+（cpu_quota 单位 microseconds/100k period：50000=0.5 vCPU）
+
+Instance 加 5 列：`needs_upgrade` / `needs_rebuild` / `expected_plan` / `storage_quota_gb` / `upgrade_retries`。alembic 迁移 `a2b3c4d5e6f7`（PG 走 `ALTER TYPE ADD VALUE`，SQLite/MySQL 走 `batch_alter`）。
+
+### 升级链路（订阅生效 → 容器热改）
+
+```
+余额购 STARTER/PRO（POST /api/subscription/balance/pay）
+  → model.PurchaseSubscriptionWithBalance 提交事务
+  → user.group = plan.upgrade_group（default/starter/pro）
+  → 异步 go service.NotifyManagerUpgrade(uid, group)
+    → GetHermesInstance（GET manager /internal/users/{uid}/instance）
+    → 若 status==RUNNING：UpgradeHermesInstance（POST manager /internal/instances/{id}/upgrade，HMAC）
+      → manager docker update 热改 CPU/MEM（零中断）+ plan 改档 + 清 expires_at 免睡 + 标 needs_rebuild
+    → 若非 RUNNING：return nil（user.group 已升，等容器起时按新档配）
+```
+
+**热改验证**：PRO 升级后容器 MEM 768m→8589934592(8GB)、CPUQuota 50000→400000，容器不重启。pids_limit 不热改（docker SDK `update_container()` 不支持），差异由 needs_rebuild 重建路径闭合。
+
+### 降级链路（订阅过期 → FREE + 2h 窗）
+
+```
+ExpireDueSubscriptions（定时 1min，subscription_reset_task.go）
+  → status=expired + user.group 回 downgrade_group（default）
+  → 异步 go service.NotifyManagerDowngrade(uid)
+    → GetHermesInstance；若 RUNNING：DowngradeHermesInstance（POST /internal/instances/{id}/downgrade）
+      → manager plan=FREE + storage_quota_gb=10 + expires_at=now+2h
+      → 不碰运行容器（防跑着任务 OOM）；资源等下次启动按 FREE 档起
+```
+
+**降级验证**：订阅 end_time 改过去 → ≤1min 内 manager 收到 downgrade POST 200 → instance plan FREE、expected_plan FREE、storage 10、expires_at +2h。
+
+### scanner 三段兜底（savvy-manager/app/scanner.py，1min tick）
+
+- **升补**（`check_needs_upgrade`）：needs_upgrade=True → 重试 docker update，≤3 次，超限 SYSLOG 告警停手（漏洞1：升级失败不无限重试）
+- **降补**（`check_needs_downgrade`）：expected_plan≠plan → 对齐，FREE 设 2h 窗（漏洞2：降级单触发补救）
+- **log 重建**（`check_needs_rebuild`）：needs_rebuild=True 且 SLEEPING → rm 旧容器 + create 新容器（新 plan log_config），保 volume + provider_config_enc，status=NOT_CREATED 待 start 唤醒（漏洞3：log_config 升档需重建）
+- **storage 软配额**（`check_storage_quota`，10min tick）：`docker df` 取 volume 用量，超 storage_quota_gb → SYSLOG 软告警，不强制禁（Q3）
+
+### 赠 Token 机制（new-api 原生复用，D 零新代码）
+
+订阅赠送 API quota 走 new-api 原生，非 D 开发：
+
+- `subscription_plans.total_amount` 列（原生）→ 购买落 `AmountTotal=plan.TotalAmount`（subscription.go:529）
+- `ResetDueSubscriptions`（subscription.go:1295）周期发 quota，定时任务 subscription_reset_task.go:71 调用（1min tick）
+- `quota_reset_period`（month/never）控周期
+- **admin seed plan 时填 `total_amount` + `quota_reset_period=month`** 即启用；填 0 则不赠（联调建的 plan=0）
+
+### admin seed 三档套餐（上线手动，不入代码）
+
+`POST /api/subscription/admin/plans`（AdminAuth，需 `New-Api-User` + token header）：
+
+1. **合规守门**先解锁：DB 置 `payment_setting.compliance_confirmed=true` + `compliance_terms_version=v1`（注意是 `v1` 非 `1`）+ 重启 new-api。否则支付/订阅全禁。
+2. **GroupRatio 加档**：`PUT /api/option/` key=`GroupRatio` value=`{"default":1,"vip":1,"svip":1,"starter":1,"pro":1}`（倍率全 1，API 计费不打折，订阅仅升容器）。
+3. 建 plan（`{plan:{...}}` 嵌套）：
+   - STARTER：`upgrade_group=starter` `downgrade_group=default` `allow_balance_pay=true` `price_amount=99` `duration_unit=month`
+   - PRO：`upgrade_group=pro`，enabled=false（Coming Soon）或上线时开
+4. 赠 Token：同 plan 填 `total_amount=<quota数>` + `quota_reset_period=month`
+
+### 联调发现的 4 个真 bug（commit `3dab5b9f5`，已修）
+
+1. **PG enum 迁移顺序**：plan 原 UPDATE 引用未 ADD VALUE 的 STARTER → `invalid input value for enum`。改 PG 走 `ALTER TYPE ... ADD VALUE IF NOT EXISTS`（autocommit_block 跳出事务）。
+2. **PG boolean default**：`BOOLEAN DEFAULT 0` 被 PG 拒（int→bool 隐式）。改 `sa.false()`。
+3. **NotifyManagerUpgrade/Downgrade 大小写不匹配**：`inst.Status != "RUNNING"` 与 manager DTO 返回的 `"running"`（小写 enum）永不等 → 升级静默跳过。改 `strings.EqualFold`（两处）。**此 bug 致升级链路在生产为哑**。
+4. **docker update 不支持 pids_limit**：plan Task 2 原设计 `container.update(pids_limit=...)` 但 SDK `update_container()` 无此参数 → upgrade 500。移除 pids_limit，pids 靠 needs_rebuild 重建闭合。
+
+### 端到端验收命令（联调实测全过）
+
+```bash
+# 1. 注册首用户（系统未初始化时首注册即 root；若已初始化需 SQL 提 role=100）
+curl -X POST http://localhost/api/user/register -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}'
+
+# 2. 登录拿 token（session 不参与 auth，全走 New-Api-User + Authorization header）
+curl -X GET http://localhost/api/user/token -H "New-Api-User: 1" -b cookies.txt
+
+# 3. 合规解锁 + GroupRatio 加档（见上 admin seed）
+
+# 4. 建 Hermes 实例（真起 Docker 容器，SAVVY_MOCK_MODE=false）
+curl -X POST http://localhost/api/hermes/user/ensure -H "Authorization: <token>" -H "New-Api-User: 1"
+curl -X POST http://localhost/api/hermes/instance -H "Authorization: <token>" -H "New-Api-User: 1" -d '{}'
+curl -X POST http://localhost/api/hermes/instance/inst-1/start -H "Authorization: <token>" -H "New-Api-User: 1" \
+  -d '{"providerApiKey":"sk-xxx","providerBaseUrl":"http://new-api:3000/v1"}'
+
+# 5. 余额购 PRO → 触发升级（容器热改）
+curl -X POST http://localhost/api/subscription/balance/pay -H "Authorization: <token>" -H "New-Api-User: 1" -d '{"plan_id":2}'
+
+# 6. 验容器资源热改
+docker inspect savvy-u1-w1 --format "MEM={{.HostConfig.Memory}} CPU={{.HostConfig.CpuQuota}}"
+# PRO: MEM=8589934592 CPU=400000
+
+# 7. 模拟订阅过期（改 end_time 过去）→ ≤1min 定时任务降级
+docker exec newapi-db psql -U newapi -d new-api -c "UPDATE user_subscriptions SET end_time = EXTRACT(EPOCH FROM NOW())::bigint - 60 WHERE id=<sub_id>;"
+
+# 8. 验降级
+docker exec manager-db psql -U savvy -d savvy_manager -c "SELECT instance_id,plan,storage_quota_gb,expires_at FROM instances;"
+# FREE / 10 / +2h
+```
+
+### 关键约束
+
+- **SAVVY_MOCK_MODE=false**：manager 真调 Docker socket 起容器。纯 API 联调不碰 Docker 需改 true（config.py 默认 true，但 compose 显式 false 覆盖）。
+- **pids_limit 不热改**：docker SDK update_container() 不支持，靠 needs_rebuild 重建闭合。
+- **降级不碰运行容器**：防跑着任务 OOM，资源等下次启动按 FREE 档起。
+- **赠 Token 非代码开发**：new-api 原生 TotalAmount + ResetDueSubscriptions，admin seed 填值即用。
+- **entrypoint.sh CRLF 是本地 autocrlf 坑**：repo 本就 LF，CI/Linux 不受影响，无需改源（本地工作区被 autocrlf 转 CRLF 致镜像内 shebang `sh\r` 找不到解释器）。
+

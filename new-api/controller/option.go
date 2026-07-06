@@ -81,11 +81,15 @@ func GetOptions(c *gin.Context) {
 	common.OptionMapRWMutex.Lock()
 	for k, v := range common.OptionMap {
 		value := common.Interface2String(v)
+		// ponytail: 微信充电私钥字段以 PEM 后缀命名(标值类型为 PEM 块), 但 redaction 门控只认 Key/Secret/Token 等;
+		// PrivateKeyPEM 走特约门控防 GetOptions 明文泄漏商户 API 私钥(签署每笔微信支付请求的最敏感凭证)。
+		// 用精确 PrivateKeyPEM 而非裸 PEM: 裸 PEM 会误掩未来平台公钥证书类公开 PEM 内容。
 		isSensitiveKey := strings.HasSuffix(k, "Token") ||
 			strings.HasSuffix(k, "Secret") ||
 			strings.HasSuffix(k, "Key") ||
 			strings.HasSuffix(k, "secret") ||
-			strings.HasSuffix(k, "api_key")
+			strings.HasSuffix(k, "api_key") ||
+			strings.HasSuffix(k, "PrivateKeyPEM")
 		if isSensitiveKey {
 			continue
 		}

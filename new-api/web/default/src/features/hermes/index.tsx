@@ -191,8 +191,8 @@ function InstanceStatus({ instance }: { instance: HermesInstance }) {
           <div>
             <span className='text-muted-foreground'>{t('Remaining Time')}</span>
             <p className='font-medium'>
-              {instance.remainingMinutes !== undefined
-                ? `${instance.remainingMinutes} ${t('minutes')}`
+              {instance.plan === 'FREE'
+                ? t('2 hours per start')
                 : t('Unlimited')}
             </p>
           </div>

@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/service"
@@ -17,28 +16,22 @@ import (
 // Field names (camelCase via json tags) match the HermesInstance interface
 // in web/default/src/features/hermes/types.ts.
 type hermesInstanceVO struct {
-	ID              string `json:"id"`
-	Status          string `json:"status"` // lowercase: running / sleeping / creating / error
-	Plan            string `json:"plan"`
-	RemainingMinutes *int  `json:"remainingMinutes,omitempty"`
-	AccessURL       string `json:"accessUrl,omitempty"`
-	CreatedAt       string `json:"createdAt,omitempty"`
-	UpdatedAt       string `json:"updatedAt,omitempty"`
+	ID        string `json:"id"`
+	Status    string `json:"status"` // lowercase: running / sleeping / creating / error
+	Plan      string `json:"plan"`
+	AccessURL string `json:"accessUrl,omitempty"`
+	CreatedAt string `json:"createdAt,omitempty"`
+	UpdatedAt string `json:"updatedAt,omitempty"`
 }
 
 // toVO converts the manager's raw instance into the frontend view object.
 // Manager returns UPPERCASE status enums (RUNNING/SLEEPING/...); the frontend
-// expects lowercase. remainingMinutes is derived from expires_at.
+// expects lowercase.
 func toVO(inst *service.HermesInstance) hermesInstanceVO {
 	vo := hermesInstanceVO{
 		ID:     inst.InstanceID,
 		Status: normalizeStatus(inst.Status),
 		Plan:   inst.Plan,
-	}
-	if inst.ExpiresAt != "" {
-		if mins := remainingMinutes(inst.ExpiresAt); mins != nil {
-			vo.RemainingMinutes = mins
-		}
 	}
 	if inst.StartedAt != "" {
 		vo.CreatedAt = inst.StartedAt
@@ -61,18 +54,6 @@ func normalizeStatus(s string) string {
 	default:
 		return "error"
 	}
-}
-
-func remainingMinutes(expiresAtISO string) *int {
-	t, err := time.Parse(time.RFC3339, expiresAtISO)
-	if err != nil {
-		return nil
-	}
-	mins := int(time.Until(t).Minutes())
-	if mins < 0 {
-		mins = 0
-	}
-	return &mins
 }
 
 func getUserID(c *gin.Context) (int, bool) {

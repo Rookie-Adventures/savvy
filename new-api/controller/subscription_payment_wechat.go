@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
@@ -124,7 +125,8 @@ func SubscriptionRequestWechat(c *gin.Context) {
 		OutTradeNo:  core.String(tradeNo),
 		NotifyUrl:   core.String(callbackBase + "/api/subscription/wechat/notify"),
 		Amount: &native.Amount{
-			Total:    core.Int64(int64(plan.PriceAmount * 100)), // 微信金额单位=分
+			// ponytail: IEEE-754 float→int64 截断丢部分分(19.90*100=1989 而非 1990),math.Round 恢复正确分。
+			Total:    core.Int64(int64(math.Round(plan.PriceAmount * 100))), // 微信金额单位=分
 			Currency: core.String("CNY"),
 		},
 	})

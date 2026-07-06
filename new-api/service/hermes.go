@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/pkg/perf_metrics"
 	"github.com/google/uuid"
 )
@@ -519,6 +520,59 @@ var groupToPlanName = map[string]string{
 	"default": "FREE",
 	"starter": "STARTER",
 	"pro":     "PRO",
+}
+
+// GroupToPlanName maps a user group to the manager's PlanType string.
+// Exported wrapper over groupToPlanName so model can call into service without
+// importing the map directly (avoids leaking internals across the package line).
+func GroupToPlanName(group string) (string, bool) {
+	name, ok := groupToPlanName[group]
+	return name, ok
+}
+
+// NotifyManagerUpgrade finds the user's running instance and asks the manager
+// to hot-upgrade its container resources. Called from model after a
+// subscription order commits. Network failure does NOT roll back the order;
+// the manager scanner is the safety net.
+func NotifyManagerUpgrade(userID int, upgradeGroup string) error {
+	inst, err := GetHermesInstance(userID)
+	if err != nil {
+		return err
+	}
+	if inst == nil || inst.Status != "RUNNING" {
+		return nil // no running instance to upgrade; user.group already elevated
+	}
+	res, ok := PlanResources[upgradeGroup]
+	if !ok {
+		return nil // unknown group, nothing to send
+	}
+	planName, ok := GroupToPlanName(upgradeGroup)
+	if !ok {
+		return nil
+	}
+	return UpgradeHermesInstance(userID, inst.InstanceID, planName, res.CPUQuota, res.MemLimit, res.PidsLimit)
+}
+
+// NotifyManagerDowngrade finds the user's running instance and asks the manager
+// to downgrade to FREE with a 2h free window. Called from model after a
+// subscription expiry commits.
+func NotifyManagerDowngrade(userID int) error {
+	inst, err := GetHermesInstance(userID)
+	if err != nil {
+		return err
+	}
+	if inst == nil || inst.Status != "RUNNING" {
+		return nil
+	}
+	return DowngradeHermesInstance(userID, inst.InstanceID, time.Now().Add(2*time.Hour))
+}
+
+func init() {
+	// Wire the model-layer notify hooks to the real service impls. service
+	// already imports model, so this assignment lives here to avoid a model→
+	// service import cycle. Tests override the model vars directly.
+	model.NotifyManagerUpgradeFn = NotifyManagerUpgrade
+	model.NotifyManagerDowngradeFn = NotifyManagerDowngrade
 }
 
 // UpgradeHermesInstance 通知 manager 升级在跑容器资源 + 改 plan + 清免费窗。

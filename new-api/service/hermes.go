@@ -28,7 +28,7 @@ type HermesInstance struct {
 	InstanceID    string `json:"instance_id"`
 	UserID        string `json:"user_id"`
 	Status        string `json:"status"` // manager returns UPPERCASE enum: RUNNING / SLEEPING / ...
-	Plan          string `json:"plan"`   // FREE / PAID_RESIDENT / ...
+	Plan          string `json:"plan"`   // FREE / STARTER / PRO
 	ContainerName string `json:"container_name,omitempty"`
 	VolumeName    string `json:"volume_name,omitempty"`
 	StartedAt     string `json:"started_at,omitempty"`

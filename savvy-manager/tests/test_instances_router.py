@@ -228,6 +228,22 @@ def test_create_instance_sets_not_created(client, db_session):
     assert inst.status == InstanceStatus.NOT_CREATED
 
 
+def test_create_instance_free_sets_storage_quota(client, db_session):
+    # FREE 档新建实例必须落 storage_quota_gb=10 (PLAN_STORAGE_GB["FREE"]),
+    # 否则 check_storage_quota 扫 isnot(None) 跳过 → 软配额永久失效。
+    db_session.add(User(user_id="1", plan=PlanType.FREE))
+    db_session.commit()
+
+    res = client.post("/internal/users/1/instance")
+
+    assert res.status_code == 200
+    assert res.json()["success"] is True
+    db_session.expire_all()
+    inst = db_session.query(Instance).filter(Instance.instance_id == "inst-1").first()
+    assert inst is not None
+    assert inst.storage_quota_gb == 10
+
+
 def _create_running_paid_instance(db, instance_id="inst-1", plan=PlanType.STARTER):
     u = User(user_id="1", plan=plan)
     db.add(u)

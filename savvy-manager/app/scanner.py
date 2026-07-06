@@ -180,11 +180,11 @@ def check_storage_quota():
 
 
 def start_scanner():
-    scheduler.add_job(check_expired_instances, "interval", minutes=1, id="check_expired")
-    scheduler.add_job(check_needs_upgrade, "interval", minutes=1, id="check_needs_upgrade")
-    scheduler.add_job(check_needs_downgrade, "interval", minutes=1, id="check_needs_downgrade")
-    scheduler.add_job(check_needs_rebuild, "interval", minutes=1, id="check_needs_rebuild")
-    scheduler.add_job(check_storage_quota, "interval", minutes=10, id="check_storage_quota")
+    scheduler.add_job(check_expired_instances, "interval", minutes=1, id="check_expired", replace_existing=True)
+    scheduler.add_job(check_needs_upgrade, "interval", minutes=1, id="check_needs_upgrade", replace_existing=True)
+    scheduler.add_job(check_needs_downgrade, "interval", minutes=1, id="check_needs_downgrade", replace_existing=True)
+    scheduler.add_job(check_needs_rebuild, "interval", minutes=1, id="check_needs_rebuild", replace_existing=True)
+    scheduler.add_job(check_storage_quota, "interval", minutes=10, id="check_storage_quota", replace_existing=True)
     scheduler.start()
 
 

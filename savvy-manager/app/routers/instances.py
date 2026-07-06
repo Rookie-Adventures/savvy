@@ -105,7 +105,7 @@ async def start_instance(
     now = datetime.now(timezone.utc)
     expires_at = None
     if inst.plan == PlanType.FREE:
-        expires_at = now + timedelta(hours=3)
+        expires_at = now + timedelta(hours=2)
 
     # Reconcile on wake: if NOT_CREATED we will create; if SLEEPING we may
     # have a container-side config.yaml the user edited — adopt it AFTER the

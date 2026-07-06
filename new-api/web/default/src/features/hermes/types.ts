@@ -26,7 +26,6 @@ export interface HermesInstance {
   id: string
   status: 'running' | 'sleeping' | 'creating' | 'error'
   plan: string
-  remainingMinutes?: number
   lastError?: string
   accessUrl?: string
   createdAt?: string

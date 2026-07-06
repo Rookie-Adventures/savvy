@@ -373,7 +373,7 @@ func TestDowngradeHermesInstance_Signed(t *testing.T) {
 }
 
 func TestPlanResourcesConstant(t *testing.T) {
-	assert.Equal(t, 200000, PlanResources["STARTER"].CPUQuota)
-	assert.Equal(t, "2g", PlanResources["STARTER"].MemLimit)
-	assert.Equal(t, 512, PlanResources["STARTER"].PidsLimit)
+	assert.Equal(t, 200000, PlanResources["starter"].CPUQuota)
+	assert.Equal(t, "2g", PlanResources["starter"].MemLimit)
+	assert.Equal(t, 512, PlanResources["starter"].PidsLimit)
 }

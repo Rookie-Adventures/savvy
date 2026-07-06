@@ -507,12 +507,11 @@ type PlanResourceSpec struct {
 }
 
 // PlanResources mirrors savvy-manager/app/docker_manager.py PLAN_RESOURCES.
-// Keyed by manager PlanType string (FREE/STARTER/PRO); group→plan conversion
-// happens via groupToPlanName, matching SubscriptionPlan.UpgradeGroup.
+// Keyed by user group (default/starter/pro), matching SubscriptionPlan.UpgradeGroup.
 var PlanResources = map[string]PlanResourceSpec{
-	"FREE":    {CPUQuota: 50000, MemLimit: "768m", PidsLimit: 128},
-	"STARTER": {CPUQuota: 200000, MemLimit: "2g", PidsLimit: 512},
-	"PRO":     {CPUQuota: 400000, MemLimit: "8g", PidsLimit: 1024},
+	"default": {CPUQuota: 50000, MemLimit: "768m", PidsLimit: 128},
+	"starter": {CPUQuota: 200000, MemLimit: "2g", PidsLimit: 512},
+	"pro":     {CPUQuota: 400000, MemLimit: "8g", PidsLimit: 1024},
 }
 
 // groupToPlanName maps a user group to manager's PlanType string.

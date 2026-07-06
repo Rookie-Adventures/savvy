@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/stretchr/testify/assert"
@@ -319,4 +320,60 @@ func TestManagerFailureSurfacesMessage(t *testing.T) {
 	_, err := GetHermesAccessToken(123, "test-instance")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "instance not running")
+}
+
+func TestUpgradeHermesInstance_Signed(t *testing.T) {
+	var gotPath string
+	var gotBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		r.Body = io.NopCloser(bytes.NewReader(b))
+		requireSigned(t, r)
+		writeEnvelope(w, map[string]any{
+			"instance_id": "inst-1", "status": "RUNNING",
+			"plan": "STARTER", "needs_upgrade": false,
+		})
+	}))
+	defer server.Close()
+	setupManagerEnv(t, server.URL)
+
+	err := UpgradeHermesInstance(42, "inst-1", "STARTER", 200000, "2g", 512)
+	require.NoError(t, err)
+	assert.Equal(t, "/internal/instances/inst-1/upgrade", gotPath)
+	assert.Contains(t, gotBody, `"plan":"STARTER"`)
+	assert.Contains(t, gotBody, `"cpu_quota":200000`)
+	assert.Contains(t, gotBody, `"mem_limit":"2g"`)
+	assert.Contains(t, gotBody, `"pids_limit":512`)
+}
+
+func TestDowngradeHermesInstance_Signed(t *testing.T) {
+	var gotPath string
+	var gotBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		r.Body = io.NopCloser(bytes.NewReader(b))
+		requireSigned(t, r)
+		writeEnvelope(w, map[string]any{
+			"instance_id": "inst-1", "status": "RUNNING",
+			"plan": "FREE", "expires_at": "2026-07-06T16:00:00Z",
+		})
+	}))
+	defer server.Close()
+	setupManagerEnv(t, server.URL)
+
+	err := DowngradeHermesInstance(42, "inst-1", time.Date(2026, 7, 6, 16, 0, 0, 0, time.UTC))
+	require.NoError(t, err)
+	assert.Equal(t, "/internal/instances/inst-1/downgrade", gotPath)
+	assert.Contains(t, gotBody, `"plan":"FREE"`)
+	assert.Contains(t, gotBody, "2026-07-06T16:00:00Z")
+}
+
+func TestPlanResourcesConstant(t *testing.T) {
+	assert.Equal(t, 200000, PlanResources["STARTER"].CPUQuota)
+	assert.Equal(t, "2g", PlanResources["STARTER"].MemLimit)
+	assert.Equal(t, 512, PlanResources["STARTER"].PidsLimit)
 }

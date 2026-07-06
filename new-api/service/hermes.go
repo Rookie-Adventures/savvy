@@ -499,6 +499,84 @@ func CallHermesAgentStream(ctx context.Context, group string, message string, ag
 	}
 }
 
+// PlanResourceSpec mirrors manager's PLAN_RESOURCES per-tier CPU/RAM/PIDs.
+type PlanResourceSpec struct {
+	CPUQuota   int
+	MemLimit   string
+	PidsLimit  int
+}
+
+// PlanResources mirrors savvy-manager/app/docker_manager.py PLAN_RESOURCES.
+// Keyed by manager PlanType string (FREE/STARTER/PRO); group→plan conversion
+// happens via groupToPlanName, matching SubscriptionPlan.UpgradeGroup.
+var PlanResources = map[string]PlanResourceSpec{
+	"FREE":    {CPUQuota: 50000, MemLimit: "768m", PidsLimit: 128},
+	"STARTER": {CPUQuota: 200000, MemLimit: "2g", PidsLimit: 512},
+	"PRO":     {CPUQuota: 400000, MemLimit: "8g", PidsLimit: 1024},
+}
+
+// groupToPlanName maps a user group to manager's PlanType string.
+var groupToPlanName = map[string]string{
+	"default": "FREE",
+	"starter": "STARTER",
+	"pro":     "PRO",
+}
+
+// UpgradeHermesInstance 通知 manager 升级在跑容器资源 + 改 plan + 清免费窗。
+// plan 是 manager PlanType 字符串("STARTER"/"PRO");资源数值由 new-api 传入,manager 不反查。
+func UpgradeHermesInstance(userID int, instanceID, plan string, cpuQuota int, memLimit string, pidsLimit int) error {
+	body := map[string]any{
+		"plan":        plan,
+		"cpu_quota":   cpuQuota,
+		"mem_limit":   memLimit,
+		"pids_limit":  pidsLimit,
+	}
+	bodyBytes, err := common.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("failed to marshal upgrade body: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/internal/instances/%s/upgrade", getHermesManagerURL(), instanceID)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := signAndDo(req, userID, bodyBytes)
+	if err != nil {
+		return fmt.Errorf("failed to connect to hermes-manager: %w", err)
+	}
+	_, err = decodeManagerResponse(resp)
+	return err
+}
+
+// DowngradeHermesInstance 通知 manager 降级:改 plan=FREE + 设免费 2h 窗。不动运行容器。
+func DowngradeHermesInstance(userID int, instanceID string, expiresAt time.Time) error {
+	body := map[string]any{
+		"plan":       "FREE",
+		"expires_at": expiresAt.UTC().Format(time.RFC3339),
+	}
+	bodyBytes, err := common.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("failed to marshal downgrade body: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/internal/instances/%s/downgrade", getHermesManagerURL(), instanceID)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := signAndDo(req, userID, bodyBytes)
+	if err != nil {
+		return fmt.Errorf("failed to connect to hermes-manager: %w", err)
+	}
+	_, err = decodeManagerResponse(resp)
+	return err
+}
+
 // HealthCheckHermesManager is a lightweight GET /health used by the status
 // endpoint. The /health route is NOT behind require_hmac, so no signing here.
 func HealthCheckHermesManager() bool {

@@ -262,12 +262,12 @@ def update_container_resources(
 
     try:
         container = client.containers.get(container_name)
-        container.update(
-            cpu_quota=cpu_quota,
-            mem_limit=mem_limit,
-            memswap_limit=mem_limit,  # memory swap = memory limit
-            pids_limit=pids_limit,
-        )
+        # ponytail: pids_limit 不可热更 — docker SDK update_container() 不支持该 arg
+        # (pids 限制仅在 create/HostConfig 时生效)。升级时只热改 cpu/mem,pids 差异
+        # 由 needs_rebuild 路径(重建容器) 统一闭合。
+        kwargs = dict(cpu_quota=cpu_quota, mem_limit=mem_limit,
+                      memswap_limit=mem_limit)
+        container.update(**kwargs)
         return True
     except NotFound:
         return False

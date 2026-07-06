@@ -539,7 +539,7 @@ func NotifyManagerUpgrade(userID int, upgradeGroup string) error {
 	if err != nil {
 		return err
 	}
-	if inst == nil || inst.Status != "RUNNING" {
+	if inst == nil || !strings.EqualFold(inst.Status, "RUNNING") {
 		return nil // no running instance to upgrade; user.group already elevated
 	}
 	res, ok := PlanResources[upgradeGroup]
@@ -561,7 +561,7 @@ func NotifyManagerDowngrade(userID int) error {
 	if err != nil {
 		return err
 	}
-	if inst == nil || inst.Status != "RUNNING" {
+	if inst == nil || !strings.EqualFold(inst.Status, "RUNNING") {
 		return nil
 	}
 	return DowngradeHermesInstance(userID, inst.InstanceID, time.Now().Add(2*time.Hour))

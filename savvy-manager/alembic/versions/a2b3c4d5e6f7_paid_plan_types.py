@@ -19,34 +19,46 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Add STARTER/PRO plan types, drop PAID_RESIDENT, add instance columns."""
-    # 1. Migrate existing PAID_RESIDENT data to STARTER before touching the enum.
-    #    SQLite can't ALTER enum in-place; PG/MySQL need value cleanup first.
-    op.execute("UPDATE instances SET plan = 'STARTER' WHERE plan = 'PAID_RESIDENT'")
-    op.execute("UPDATE users SET plan = 'STARTER' WHERE plan = 'PAID_RESIDENT'")
+    bind = op.get_bind()
+    dialect = bind.dialect.name
 
-    # 2. Recreate the plantype enum with the three new tiers.
-    #    batch_alter_table handles SQLite (recreate table) and PG/MySQL.
-    with op.batch_alter_table('instances', schema=None) as batch_op:
-        batch_op.alter_column(
-            'plan',
-            existing_type=sa.Enum('FREE', 'PAID_RESIDENT', name='plantype'),
-            type_=sa.Enum('FREE', 'STARTER', 'PRO', name='plantype'),
-            existing_nullable=True,
-            postgresql_using='plan::text',
-        )
-    with op.batch_alter_table('users', schema=None) as batch_op:
-        batch_op.alter_column(
-            'plan',
-            existing_type=sa.Enum('FREE', 'PAID_RESIDENT', name='plantype'),
-            type_=sa.Enum('FREE', 'STARTER', 'PRO', name='plantype'),
-            existing_nullable=True,
-            postgresql_using='plan::text',
-        )
+    if dialect == 'postgresql':
+        # PG enum: extend the existing type in place. ADD VALUE cannot run
+        # inside a transaction block pre-PG12, and PG cannot DROP an enum
+        # value, so the obsolete PAID_RESIDENT stays in the type (harmless
+        # once unreferenced). alter_column would rebuild the enum and fail on
+        # the PAID_RESIDENT cast; ADD VALUE avoids that entirely.
+        ctx = op.get_context()
+        with ctx.autocommit_block():
+            op.execute("ALTER TYPE plantype ADD VALUE IF NOT EXISTS 'STARTER'")
+            op.execute("ALTER TYPE plantype ADD VALUE IF NOT EXISTS 'PRO'")
+        op.execute("UPDATE instances SET plan = 'STARTER' WHERE plan = 'PAID_RESIDENT'")
+        op.execute("UPDATE users SET plan = 'STARTER' WHERE plan = 'PAID_RESIDENT'")
+    else:
+        # SQLite/MySQL: alter_column + batch recreate (no named enum object).
+        op.execute("UPDATE instances SET plan = 'STARTER' WHERE plan = 'PAID_RESIDENT'")
+        op.execute("UPDATE users SET plan = 'STARTER' WHERE plan = 'PAID_RESIDENT'")
+        with op.batch_alter_table('instances', schema=None) as batch_op:
+            batch_op.alter_column(
+                'plan',
+                existing_type=sa.Enum('FREE', 'PAID_RESIDENT', name='plantype'),
+                type_=sa.Enum('FREE', 'STARTER', 'PRO', name='plantype'),
+                existing_nullable=True,
+                postgresql_using='plan::text',
+            )
+        with op.batch_alter_table('users', schema=None) as batch_op:
+            batch_op.alter_column(
+                'plan',
+                existing_type=sa.Enum('FREE', 'PAID_RESIDENT', name='plantype'),
+                type_=sa.Enum('FREE', 'STARTER', 'PRO', name='plantype'),
+                existing_nullable=True,
+                postgresql_using='plan::text',
+            )
 
     # 3. Add the five new instance columns.
     with op.batch_alter_table('instances', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('needs_upgrade', sa.Boolean(), nullable=True, server_default=sa.text('0')))
-        batch_op.add_column(sa.Column('needs_rebuild', sa.Boolean(), nullable=True, server_default=sa.text('0')))
+        batch_op.add_column(sa.Column('needs_upgrade', sa.Boolean(), nullable=True, server_default=sa.false()))
+        batch_op.add_column(sa.Column('needs_rebuild', sa.Boolean(), nullable=True, server_default=sa.false()))
         batch_op.add_column(sa.Column('expected_plan', sa.Enum('FREE', 'STARTER', 'PRO', name='plantype'), nullable=True))
         batch_op.add_column(sa.Column('storage_quota_gb', sa.Integer(), nullable=True))
         batch_op.add_column(sa.Column('upgrade_retries', sa.Integer(), nullable=True, server_default=sa.text('0')))

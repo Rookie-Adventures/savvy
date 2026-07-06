@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -225,4 +226,69 @@ def test_create_instance_sets_not_created(client, db_session):
     inst = db_session.query(Instance).filter(Instance.instance_id == "inst-1").first()
     assert inst is not None
     assert inst.status == InstanceStatus.NOT_CREATED
+
+
+def _create_running_paid_instance(db, instance_id="inst-1", plan=PlanType.STARTER):
+    u = User(user_id="1", plan=plan)
+    db.add(u)
+    inst = Instance(
+        instance_id=instance_id, user_id="1", status=InstanceStatus.RUNNING,
+        plan=PlanType.FREE, container_name="savvy-u1-w1", volume_name="savvy-u1-data",
+        assigned_port=41000, expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    db.add(inst)
+    db.commit()
+    return inst
+
+
+def test_upgrade_success_changes_plan_and_clears_expiry(client, db_session, monkeypatch):
+    from app import docker_manager
+    monkeypatch.setattr(docker_manager.settings, "mock_mode", True)
+    _create_running_paid_instance(db_session)
+    res = client.post("/internal/instances/inst-1/upgrade", json={
+        "plan": "STARTER", "cpu_quota": 200000, "mem_limit": "2g", "pids_limit": 512,
+    })
+    body = res.json()
+    assert body["success"] is True
+    inst = db_session.query(Instance).filter_by(instance_id="inst-1").first()
+    assert inst.plan == PlanType.STARTER
+    assert inst.expires_at is None          # 免睡
+    assert inst.expected_plan == PlanType.STARTER
+    assert inst.needs_upgrade is False
+    assert inst.needs_rebuild is True       # log_config 升档 → 标重建
+
+
+def test_upgrade_failure_marks_needs_upgrade(client, db_session, monkeypatch):
+    from app import docker_manager
+    monkeypatch.setattr(docker_manager.settings, "mock_mode", False)
+    # Force update_container_resources to fail
+    monkeypatch.setattr(docker_manager, "update_container_resources", lambda *a: False)
+    _create_running_paid_instance(db_session)
+    res = client.post("/internal/instances/inst-1/upgrade", json={
+        "plan": "PRO", "cpu_quota": 400000, "mem_limit": "8g", "pids_limit": 1024,
+    })
+    body = res.json()
+    assert body["success"] is False
+    inst = db_session.query(Instance).filter_by(instance_id="inst-1").first()
+    assert inst.needs_upgrade is True
+    assert inst.expected_plan == PlanType.PRO
+    assert inst.plan == PlanType.FREE        # 未改成
+
+
+def test_downgrade_sets_free_and_2h_expiry_no_touch_container(client, db_session, monkeypatch):
+    from app import docker_manager
+    stop_called = []
+    monkeypatch.setattr(docker_manager, "stop_container", lambda name: stop_called.append(name) or True)
+    _create_running_paid_instance(db_session)
+    res = client.post("/internal/instances/inst-1/downgrade", json={
+        "plan": "FREE",
+        "expires_at": (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat(),
+    })
+    body = res.json()
+    assert body["success"] is True
+    inst = db_session.query(Instance).filter_by(instance_id="inst-1").first()
+    assert inst.plan == PlanType.FREE
+    assert inst.expected_plan == PlanType.FREE
+    assert inst.expires_at is not None       # 设了 2h 窗
+    assert stop_called == []                 # 不碰运行容器
 

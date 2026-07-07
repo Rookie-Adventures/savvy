@@ -77,6 +77,8 @@ const SubscriptionPlansCard = ({
   enableOnlineTopUp = false,
   enableStripeTopUp = false,
   enableCreemTopUp = false,
+  enableAlipayTopUp = false,
+  enableWechatTopUp = false,
   billingPreference,
   onChangeBillingPreference,
   activeSubscriptions = [],
@@ -89,6 +91,7 @@ const SubscriptionPlansCard = ({
   const [paying, setPaying] = useState(false);
   const [selectedEpayMethod, setSelectedEpayMethod] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [wechatCodeUrl, setWechatCodeUrl] = useState(null);
 
   const epayMethods = useMemo(() => getEpayMethods(payMethods), [payMethods]);
 
@@ -102,6 +105,7 @@ const SubscriptionPlansCard = ({
     setOpen(false);
     setSelectedPlan(null);
     setPaying(false);
+    setWechatCodeUrl(null);
   };
 
   const handleRefresh = async () => {
@@ -184,6 +188,52 @@ const SubscriptionPlansCard = ({
         submitEpayForm({ url: res.data.url, params: res.data.data });
         showSuccess(t('已发起支付'));
         closeBuy();
+      } else {
+        const errorMsg =
+          typeof res.data?.data === 'string'
+            ? res.data.data
+            : res.data?.message || t('支付失败');
+        showError(errorMsg);
+      }
+    } catch (e) {
+      showError(t('支付请求失败'));
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  // ponytail: 支付宝直连 — 后端返 pay_link,window.location.href 跳收银台(同 def-web Task8b)。
+  const payAlipay = async () => {
+    setPaying(true);
+    try {
+      const res = await API.post('/api/subscription/alipay/pay', {
+        plan_id: selectedPlan.plan.id,
+      });
+      if (res.data?.message === 'success' && res.data?.data?.pay_link) {
+        window.location.href = res.data.data.pay_link;
+      } else {
+        const errorMsg =
+          typeof res.data?.data === 'string'
+            ? res.data.data
+            : res.data?.message || t('支付失败');
+        showError(errorMsg);
+      }
+    } catch (e) {
+      showError(t('支付请求失败'));
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  // ponytail: 微信直连 Native — 后端返 code_url,前端 QRCodeSVG 渲染二维码(复用 classic 已有 qrcode.react 依赖,2FA 同款)。
+  const payWechat = async () => {
+    setPaying(true);
+    try {
+      const res = await API.post('/api/subscription/wechat/pay', {
+        plan_id: selectedPlan.plan.id,
+      });
+      if (res.data?.message === 'success' && res.data?.data?.code_url) {
+        setWechatCodeUrl(res.data.data.code_url);
       } else {
         const errorMsg =
           typeof res.data?.data === 'string'
@@ -673,6 +723,8 @@ const SubscriptionPlansCard = ({
         enableOnlineTopUp={enableOnlineTopUp}
         enableStripeTopUp={enableStripeTopUp}
         enableCreemTopUp={enableCreemTopUp}
+        enableAlipayTopUp={enableAlipayTopUp}
+        enableWechatTopUp={enableWechatTopUp}
         purchaseLimitInfo={
           selectedPlan?.plan?.id
             ? {
@@ -684,6 +736,9 @@ const SubscriptionPlansCard = ({
         onPayStripe={payStripe}
         onPayCreem={payCreem}
         onPayEpay={payEpay}
+        onPayAlipay={payAlipay}
+        onPayWechat={payWechat}
+        wechatCodeUrl={wechatCodeUrl}
       />
     </>
   );

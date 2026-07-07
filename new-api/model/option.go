@@ -97,6 +97,24 @@ func InitOptionMap() {
 	common.OptionMap["StripePriceId"] = setting.StripePriceId
 	common.OptionMap["StripeUnitPrice"] = strconv.FormatFloat(setting.StripeUnitPrice, 'f', -1, 64)
 	common.OptionMap["StripePromotionCodesEnabled"] = strconv.FormatBool(setting.StripePromotionCodesEnabled)
+	// 关闭 Task2/3/5 遗留的 option.go 注册缺口(cross-task ledger): 支付宝直连配置此前为裸 package var,
+	// admin 经 UI 写入后仅存活于当前进程,重启即丢。此处注册进 OptionMap 才能落库回读。
+	common.OptionMap["AlipayAppId"] = operation_setting.AlipayAppId
+	common.OptionMap["AlipayAppPrivateKey"] = operation_setting.AlipayAppPrivateKey
+	common.OptionMap["AlipayPublicKey"] = operation_setting.AlipayPublicKey
+	common.OptionMap["AlipayIsCertMode"] = strconv.FormatBool(operation_setting.AlipayIsCertMode)
+	common.OptionMap["AlipayIsProduction"] = strconv.FormatBool(operation_setting.AlipayIsProduction)
+	common.OptionMap["AlipayAppCertSN"] = operation_setting.AlipayAppCertSN
+	common.OptionMap["AlipayAlipayCertSN"] = operation_setting.AlipayAlipayCertSN
+	common.OptionMap["AlipayRootCertSN"] = operation_setting.AlipayRootCertSN
+	common.OptionMap["AlipayNotifyURL"] = operation_setting.AlipayNotifyURL
+	// 同上,微信直连配置注册(关闭 Task5 遗留缺口)。
+	common.OptionMap["WechatAppId"] = operation_setting.WechatAppId
+	common.OptionMap["WechatMchID"] = operation_setting.WechatMchID
+	common.OptionMap["WechatMchSerial"] = operation_setting.WechatMchSerial
+	common.OptionMap["WechatAPIv3Key"] = operation_setting.WechatAPIv3Key
+	common.OptionMap["WechatPrivateKeyPEM"] = operation_setting.WechatPrivateKeyPEM
+	common.OptionMap["WechatPlatformCertPath"] = operation_setting.WechatPlatformCertPath
 	common.OptionMap["CreemApiKey"] = setting.CreemApiKey
 	common.OptionMap["CreemProducts"] = setting.CreemProducts
 	common.OptionMap["CreemTestMode"] = strconv.FormatBool(setting.CreemTestMode)
@@ -472,6 +490,38 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.WaffoPancakeUnitPrice, _ = strconv.ParseFloat(value, 64)
 	case "WaffoPancakeMinTopUp":
 		setting.WaffoPancakeMinTopUp, _ = strconv.Atoi(value)
+	// 关闭遗留 option.go 配置回写缺口(cross-task ledger): 支付宝/微信直连配置必须经 updateOptionMap
+	// 才能被 loadOptionsFromDatabase 在重启时回读。bool 用 value == "true" 镜像 StripePromotionCodesEnabled。
+	case "AlipayAppId":
+		operation_setting.AlipayAppId = value
+	case "AlipayAppPrivateKey":
+		operation_setting.AlipayAppPrivateKey = value
+	case "AlipayPublicKey":
+		operation_setting.AlipayPublicKey = value
+	case "AlipayIsCertMode":
+		operation_setting.AlipayIsCertMode = value == "true"
+	case "AlipayIsProduction":
+		operation_setting.AlipayIsProduction = value == "true"
+	case "AlipayAppCertSN":
+		operation_setting.AlipayAppCertSN = value
+	case "AlipayAlipayCertSN":
+		operation_setting.AlipayAlipayCertSN = value
+	case "AlipayRootCertSN":
+		operation_setting.AlipayRootCertSN = value
+	case "AlipayNotifyURL":
+		operation_setting.AlipayNotifyURL = value
+	case "WechatAppId":
+		operation_setting.WechatAppId = value
+	case "WechatMchID":
+		operation_setting.WechatMchID = value
+	case "WechatMchSerial":
+		operation_setting.WechatMchSerial = value
+	case "WechatAPIv3Key":
+		operation_setting.WechatAPIv3Key = value
+	case "WechatPrivateKeyPEM":
+		operation_setting.WechatPrivateKeyPEM = value
+	case "WechatPlatformCertPath":
+		operation_setting.WechatPlatformCertPath = value
 	case "TopupGroupRatio":
 		err = common.UpdateTopupGroupRatioByJSONString(value)
 	case "GitHubClientId":

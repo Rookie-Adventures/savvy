@@ -175,6 +175,22 @@ export async function paySubscriptionEpay(
   }
 }
 
+// Alipay direct subscription payment — returns pay_link for in-tab redirect.
+export async function paySubscriptionAlipay(
+  data: SubscriptionPayRequest
+): Promise<SubscriptionPayResponse & { data?: { pay_link?: string } }> {
+  const res = await api.post('/api/subscription/alipay/pay', data)
+  return res.data
+}
+
+// WeChat Pay direct subscription payment — returns code_url for QR render.
+export async function paySubscriptionWechat(
+  data: SubscriptionPayRequest
+): Promise<SubscriptionPayResponse & { data?: { code_url?: string } }> {
+  const res = await api.post('/api/subscription/wechat/pay', data)
+  return res.data
+}
+
 // ============================================================================
 // User Self Subscriptions
 // ============================================================================

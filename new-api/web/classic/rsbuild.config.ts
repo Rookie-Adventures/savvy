@@ -47,6 +47,10 @@ export default defineConfig(({ envMode }) => {
           semiUiDir,
           'dist/css/semi.css',
         ),
+        // ponytail: default-web 依赖 date-fns@4 被 workspace 钉到根 node_modules,
+        // 但 classic 的 semi-ui 传递依赖 date-fns-tz@1 需要 date-fns@2 的 subpath
+        // (/_lib/toInteger 等)。强制 classic 把 date-fns 解析到本地嵌套的 v2。
+        'date-fns': path.resolve(__dirname, 'node_modules/date-fns'),
       },
     },
     html: {

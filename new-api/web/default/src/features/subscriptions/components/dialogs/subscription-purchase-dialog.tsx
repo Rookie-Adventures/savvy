@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useState, useEffect } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
 import { Crown, CalendarClock, Package } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -42,6 +43,8 @@ import {
   paySubscriptionEpay,
   paySubscriptionWaffoPancake,
   paySubscriptionBalance,
+  paySubscriptionAlipay,
+  paySubscriptionWechat,
 } from '../../api'
 import { formatDuration, formatResetPeriod } from '../../lib'
 import type { PlanRecord } from '../../types'
@@ -59,6 +62,8 @@ interface Props {
   enableCreem?: boolean
   enableWaffoPancake?: boolean
   enableOnlineTopUp?: boolean
+  enableAlipay?: boolean
+  enableWechat?: boolean
   epayMethods?: PaymentMethod[]
   purchaseLimit?: number
   purchaseCount?: number
@@ -71,6 +76,7 @@ export function SubscriptionPurchaseDialog(props: Props) {
   const { currency } = useSystemConfig()
   const [paying, setPaying] = useState(false)
   const [selectedEpayMethod, setSelectedEpayMethod] = useState('')
+  const [wechatCodeUrl, setWechatCodeUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (props.open && props.epayMethods && props.epayMethods.length > 0) {
@@ -89,7 +95,10 @@ export function SubscriptionPurchaseDialog(props: Props) {
     props.enableWaffoPancake && !!plan.waffo_pancake_product_id
   const hasEpay =
     props.enableOnlineTopUp && (props.epayMethods || []).length > 0
-  const hasAnyPayment = hasStripe || hasCreem || hasWaffoPancake || hasEpay
+  const hasAlipay = !!props.enableAlipay
+  const hasWechat = !!props.enableWechat
+  const hasAnyPayment =
+    hasStripe || hasCreem || hasWaffoPancake || hasEpay || hasAlipay || hasWechat
   const selectedEpayMethodLabel =
     (props.epayMethods || []).find((m) => m.type === selectedEpayMethod)
       ?.name ||
@@ -165,6 +174,49 @@ export function SubscriptionPurchaseDialog(props: Props) {
       if (res.message === 'success' && res.data?.checkout_url) {
         toast.success(t('Redirecting to payment page...'))
         window.location.href = res.data.checkout_url
+      } else {
+        toast.error(
+          res.message && res.message !== 'success'
+            ? res.message
+            : t('Payment request failed')
+        )
+      }
+    } catch {
+      toast.error(t('Payment request failed'))
+    } finally {
+      setPaying(false)
+    }
+  }
+
+  // Alipay direct: in-tab redirect to Alipay cashier (pay_link).
+  const handlePayAlipay = async () => {
+    setPaying(true)
+    try {
+      const res = await paySubscriptionAlipay({ plan_id: plan.id })
+      if (res.message === 'success' && res.data?.pay_link) {
+        toast.success(t('Redirecting to payment page...'))
+        window.location.href = res.data.pay_link
+      } else {
+        toast.error(
+          res.message && res.message !== 'success'
+            ? res.message
+            : t('Payment request failed')
+        )
+      }
+    } catch {
+      toast.error(t('Payment request failed'))
+    } finally {
+      setPaying(false)
+    }
+  }
+
+  // WeChat Pay direct: render code_url as QR in-dialog overlay.
+  const handlePayWechat = async () => {
+    setPaying(true)
+    try {
+      const res = await paySubscriptionWechat({ plan_id: plan.id })
+      if (res.message === 'success' && res.data?.code_url) {
+        setWechatCodeUrl(res.data.code_url)
       } else {
         toast.error(
           res.message && res.message !== 'success'
@@ -400,6 +452,30 @@ export function SubscriptionPurchaseDialog(props: Props) {
                 )}
               </div>
             )}
+            {(hasAlipay || hasWechat) && (
+              <div className='grid grid-cols-2 gap-2 sm:flex'>
+                {hasAlipay && (
+                  <Button
+                    variant='outline'
+                    className='flex-1'
+                    onClick={handlePayAlipay}
+                    disabled={paying || limitReached}
+                  >
+                    {t('Alipay')}
+                  </Button>
+                )}
+                {hasWechat && (
+                  <Button
+                    variant='outline'
+                    className='flex-1'
+                    onClick={handlePayWechat}
+                    disabled={paying || limitReached}
+                  >
+                    {t('WeChat Pay')}
+                  </Button>
+                )}
+              </div>
+            )}
             {hasEpay && (
               <div className='grid grid-cols-[minmax(0,1fr)_auto] gap-2'>
                 <Select
@@ -437,6 +513,33 @@ export function SubscriptionPurchaseDialog(props: Props) {
           </div>
         )}
       </div>
+
+      <Dialog
+        open={!!wechatCodeUrl}
+        onOpenChange={(open) => {
+          if (!open) setWechatCodeUrl(null)
+        }}
+        title={t('WeChat Pay')}
+        contentClassName='max-sm:w-[calc(100vw-1.5rem)] sm:max-w-sm'
+        bodyClassName='flex flex-col items-center gap-4 py-6'
+      >
+        <p className='text-muted-foreground text-sm'>
+          {t('Scan with WeChat to pay')}
+        </p>
+        {wechatCodeUrl && (
+          <QRCodeSVG value={wechatCodeUrl} size={200} includeMargin />
+        )}
+        <Button
+          variant='outline'
+          onClick={() => {
+            setWechatCodeUrl(null)
+            void props.onPurchaseSuccess?.()
+            props.onOpenChange(false)
+          }}
+        >
+          {t('I have completed payment')}
+        </Button>
+      </Dialog>
     </Dialog>
   )
 }

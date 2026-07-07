@@ -29,8 +29,9 @@ import {
   Tooltip,
 } from '@douyinfe/semi-ui';
 import { Crown, CalendarClock, Package } from 'lucide-react';
-import { SiStripe } from 'react-icons/si';
+import { SiStripe, SiAlipay, SiWechat } from 'react-icons/si';
 import { IconCreditCard } from '@douyinfe/semi-icons';
+import { QRCodeSVG } from 'qrcode.react';
 import { renderQuota } from '../../../helpers';
 import { getCurrencyConfig } from '../../../helpers/render';
 import {
@@ -52,10 +53,15 @@ const SubscriptionPurchaseModal = ({
   enableOnlineTopUp = false,
   enableStripeTopUp = false,
   enableCreemTopUp = false,
+  enableAlipayTopUp = false,
+  enableWechatTopUp = false,
   purchaseLimitInfo = null,
   onPayStripe,
   onPayCreem,
   onPayEpay,
+  onPayAlipay,
+  onPayWechat,
+  wechatCodeUrl,
 }) => {
   const plan = selectedPlan?.plan;
   const totalAmount = Number(plan?.total_amount || 0);
@@ -69,7 +75,10 @@ const SubscriptionPurchaseModal = ({
   const hasStripe = enableStripeTopUp && !!plan?.stripe_price_id;
   const hasCreem = enableCreemTopUp && !!plan?.creem_product_id;
   const hasEpay = enableOnlineTopUp && epayMethods.length > 0;
-  const hasAnyPayment = hasStripe || hasCreem || hasEpay;
+  const hasAlipay = enableAlipayTopUp;
+  const hasWechat = enableWechatTopUp;
+  const hasAnyPayment =
+    hasStripe || hasCreem || hasEpay || hasAlipay || hasWechat;
   const purchaseLimit = Number(purchaseLimitInfo?.limit || 0);
   const purchaseCount = Number(purchaseLimitInfo?.count || 0);
   const purchaseLimitReached =
@@ -215,6 +224,36 @@ const SubscriptionPurchaseModal = ({
                 </div>
               )}
 
+              {/* 支付宝 / 微信直连 */}
+              {(hasAlipay || hasWechat) && (
+                <div className='flex gap-2'>
+                  {hasAlipay && (
+                    <Button
+                      theme='light'
+                      className='flex-1'
+                      icon={<SiAlipay size={14} color='#1677FF' />}
+                      onClick={onPayAlipay}
+                      loading={paying}
+                      disabled={purchaseLimitReached}
+                    >
+                      {t('支付宝')}
+                    </Button>
+                  )}
+                  {hasWechat && (
+                    <Button
+                      theme='light'
+                      className='flex-1'
+                      icon={<SiWechat size={14} color='#07C160' />}
+                      onClick={onPayWechat}
+                      loading={paying}
+                      disabled={purchaseLimitReached}
+                    >
+                      {t('微信')}
+                    </Button>
+                  )}
+                </div>
+              )}
+
               {/* 易支付 */}
               {hasEpay && (
                 <div className='flex gap-2'>
@@ -252,6 +291,26 @@ const SubscriptionPurchaseModal = ({
           )}
         </div>
       ) : null}
+      <Modal
+        title={
+          <div className='flex items-center'>
+            <SiWechat className='mr-2 text-green-500' size={18} />
+            {t('微信支付')}
+          </div>
+        }
+        visible={!!wechatCodeUrl}
+        onCancel={onCancel}
+        footer={null}
+        size='small'
+        centered
+      >
+        <div className='flex flex-col items-center gap-4 py-6'>
+          <Text type='tertiary'>{t('请使用微信扫码支付')}</Text>
+          {wechatCodeUrl && (
+            <QRCodeSVG value={wechatCodeUrl} size={200} includeMargin />
+          )}
+        </div>
+      </Modal>
     </Modal>
   );
 };

@@ -24,6 +24,7 @@ import {
   Card,
   Button,
   Banner,
+  Modal,
   Skeleton,
   Form,
   Space,
@@ -46,6 +47,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { IconGift } from '@douyinfe/semi-icons';
+import { QRCodeSVG } from 'qrcode.react';
 import { useMinimumLoadingTime } from '../../hooks/common/useMinimumLoadingTime';
 import { useActualTheme } from '../../context/Theme';
 import { getCurrencyConfig } from '../../helpers/render';
@@ -58,6 +60,8 @@ const RechargeCard = ({
   enableOnlineTopUp,
   enableStripeTopUp,
   enableCreemTopUp,
+  enableAlipayTopUp,
+  enableWechatTopUp,
   creemProducts,
   creemPreTopUp,
   presetAmounts,
@@ -98,6 +102,10 @@ const RechargeCard = ({
   allSubscriptions = [],
   reloadSubscriptionSelf,
   enableRedemption = true,
+  alipayDirectTopUp,
+  wechatDirectTopUp,
+  wechatCodeUrl,
+  setWechatCodeUrl,
 }) => {
   const onlineFormApiRef = useRef(null);
   const redeemFormApiRef = useRef(null);
@@ -234,7 +242,9 @@ const RechargeCard = ({
           enableStripeTopUp ||
           enableCreemTopUp ||
           enableWaffoTopUp ||
-          enableWaffoPancakeTopUp ? (
+          enableWaffoPancakeTopUp ||
+          enableAlipayTopUp ||
+          enableWechatTopUp ? (
           <Form
             getFormApi={(api) => (onlineFormApiRef.current = api)}
             initValues={{ topUpCount: topUpCount }}
@@ -409,6 +419,38 @@ const RechargeCard = ({
                     </Col>
                   )}
                 </Row>
+              )}
+
+              {/* 支付宝/微信直连充值 */}
+              {(enableAlipayTopUp || enableWechatTopUp) && (
+                <Form.Slot label={t('直连支付')}>
+                  <Space wrap>
+                    {enableAlipayTopUp && (
+                      <Button
+                        theme='outline'
+                        type='tertiary'
+                        onClick={alipayDirectTopUp}
+                        loading={paymentLoading && payWay === 'alipay_direct'}
+                        icon={<SiAlipay size={18} color='#1677FF' />}
+                        className='!rounded-lg !px-4 !py-2'
+                      >
+                        {t('支付宝')}
+                      </Button>
+                    )}
+                    {enableWechatTopUp && (
+                      <Button
+                        theme='outline'
+                        type='tertiary'
+                        onClick={wechatDirectTopUp}
+                        loading={paymentLoading && payWay === 'wechat_direct'}
+                        icon={<SiWechat size={18} color='#07C160' />}
+                        className='!rounded-lg !px-4 !py-2'
+                      >
+                        {t('微信')}
+                      </Button>
+                    )}
+                  </Space>
+                </Form.Slot>
               )}
 
               {(enableOnlineTopUp || enableStripeTopUp || enableWaffoTopUp) && (
@@ -685,6 +727,8 @@ const RechargeCard = ({
                 enableOnlineTopUp={enableOnlineTopUp}
                 enableStripeTopUp={enableStripeTopUp}
                 enableCreemTopUp={enableCreemTopUp}
+                enableAlipayTopUp={enableAlipayTopUp}
+                enableWechatTopUp={enableWechatTopUp}
                 billingPreference={billingPreference}
                 onChangeBillingPreference={onChangeBillingPreference}
                 activeSubscriptions={activeSubscriptions}
@@ -709,6 +753,26 @@ const RechargeCard = ({
       ) : (
         topupContent
       )}
+      <Modal
+        title={
+          <div className='flex items-center'>
+            <SiWechat className='mr-2 text-green-500' size={18} />
+            {t('微信支付')}
+          </div>
+        }
+        visible={!!wechatCodeUrl}
+        onCancel={() => setWechatCodeUrl?.(null)}
+        footer={null}
+        size='small'
+        centered
+      >
+        <div className='flex flex-col items-center gap-4 py-6'>
+          <Text type='tertiary'>{t('请使用微信扫码支付')}</Text>
+          {wechatCodeUrl && (
+            <QRCodeSVG value={wechatCodeUrl} size={200} includeMargin />
+          )}
+        </div>
+      </Modal>
     </Card>
   );
 };

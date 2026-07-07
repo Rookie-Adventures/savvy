@@ -64,3 +64,35 @@ func TestRequestWechatPayRejectsUnconfigured(t *testing.T) {
 		t.Fatalf("expected nil-client guard message, got %s", w.Body.String())
 	}
 }
+
+// TestRequestWechatPayRejectsAppIdMissing: 用户当前真实状态 — 商户号等 5 项已配齐但缺已认证服务号 AppId。
+// IsWechatConfigured() 必须返 false → GetWechatClient() 返 nil → handler 命中 nil-guard 友好拒绝,无 SDK panic。
+// 锁 APPID 单字段缺失即拒,不卡支付宝(独立 provider)。拿到 AppId 后此路径自然转通。
+func TestRequestWechatPayRejectsAppIdMissing(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	// 5 项齐,仅 APPID 空(用户当下态)
+	operation_setting.WechatAppId = ""
+	operation_setting.WechatMchID = "1900000001"
+	operation_setting.WechatMchSerial = "serial-abc"
+	operation_setting.WechatAPIv3Key = "32byteapikey32byteapikey32byteapi"
+	operation_setting.WechatPrivateKeyPEM = "-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----"
+	// ponytail: 复位单例 — 前测若已初始化非空 svc,本测改 config 不生效(短路返旧 svc → 越过 nil-guard)。
+	t.Cleanup(func() { wechatNativeSvc = nil })
+
+	// 先断言 setting 层 IsWechatConfigured()=false(APPID 缺即拒)
+	if operation_setting.IsWechatConfigured() {
+		t.Fatal("IsWechatConfigured should be false when WechatAppId empty even if other 5 fields filled")
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Set("id", 1)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/user/wechat/pay",
+		strings.NewReader(`{"amount":10}`))
+
+	RequestWechatPay(c)
+	// handler 必须命中 nil-client guard 友好拒绝,不得 panic/crash 或调 SDK
+	if !strings.Contains(w.Body.String(), "当前管理员未配置支付信息") {
+		t.Fatalf("expected nil-client guard message when APPID missing, got %s", w.Body.String())
+	}
+}

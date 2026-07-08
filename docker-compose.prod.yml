@@ -79,6 +79,10 @@ services:
       dockerfile: Dockerfile
     container_name: savvy-manager
     restart: unless-stopped
+    volumes:
+      # ponytail: 挂宿主 docker.sock — manager 要管 workspace 容器生命周期
+      # (docker.from_env() → /var/run/docker.sock)。Windows Docker Desktop 双斜杠法。
+      - //var/run/docker.sock:/var/run/docker.sock
     environment:
       - SAVVY_DATABASE_URL=postgresql://savvy:savvy123@manager-db:5432/savvy_manager
       - SAVVY_HMAC_SECRET=${SAVVY_HMAC_SECRET:?required}
@@ -92,7 +96,8 @@ services:
       # compose startup fails loudly if operator forgot to set it (belt-and-
       # suspenders with the startup guard in app/main.py).
       - SAVVY_PROVIDER_ENC_KEY=${SAVVY_PROVIDER_ENC_KEY}
-      - SAVVY_OPENAI_BASE_URL=https://${SAVVY_PUBLIC_HOST}/v1
+      # ponytail: SAVVY_OPENAI_BASE_URL 不覆盖 — 代码默认 http://new-api:3000/v1
+      # (app/config.py) 容器间直连,本机+服务器同栈都通。上线需走真域名再在此覆盖。
       - SAVVY_PROVIDER_DEFAULT_MODEL=claude-sonnet-4
     depends_on:
       manager-db:

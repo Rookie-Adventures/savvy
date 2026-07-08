@@ -1,0 +1,3 @@
+# ponytail: 防 Windows checkout 把 shell 脚本转 CRLF → Docker 内 exec 失败
+*.sh text eol=lf
+entrypoint.sh text eol=lf

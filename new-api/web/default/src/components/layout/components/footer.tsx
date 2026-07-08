@@ -41,11 +41,12 @@ interface FooterProps {
   className?: string
 }
 
-const NEW_API_FOOTER_ATTRIBUTION_KEY = [
-  'footer',
-  'new' + 'api',
-  'projectAttributionSuffix',
-].join('.')
+// AGPL-3.0 合规:保留上游 new-api (QuantumNous) 出处链接 + 标注二次开发。
+// ponytail: 双归属一行横排,左侧自有品牌链左侧 + 右侧上游链,| 分隔
+const NEW_API_UPSTREAM_REPO = 'https://github.com/QuantumNous/new-api'
+const LICHENG_REPO = 'https://github.com/LichengTechnology/LiCheng'
+const LICHENG_BRAND = 'LiCheng'
+const LICHENG_ORG = 'LichengTechnology'
 
 function FooterLinkItem(props: { link: FooterLink }) {
   const { t } = useTranslation()
@@ -130,16 +131,28 @@ export function ProjectAttribution(props: { currentYear: number; inline?: boolea
   const { t } = useTranslation()
   const content = (
     <span className='text-muted-foreground/45'>
-      &copy; {props.currentYear}{' '}
       <a
-        href='https://github.com/QuantumNous/new-api'
+        href={LICHENG_REPO}
+        target='_blank'
+        rel='noopener noreferrer'
+        className='text-foreground/70 hover:text-foreground font-medium transition-colors'
+      >
+        {LICHENG_BRAND}
+      </a>{' '}
+      &copy; {props.currentYear} {LICHENG_ORG}
+      <span className='text-muted-foreground/30 mx-2' aria-hidden='true'>
+        |
+      </span>
+      {t('footer.attribution.basedOnPrefix')}{' '}
+      <a
+        href={NEW_API_UPSTREAM_REPO}
         target='_blank'
         rel='noopener noreferrer'
         className='text-foreground/70 hover:text-foreground font-medium transition-colors'
       >
         {t('New API')}
-      </a>
-      . {t(NEW_API_FOOTER_ATTRIBUTION_KEY)}
+      </a>{' '}
+      &copy; {props.currentYear} {t('footer.attribution.suffix')}
     </span>
   )
   if (props.inline) {
@@ -332,10 +345,6 @@ export function Footer(props: FooterProps) {
             attribution on the right; wraps on narrow screens. */}
         <div className='border-border/30 mt-12 flex flex-col items-center justify-between gap-x-3 gap-y-2 border-t pt-6 sm:flex-row'>
           <div className='text-muted-foreground/40 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs sm:justify-start'>
-            <span>
-              &copy; {currentYear} {displayName}.{' '}
-              {props.copyright ?? t('footer.defaultCopyright')}
-            </span>
             <LegalLinks leadingSeparator />
           </div>
           <ProjectAttribution currentYear={currentYear} />

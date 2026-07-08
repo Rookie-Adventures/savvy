@@ -16,69 +16,74 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Settings, Zap, BarChart3 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { AnimateInView } from '@/components/animate-in-view'
 
 export function HowItWorks() {
   const { t } = useTranslation()
 
+  // ponytail: old steps were "config keys → connect API routes → monitor
+  // usage" — a pure API-gateway onboarding, contradicting the workspace
+  // narrative. Rewritten as the workspace journey (open → use → return),
+  // with the one quiet API note inside step 2. Mono ordinal replaces the
+  // circular numbered badge (anti-cheap: numbered markers as architecture).
   const steps = [
     {
-      num: '1',
-      title: t('Configure'),
+      n: '01',
+      title: t('Open'),
       desc: t(
-        'Add your API keys, set up channels and configure access permissions'
+        'Sign up and the agent is there, waiting. No environment to build, no channel to configure first.'
       ),
-      icon: <Settings className='size-6' strokeWidth={1.5} />,
     },
     {
-      num: '2',
-      title: t('Connect'),
+      n: '02',
+      title: t('Work'),
       desc: t(
-        'Connect through OpenAI, Claude, Gemini, and other compatible API routes'
+        'Use the models wired into the agent, or bring your own key. Every keystroke stays in your space.'
       ),
-      icon: <Zap className='size-6' strokeWidth={1.5} />,
     },
     {
-      num: '3',
-      title: t('Monitor'),
-      desc: t('Track usage, costs and performance with real-time analytics'),
-      icon: <BarChart3 className='size-6' strokeWidth={1.5} />,
+      n: '03',
+      title: t('Return'),
+      desc: t(
+        'Close the tab and the agent sleeps after two hours free. Open it again anywhere and carry on.'
+      ),
     },
   ]
 
   return (
-    <section className='border-border/40 relative z-10 border-t px-6 py-24 md:py-32'>
-      <div className='mx-auto max-w-6xl'>
-        <AnimateInView className='mb-16 text-center md:mb-20'>
-          <p className='text-muted-foreground mb-3 text-xs font-medium tracking-widest uppercase'>
-            {t('How It Works')}
-          </p>
-          <h2 className='text-2xl font-bold tracking-tight md:text-3xl'>
-            {t('Three steps to get started')}
+    <section className='border-border/40 border-t px-6 py-24 md:py-32'>
+      <div className='mx-auto max-w-5xl'>
+        <AnimateInView animation='fade-up' className='mb-16 max-w-xl md:mb-20'>
+          <h2
+            className='text-foreground text-[clamp(1.75rem,3.5vw,2.75rem)] font-medium leading-[1.1] tracking-[-0.03em] [text-wrap:balance]'
+            style={{ fontFamily: 'var(--font-serif)' }}
+          >
+            {t('From nothing to shipping,')}
+            <br />
+            {t('in one open.')}
           </h2>
         </AnimateInView>
 
-        <div className='grid gap-8 md:grid-cols-3 md:gap-12'>
-          {steps.map((step, i) => (
+        <div className='border-border/40 divide-border/40 divide-y'>
+          {steps.map((s, i) => (
             <AnimateInView
-              key={step.num}
-              delay={i * 150}
+              key={s.n}
               animation='fade-up'
-              className='relative flex flex-col items-center text-center'
+              delay={i * 100}
+              className='grid grid-cols-1 items-baseline gap-4 py-8 md:grid-cols-12 md:gap-8 md:py-10'
             >
-              <div className='relative mb-6'>
-                <div className='text-muted-foreground border-border/50 bg-muted/30 flex size-16 items-center justify-center rounded-2xl border transition-colors'>
-                  {step.icon}
-                </div>
-                <div className='bg-foreground text-background absolute -top-2 -right-2 flex size-6 items-center justify-center rounded-full text-xs font-bold'>
-                  {step.num}
-                </div>
-              </div>
-              <h3 className='mb-2 text-base font-semibold'>{step.title}</h3>
-              <p className='text-muted-foreground max-w-[240px] text-sm leading-relaxed'>
-                {step.desc}
+              <span className='text-muted-foreground/50 font-mono text-sm tracking-[0.2em] tabular-nums md:col-span-2'>
+                {s.n}
+              </span>
+              <h3
+                className='text-foreground text-lg leading-snug font-medium md:col-span-3'
+                style={{ fontFamily: 'var(--font-serif)' }}
+              >
+                {s.title}
+              </h3>
+              <p className='text-muted-foreground/80 text-base leading-relaxed md:col-span-7 [text-wrap:pretty]'>
+                {s.desc}
               </p>
             </AnimateInView>
           ))}

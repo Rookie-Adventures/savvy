@@ -20,8 +20,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/auth-store'
 import { Markdown } from '@/components/ui/markdown'
 import { PublicLayout } from '@/components/layout'
-import { Footer } from '@/components/layout/components/footer'
-import { CTA, Features, Hero, HowItWorks, ProductIntro, Stats } from './components'
+import { CTA, Features, Hero, HowItWorks, LocalVsCloud, ProductIntro, Stats, TrustBlock, TrustModelStability } from './components'
 import { useHomePageContent } from './hooks'
 
 export function Home() {
@@ -66,9 +65,11 @@ export function Home() {
       <Stats />
       <ProductIntro />
       <Features />
+      <LocalVsCloud />
+      <TrustModelStability />
       <HowItWorks />
       <CTA isAuthenticated={isAuthenticated} />
-      <Footer />
+      <TrustBlock />
     </PublicLayout>
   )
 }

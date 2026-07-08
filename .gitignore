@@ -74,3 +74,7 @@ dist-electron/
 # Claude Code worktrees (local agent isolation, not for VCS)
 .claude/worktrees/
 
+# Local agent skills (design tooling, not for VCS)
+.agents/
+**/.agents/
+

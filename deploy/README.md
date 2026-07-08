@@ -100,8 +100,11 @@ cp .env.example .env
 #   openssl rand -hex 24  → SAVVY_HMAC_SECRET
 #   自定 Redis 密码
 
-# ⚠️ .env 不入仓库, docker-compose.yml 里的几个 CHANGE_ME 要么改成 ${VAR}
-#    (用 env_file), 要么直接 sed 替换。当前 compose 为明文占位, 部署时手换。
+# ⚠️ .env 不入仓库 (deploy/.gitignore 已拦)。docker-compose.yml 全密钥走 ${VAR:?required}
+#    从 .env 读, 缺任一变量 compose 启动 hard-fail (exit 非零, 拒绝静默起错配栈)。
+#    必填: REDIS_PASSWORD / SESSION_SECRET / SAVVY_PROVIDER_ENC_KEY / SAVVY_HMAC_SECRET
+#    其中 SAVVY_HMAC_SECRET 是 new-api ↔ savvy-manager 共用签名密钥, 两边读同一 .env 变量,
+#    保证一致 (历史 bug: 不一致 → 全 /internal/* 401)。
 
 # 4. 构建启动
 docker compose up -d --build
@@ -141,13 +144,15 @@ sudo ufw enable
 
 ## 安全清单 (上线前过一遍)
 
-- [ ] `.env` 已填随机密钥, 未入 git (`deploy/.gitignore` 加 `.env`)
-- [ ] docker-compose 里所有 `CHANGE_ME_*` 已替换
+- [ ] `.env` 已填随机密钥, 未入 git (`deploy/.gitignore` 加 `.env`); 缺任一 compose 启动 hard-fail
+- [ ] docker-compose 密钥全 `${VAR:?required}` 从 .env 读 (无 CHANGE_ME 明文占位了)
+- [ ] **SAVVY_HMAC_SECRET**: new-api 与 savvy-manager 两边读同一 .env 变量 (已统一)
+- [ ] **SAVVY_MOCK_MODE=false** 在 compose 已显式设 (默认 true 会假编排)
 - [ ] 机B防火墙: 3000/8000 仅机A能连, 不对公网
 - [ ] 机B SSH: 改非22端口 + 密钥登录 + 禁root密码 (`PasswordAuthentication no`)
 - [ ] 机A HTTPS 证书自动续签测试: `sudo certbot renew --dry-run`
 - [ ] new-api 首次管理员密码已改, 非 `123456` 之类
-- [ ] Redis 密码已设 (默认占位 `CHANGE_ME_REDIS_PWD`)
+- [ ] Redis 密码已设 (`REDIS_PASSWORD` 在 .env, new-api + redis 两端读同一值)
 - [ ] 备份脚本手动跑过, `/var/backups/savvy` 有 .db.gz
 - [ ] 异地备份 (rclone 到对象存储) 配置并验证一次
 - [ ] 备案信息首页可见: 主体名(栗橙科技) + ICP号 + 公安备案号

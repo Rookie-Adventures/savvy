@@ -36,7 +36,7 @@ services:
       # - SQL_DSN=
 
       # ---- Redis 缓存 ----
-      - REDIS_CONN_STRING=redis://:CHANGE_ME_REDIS_PWD@redis:6379
+      - REDIS_CONN_STRING=redis://:${REDIS_PASSWORD:?required}@redis:6379
 
       # ---- 时区/日志 ----
       - TZ=Asia/Shanghai
@@ -48,11 +48,18 @@ services:
       - STREAMING_TIMEOUT=300
 
       # ---- Session 多机一致性 (单机可省, 留位) ----
-      - SESSION_SECRET=CHANGE_ME_RANDOM_64CHARS
+      - SESSION_SECRET=${SESSION_SECRET:?required}
 
       # ---- Secure cookie (HTTPS 经机A终结) ----
       - SESSION_COOKIE_SECURE=true
       - SESSION_COOKIE_TRUSTED_URL=https://scheng.net
+
+      # ---- Hermes/workspace 编排 (HMAC + manager URL) ----
+      # Go 读 os.Getenv("SAVVY_HMAC_SECRET") (不是 SESSION_SECRET!), 与 savvy-manager 必须同值
+      # 否则每个 /internal/* 401。从 .env 读, hard-fail 防漏配。
+      # HERMES_MANAGER_URL 不设 → Go 默认 http://localhost:8000 (容器内回环) 连不到 savvy-manager 容器名
+      - SAVVY_HMAC_SECRET=${SAVVY_HMAC_SECRET:?required}
+      - HERMES_MANAGER_URL=http://savvy-manager:8000
 
       # ---- 海外模型合规接入位 ----
       # 走国内已备案聚合商渠道在 new-api 控制台里加渠道填聚合商的 BaseURL + Key
@@ -75,7 +82,7 @@ services:
     image: redis:7-alpine
     container_name: redis
     restart: always
-    command: ["redis-server", "--requirepass", "CHANGE_ME_REDIS_PWD", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?required}", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     volumes:
       - ./data/redis:/data
     networks:
@@ -97,8 +104,12 @@ services:
       - ./data/savvy-manager:/data
     environment:
       - SAVVY_DATABASE_URL=sqlite:///data/savvy-manager.db
-      - SAVVY_PROVIDER_ENC_KEY=CHANGE_ME_ENC_KEY_32CHARS
-      - SAVVY_HMAC_SECRET=CHANGE_ME_HMAC_SECRET
+      - SAVVY_PROVIDER_ENC_KEY=${SAVVY_PROVIDER_ENC_KEY:?required}
+      # 与 new-api 必须同值 (从 .env 同一变量读)。hard-fail 防漂移。
+      - SAVVY_HMAC_SECRET=${SAVVY_HMAC_SECRET:?required}
+      # ponytail: 必须显式 false。config.py 默认 mock_mode=true → 不真起 Docker,
+      # 启工作区全是假响应。线上 false 才真编排 workspace 容器。
+      - SAVVY_MOCK_MODE=false
       - TZ=Asia/Shanghai
     networks:
       - savvy-net

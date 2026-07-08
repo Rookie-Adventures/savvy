@@ -78,3 +78,6 @@ dist-electron/
 .agents/
 **/.agents/
 
+# Superpowers skill local SDD state (review diffs + progress), not for VCS
+.superpowers/
+

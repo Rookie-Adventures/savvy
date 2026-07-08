@@ -1,0 +1,8 @@
+# 密钥不入仓库
+.env
+.env.*
+!.env.example
+
+# 运行时数据卷
+data/
+logs/

@@ -1,0 +1,148 @@
+# 机B 后端 docker-compose (SQLite 精简版)
+#
+# 用途: 跑在 B 云服务器 (建议 4C8G+, 不备案, 不开公网 Web)
+# 服务: new-api + Redis + savvy-manager + hermes-agent
+# DB:   SQLite 单文件 (日流水百万前够用, 后续迁 MySQL/PG 零改代码)
+# 模型: 仅接国内已备案 AI 聚合商 (合规), 海外模型经聚合商转售, 不自建海外代理
+#
+# 启动: docker compose up -d
+# 日志: docker compose logs -f new-api
+# 停止: docker compose down
+# 重建: docker compose up -d --build new-api  (改代码后)
+
+version: '3.4'
+
+services:
+
+  # ============ 主SaaS后端 ============
+  new-api:
+    build:
+      context: ../new-api
+      dockerfile: Dockerfile
+    container_name: new-api
+    restart: always
+    command: --log-dir /app/logs
+    # 只监听内网回环 + 机A回源IP, 不直接暴露公网
+    # 反代由机A Nginx终结 HTTPS 再打过来 (裸 HTTP)
+    ports:
+      - "127.0.0.1:3000:3000"   # ponytail: 仅本机回环, 机A走内网IP直连或SSH隧道
+    volumes:
+      - ./data/new-api:/data       # SQLite 文件在这里: /data/one-api.db
+      - ./logs/new-api:/app/logs
+    environment:
+      # ---- DB (SQLite 起步) ----
+      # 不设 SQL_DSN = 默认 SQLite, 文件 /data/one-api.db
+      # 迁 MySQL 时改这里: - SQL_DSN=root:pwd@tcp(mysql:3306)/new-api
+      # - SQL_DSN=
+
+      # ---- Redis 缓存 ----
+      - REDIS_CONN_STRING=redis://:CHANGE_ME_REDIS_PWD@redis:6379
+
+      # ---- 时区/日志 ----
+      - TZ=Asia/Shanghai
+      - ERROR_LOG_ENABLED=true
+      - BATCH_UPDATE_ENABLED=true
+      - NODE_NAME=savvy-prod-b
+
+      # ---- 流式 LLM 长响应 ----
+      - STREAMING_TIMEOUT=300
+
+      # ---- Session 多机一致性 (单机可省, 留位) ----
+      - SESSION_SECRET=CHANGE_ME_RANDOM_64CHARS
+
+      # ---- Secure cookie (HTTPS 经机A终结) ----
+      - SESSION_COOKIE_SECURE=true
+      - SESSION_COOKIE_TRUSTED_URL=https://scheng.net
+
+      # ---- 海外模型合规接入位 ----
+      # 走国内已备案聚合商渠道在 new-api 控制台里加渠道填聚合商的 BaseURL + Key
+      # 这里不硬编码, 避免密钥入仓库
+      # 例如聚合商: silverroad / aiproxy / openai-sb 国内已备案转售
+      # 控制台 → 渠道 → 新建 → 类型选 OpenAI → BaseURL 填聚合商的 https://agg.xxx.com
+
+    depends_on:
+      - redis
+    networks:
+      - savvy-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/api/status | grep -o '\"success\":\\s*true' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============ Redis (new-api 缓存/限流) ============
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    command: ["redis-server", "--requirepass", "CHANGE_ME_REDIS_PWD", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - ./data/redis:/data
+    networks:
+      - savvy-net
+    # 不开 ports, 仅容器内网可见
+
+  # ============ savvy-manager (容器生命周期编排) ============
+  # 独立 DB (不与 new-api 共库), HMAC 私有 API 与 new-api 通信
+  savvy-manager:
+    build:
+      context: ../savvy-manager
+      dockerfile: Dockerfile
+    container_name: savvy-manager
+    restart: always
+    ports:
+      - "127.0.0.1:8000:8000"   # 只本机/内网, new-api 通过内网调
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock   # 编排宿主容器
+      - ./data/savvy-manager:/data
+    environment:
+      - SAVVY_DATABASE_URL=sqlite:///data/savvy-manager.db
+      - SAVVY_PROVIDER_ENC_KEY=CHANGE_ME_ENC_KEY_32CHARS
+      - SAVVY_HMAC_SECRET=CHANGE_ME_HMAC_SECRET
+      - TZ=Asia/Shanghai
+    networks:
+      - savvy-net
+    # ponytail: 单机编排, worker 模式扩容时拆出单独 manager-api + worker
+
+  # ============ 机B内部 Nginx (workspace 端口池路由) ============
+  # 已有 deploy/nginx.conf: 41000-41099 端口池, token 驱动路由到 workspace 容器
+  # auth_request 子请求到 savvy-manager 验 token, 拿 user_id/instance_id/upstream
+  # 这是 workspace 体系核心, 不改动, 仅挂载启动
+  workspace-router:
+    image: nginx:1.27-alpine
+    container_name: workspace-router
+    restart: always
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "127.0.0.1:41000-41099:41000-41099"   # ponytail: 本机回环, savvy-manager 编排 workspace 容器后由它转发
+    depends_on:
+      - savvy-manager
+      - new-api
+    networks:
+      - savvy-net
+
+  # ============ hermes-agent (工作智能体引擎) ============
+  # Python 长驻, hermes-workspace 容器池由 savvy-manager 拉起, 不在这里常驻
+  # 工作智能体实际跑在 savvy-manager 拉起的 workspace 容器里 (3h 自睡 daemon)
+  # this service 留作 agent core / 调度入口, 如不需要可注释
+  hermes-agent:
+    build:
+      context: ../hermes-agent
+      dockerfile: Dockerfile
+    container_name: hermes-agent
+    restart: always
+    volumes:
+      - ./data/hermes:/data
+    environment:
+      - TZ=Asia/Shanghai
+    networks:
+      - savvy-net
+    profiles: ["full"]   # ponytail: 默认不启, 按需 `docker compose --profile full up`
+
+networks:
+  savvy-net:
+    driver: bridge
+
+# ponytail: SQLite 文件即在上面 ./data/new-api/one-api.db
+# 备份见 backup.cron, 迁 MySQL 改 SQL_DSN 即可, 零改代码

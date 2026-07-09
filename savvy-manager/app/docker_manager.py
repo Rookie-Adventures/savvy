@@ -18,7 +18,7 @@ PLAN_LOG_CONFIG = {
     "STARTER": {"max-size": "20m", "max-file": "5"},
     "PRO":     {"max-size": "50m", "max-file": "5"},
 }
-PLAN_STORAGE_GB = {"FREE": 10, "STARTER": 30, "PRO": 80}
+PLAN_STORAGE_GB = {"FREE": 5, "STARTER": 20, "PRO": 50}
 
 # Lazily initialized so importing this module never touches the Docker daemon.
 # (The container may run without a Docker socket mounted in mock mode.)

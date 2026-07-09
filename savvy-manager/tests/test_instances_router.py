@@ -229,7 +229,7 @@ def test_create_instance_sets_not_created(client, db_session):
 
 
 def test_create_instance_free_sets_storage_quota(client, db_session):
-    # FREE 档新建实例必须落 storage_quota_gb=10 (PLAN_STORAGE_GB["FREE"]),
+    # FREE 档新建实例必须落 storage_quota_gb=5 (PLAN_STORAGE_GB["FREE"]),
     # 否则 check_storage_quota 扫 isnot(None) 跳过 → 软配额永久失效。
     db_session.add(User(user_id="1", plan=PlanType.FREE))
     db_session.commit()
@@ -241,7 +241,7 @@ def test_create_instance_free_sets_storage_quota(client, db_session):
     db_session.expire_all()
     inst = db_session.query(Instance).filter(Instance.instance_id == "inst-1").first()
     assert inst is not None
-    assert inst.storage_quota_gb == 10
+    assert inst.storage_quota_gb == 5
 
 
 def _create_running_paid_instance(db, instance_id="inst-1", plan=PlanType.STARTER):
@@ -307,4 +307,65 @@ def test_downgrade_sets_free_and_2h_expiry_no_touch_container(client, db_session
     assert inst.expected_plan == PlanType.FREE
     assert inst.expires_at is not None       # 设了 2h 窗
     assert stop_called == []                 # 不碰运行容器
+
+
+def test_start_expected_plan_aligns_drifted_instance(client, db_session, monkeypatch):
+    """Closes the upgrade-window hole: a FREE instance (subscribed while NOT
+    RUNNING, so the upgrade route never ran) must align inst.plan to
+    expected_plan on start, clear drift flags, and skip the 2h free window."""
+    _create_test_instance(db_session, status=InstanceStatus.NOT_CREATED)
+    from app import docker_manager, provider_config
+    monkeypatch.setattr(docker_manager, "start_container", lambda name: True)
+    monkeypatch.setattr(docker_manager.settings, "mock_mode", True)
+    monkeypatch.setattr(provider_config, "probe_default_model", lambda **k: "deepseek-v4-flash")
+
+    res = client.post("/internal/instances/inst-1/start", json={
+        "provider_api_key": "sk-abc1234567890123",
+        "expected_plan": "STARTER",
+    })
+    assert res.json()["success"] is True
+    db_session.expire_all()
+    inst = db_session.query(Instance).filter_by(instance_id="inst-1").first()
+    assert inst.plan == PlanType.STARTER
+    assert inst.expected_plan is None
+    assert inst.needs_upgrade is False
+    assert inst.expires_at is None            # paid plan → no 2h window
+    assert inst.storage_quota_gb == 20        # plan upgrade syncs the soft-quota tier
+
+
+def test_start_expected_plan_free_keeps_2h_window(client, db_session, monkeypatch):
+    """expected_plan=FREE aligns and still applies the 2h free window."""
+    _create_test_instance(db_session, status=InstanceStatus.NOT_CREATED)
+    from app import docker_manager, provider_config
+    monkeypatch.setattr(docker_manager, "start_container", lambda name: True)
+    monkeypatch.setattr(docker_manager.settings, "mock_mode", True)
+    monkeypatch.setattr(provider_config, "probe_default_model", lambda **k: "deepseek-v4-flash")
+
+    res = client.post("/internal/instances/inst-1/start", json={
+        "provider_api_key": "sk-abc1234567890123",
+        "expected_plan": "FREE",
+    })
+    assert res.json()["success"] is True
+    db_session.expire_all()
+    inst = db_session.query(Instance).filter_by(instance_id="inst-1").first()
+    assert inst.plan == PlanType.FREE
+    assert inst.expires_at is not None
+
+
+def test_get_instance_returns_spec_fields(client, db_session):
+    """InstanceResponse must surface cpu_quota/mem_limit/pids_limit/
+    storage_quota_gb (mapped from PLAN_RESOURCES by plan) for frontend display."""
+    _create_test_instance(db_session, status=InstanceStatus.RUNNING)
+    inst = db_session.query(Instance).filter_by(instance_id="inst-1").first()
+    inst.plan = PlanType.PRO
+    inst.storage_quota_gb = 80
+    db_session.commit()
+
+    res = client.get("/internal/users/1/instance")
+    data = res.json()["data"]
+    assert data["plan"] == "PRO"
+    assert data["cpu_quota"] == 400000
+    assert data["mem_limit"] == "8g"
+    assert data["pids_limit"] == 1024
+    assert data["storage_quota_gb"] == 50
 

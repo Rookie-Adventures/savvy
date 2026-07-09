@@ -26,6 +26,26 @@ class InstanceResponse(BaseModel):
     assigned_port: int | None = None
     started_at: str | None = None
     expires_at: str | None = None
+    # container spec, mapped from PLAN_RESOURCES by plan (static display only).
+    cpu_quota: int | None = None
+    mem_limit: str | None = None
+    pids_limit: int | None = None
+    storage_quota_gb: int | None = None
+
+
+def _spec_for_plan(plan: PlanType) -> dict:
+    """Static per-plan container spec for frontend display. Mirrors
+    docker_manager.PLAN_RESOURCES so the UI shows what the container is
+    created/hot-updated with, without querying docker stats. Storage comes
+    from PLAN_STORAGE_GB so the displayed quota tracks the live plan — the
+    DB inst.storage_quota_gb is the scanner's soft-quota source and may lag a
+    plan upgrade, so the display reads the plan-mapped value instead."""
+    from ..docker_manager import PLAN_RESOURCES, PLAN_STORAGE_GB
+    key = plan.value if hasattr(plan, "value") else str(plan)
+    res = dict(PLAN_RESOURCES.get(key, {}))
+    if key in PLAN_STORAGE_GB:
+        res["storage_quota_gb"] = PLAN_STORAGE_GB[key]
+    return res
 
 
 @router.post("/upsert", response_model=UserUpsertResponse)
@@ -57,7 +77,9 @@ async def get_instance(user_id: str, auth=Depends(require_hmac), db: Session = D
             user_id=user_id,
             status=InstanceStatus.NOT_CREATED,
             plan=PlanType.FREE,
+            **_spec_for_plan(PlanType.FREE),
         )
+    spec = _spec_for_plan(inst.plan)
     return InstanceResponse(
         instance_id=inst.instance_id,
         user_id=inst.user_id,
@@ -68,6 +90,7 @@ async def get_instance(user_id: str, auth=Depends(require_hmac), db: Session = D
         assigned_port=inst.assigned_port,
         started_at=inst.started_at.isoformat() if inst.started_at else None,
         expires_at=inst.expires_at.isoformat() if inst.expires_at else None,
+        **spec,
     )
 
 
@@ -82,6 +105,7 @@ async def create_instance(user_id: str, auth=Depends(require_hmac), db: Session 
         InstanceStatus.DELETING,
         InstanceStatus.ERROR,
     ):
+        spec = _spec_for_plan(existing.plan)
         return InstanceResponse(
             instance_id=existing.instance_id,
             user_id=existing.user_id,
@@ -92,6 +116,7 @@ async def create_instance(user_id: str, auth=Depends(require_hmac), db: Session 
             assigned_port=existing.assigned_port,
             started_at=existing.started_at.isoformat() if existing.started_at else None,
             expires_at=existing.expires_at.isoformat() if existing.expires_at else None,
+            **spec,
         )
 
     instance_id = f"inst-{user_id}"
@@ -128,6 +153,7 @@ async def create_instance(user_id: str, auth=Depends(require_hmac), db: Session 
     db.add(inst)
     db.commit()
 
+    spec = _spec_for_plan(inst.plan)
     return InstanceResponse(
         instance_id=inst.instance_id,
         user_id=inst.user_id,
@@ -136,4 +162,5 @@ async def create_instance(user_id: str, auth=Depends(require_hmac), db: Session 
         container_name=inst.container_name,
         volume_name=inst.volume_name,
         assigned_port=inst.assigned_port,
+        **spec,
     )

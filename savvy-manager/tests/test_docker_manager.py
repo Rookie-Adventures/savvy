@@ -173,5 +173,5 @@ def test_plan_resource_constants_present():
     from app.docker_manager import PLAN_RESOURCES, PLAN_LOG_CONFIG, PLAN_STORAGE_GB
     assert set(PLAN_RESOURCES) == {"FREE", "STARTER", "PRO"}
     assert PLAN_RESOURCES["STARTER"] == {"cpu_quota": 200000, "mem_limit": "2g", "pids_limit": 512}
-    assert PLAN_STORAGE_GB == {"FREE": 10, "STARTER": 30, "PRO": 80}
+    assert PLAN_STORAGE_GB == {"FREE": 5, "STARTER": 20, "PRO": 50}
 

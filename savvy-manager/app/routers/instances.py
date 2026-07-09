@@ -70,6 +70,9 @@ class StartRequest(BaseModel):
     provider_api_key: str | None = None
     provider_base_url: str | None = None
     provider_model: str | None = None
+    # authoritative plan from new-api user.group; aligns a drifted instance.plan
+    # that missed the upgrade window (subscribed while container not RUNNING).
+    expected_plan: str | None = None
 
 
 @router.post("/{instance_id}/start", response_model=StartResponse)
@@ -130,6 +133,33 @@ async def start_instance(
         inst.provider_key_set_at = datetime.now(timezone.utc)
 
     now = datetime.now(timezone.utc)
+
+    # Align inst.plan to the authoritative expected_plan from new-api user.group.
+    # Closes the upgrade-window hole: a subscription committed while the
+    # container was not RUNNING never reached the upgrade route, leaving
+    # inst.plan stuck at FREE (→ 2h expiry + wrong display) with no scanner
+    # safety net (needs_upgrade was never set). Start is the single reliable
+    # point every user passes through, so reconcile here.
+    if body.expected_plan:
+        try:
+            target = PlanType(body.expected_plan)
+        except ValueError:
+            target = None
+        if target is not None and target != inst.plan:
+            inst.plan = target
+            inst.expected_plan = None
+            inst.needs_upgrade = False
+            inst.upgrade_retries = 0
+            # Keep the soft-quota storage in lockstep with the new plan, mirroring
+            # scanner.py's expected_plan alignment. Without this, a plan upgrade on
+            # start leaves storage_quota_gb at the old (FREE) value — front-end still
+            # shows 10GB and the storage soft-quota never grows to the paid tier.
+            inst.storage_quota_gb = PLAN_STORAGE_GB.get(target.value, PLAN_STORAGE_GB["FREE"])
+            # paid plan → no free-window expiry; FREE alignment below still sets 2h.
+            # Resource hot-change on wake is intentionally NOT done here (see plan:
+            # start_container is docker start on the existing container, does not
+            # reapply mem/cpu; rebuild closes that in scanner.check_needs_rebuild).
+
     expires_at = None
     if inst.plan == PlanType.FREE:
         expires_at = now + timedelta(hours=2)

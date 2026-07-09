@@ -30,6 +30,10 @@ export interface HermesInstance {
   accessUrl?: string
   createdAt?: string
   updatedAt?: string
+  cpuQuota?: number
+  memLimit?: string
+  pidsLimit?: number
+  storageGb?: number
 }
 
 export interface HermesAccessToken {

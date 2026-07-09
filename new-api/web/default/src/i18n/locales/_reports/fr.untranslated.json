@@ -1,11 +1,23 @@
 {
   "Configure content for custom pages. Content supports Markdown and HTML.": "Configure content for custom pages. Content supports Markdown and HTML.",
+  "Currently using: this platform's key (billed to your balance)": "Currently using: this platform's key (billed to your balance)",
+  "Failed to create workspace": "Failed to create workspace",
+  "Failed to load workspace status": "Failed to load workspace status",
+  "Failed to open workspace": "Failed to open workspace",
   "Failed to save custom pages": "Failed to save custom pages",
+  "Failed to sleep workspace": "Failed to sleep workspace",
+  "Failed to start workspace": "Failed to start workspace",
+  "Leave empty to keep your current key. Fill to switch keys.": "Leave empty to keep your current key. Fill to switch keys.",
+  "No provider key configured — chat will fail. Restart and provide a key.": "No provider key configured — chat will fail. Restart and provide a key.",
+  "Revoke clears all LLM provider keys on this workspace. Your data is kept; chat will fail until you restart with a key.": "Revoke clears all LLM provider keys on this workspace. Your data is kept; chat will fail until you restart with a key.",
+  "First-time setup takes 10–30 seconds to configure the environment. Please wait.": "First-time setup takes 10–30 seconds to configure the environment. Please wait.",
   "Scan with WeChat to pay": "Scan with WeChat to pay",
   "Disable Production mode to use the Alipay sandbox gateway. Fill in App ID and keys from the Alipay open platform.": "Disable Production mode to use the Alipay sandbox gateway. Fill in App ID and keys from the Alipay open platform.",
   "Application public key certificate (PEM content, cert mode). The SDK computes the serial number internally.": "Application public key certificate (PEM content, cert mode). The SDK computes the serial number internally.",
   "WeChat Pay uses APIv3 with merchant certificates. The platform certificate is auto-downloaded; leave the path blank unless you want to pin it.": "WeChat Pay uses APIv3 with merchant certificates. The platform certificate is auto-downloaded; leave the path blank unless you want to pin it.",
   "Optional path to pin the WeChat platform certificate. Auto-downloaded if blank.": "Optional path to pin the WeChat platform certificate. Auto-downloaded if blank.",
   "Leave blank to use server address + /api/user/alipay/notify": "Leave blank to use server address + /api/user/alipay/notify",
-  "Public callback URL for Alipay async notify. Leave blank to auto-derive from server address.": "Public callback URL for Alipay async notify. Leave blank to auto-derive from server address."
+  "Public callback URL for Alipay async notify. Leave blank to auto-derive from server address.": "Public callback URL for Alipay async notify. Leave blank to auto-derive from server address.",
+  "You can generate one on the API Keys page and paste it here. We recommend the key you generated on this platform (billed to your account balance).": "You can generate one on the API Keys page and paste it here. We recommend the key you generated on this platform (billed to your account balance).",
+  "Your data (sessions, files, memory, skills) is preserved. Revoking only clears the key — sending messages will fail until you re-enter a key.": "Your data (sessions, files, memory, skills) is preserved. Revoking only clears the key — sending messages will fail until you re-enter a key."
 }

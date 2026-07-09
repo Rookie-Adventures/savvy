@@ -189,11 +189,19 @@ function InstanceStatus({ instance }: { instance: HermesInstance }) {
           <div>
             <span className='text-muted-foreground'>{t('Remaining Time')}</span>
             <p className='font-medium'>
-              {instance.plan === 'FREE'
+              {instance.plan?.toUpperCase() === 'FREE'
                 ? t('2 hours per start')
                 : t('Unlimited')}
             </p>
           </div>
+          {instance.cpuQuota !== undefined && (
+            <div>
+              <span className='text-muted-foreground'>{t('Resources')}</span>
+              <p className='font-medium'>
+                {(instance.cpuQuota / 100000).toFixed(2)} vCPU · {instance.memLimit} · {instance.storageGb}GB
+              </p>
+            </div>
+          )}
           {instance.lastError && (
             <div className='col-span-2'>
               <span className='text-muted-foreground'>{t('Last Error')}</span>

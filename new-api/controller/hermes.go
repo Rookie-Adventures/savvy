@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 
 	"github.com/gin-gonic/gin"
@@ -22,6 +23,11 @@ type hermesInstanceVO struct {
 	AccessURL string `json:"accessUrl,omitempty"`
 	CreatedAt string `json:"createdAt,omitempty"`
 	UpdatedAt string `json:"updatedAt,omitempty"`
+	// container spec, mirrored from manager PLAN_RESOURCES for static display.
+	CPUQuota       int    `json:"cpuQuota"`
+	MemLimit       string `json:"memLimit"`
+	PidsLimit      int    `json:"pidsLimit"`
+	StorageQuotaGB int    `json:"storageGb"`
 }
 
 // toVO converts the manager's raw instance into the frontend view object.
@@ -29,9 +35,13 @@ type hermesInstanceVO struct {
 // expects lowercase.
 func toVO(inst *service.HermesInstance) hermesInstanceVO {
 	vo := hermesInstanceVO{
-		ID:     inst.InstanceID,
-		Status: normalizeStatus(inst.Status),
-		Plan:   inst.Plan,
+		ID:             inst.InstanceID,
+		Status:         normalizeStatus(inst.Status),
+		Plan:           inst.Plan,
+		CPUQuota:       inst.CPUQuota,
+		MemLimit:       inst.MemLimit,
+		PidsLimit:      inst.PidsLimit,
+		StorageQuotaGB: inst.StorageQuotaGB,
 	}
 	if inst.StartedAt != "" {
 		vo.CreatedAt = inst.StartedAt
@@ -146,7 +156,19 @@ func StartHermesInstance(c *gin.Context) {
 	// bind error here — match repo style.
 	_ = c.ShouldBindJSON(&req)
 
-	if err := service.StartHermesInstance(userID, instanceID, req.ProviderAPIKey, req.ProviderBaseURL, req.ProviderModel); err != nil {
+	// Resolve the authoritative plan from the user's current group so the
+	// manager can align a drifted instance.plan on start (closes the upgrade-
+	// window hole: a subscription committed while the container was not RUNNING).
+	// GetUserGroup is cache-first; on any error we send empty (manager keeps
+	// inst.plan as-is) — start itself must not fail on a stale cache lookup.
+	planName := ""
+	if group, err := model.GetUserGroup(userID, false); err == nil {
+		if name, ok := service.GroupToPlanName(strings.TrimSpace(group)); ok {
+			planName = name
+		}
+	}
+
+	if err := service.StartHermesInstance(userID, instanceID, planName, req.ProviderAPIKey, req.ProviderBaseURL, req.ProviderModel); err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("failed to start hermes instance: %s", err.Error()))
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,

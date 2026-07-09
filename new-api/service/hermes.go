@@ -33,6 +33,11 @@ type HermesInstance struct {
 	VolumeName    string `json:"volume_name,omitempty"`
 	StartedAt     string `json:"started_at,omitempty"`
 	ExpiresAt     string `json:"expires_at,omitempty"`
+	// container spec, mirrored from manager PLAN_RESOURCES (static per-plan display).
+	CPUQuota       int    `json:"cpu_quota"`
+	MemLimit       string `json:"mem_limit"`
+	PidsLimit      int    `json:"pids_limit"`
+	StorageQuotaGB int    `json:"storage_quota_gb"`
 }
 
 // HermesAccessToken mirrors manager's AccessTokenResponse.
@@ -220,7 +225,7 @@ func CreateHermesInstance(userID int) (*HermesInstance, error) {
 // The wire shape to manager is snake_case JSON:
 //
 //	{"provider_api_key": ..., "provider_base_url"?: ..., "provider_model"?: ...}
-func StartHermesInstance(userID int, instanceID, providerAPIKey, providerBaseURL, providerModel string) error {
+func StartHermesInstance(userID int, instanceID, planName, providerAPIKey, providerBaseURL, providerModel string) error {
 	body := map[string]any{
 		"provider_api_key": providerAPIKey,
 	}
@@ -229,6 +234,12 @@ func StartHermesInstance(userID int, instanceID, providerAPIKey, providerBaseURL
 	}
 	if providerModel != "" {
 		body["provider_model"] = providerModel
+	}
+	// Send the authoritative plan so the manager can align a drifted instance.plan
+	// that missed the upgrade window (subscription committed while the container was
+	// not RUNNING). Empty planName → omit, manager keeps inst.plan as-is.
+	if planName != "" {
+		body["expected_plan"] = planName
 	}
 	bodyBytes, err := common.Marshal(body)
 	if err != nil {

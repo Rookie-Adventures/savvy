@@ -140,7 +140,7 @@ func TestStartHermesInstance_Signed(t *testing.T) {
 	defer server.Close()
 	setupManagerEnv(t, server.URL)
 
-	require.NoError(t, StartHermesInstance(123, "test-instance", "", "", ""))
+	require.NoError(t, StartHermesInstance(123, "test-instance", "", "", "", ""))
 }
 
 // captureBody reads r.Body fully and restores it so subsequent readers
@@ -170,12 +170,14 @@ func TestStartHermesInstanceForwardsProviderKey(t *testing.T) {
 	defer server.Close()
 	setupManagerEnv(t, server.URL)
 
-	require.NoError(t, StartHermesInstance(2, "inst-1", "sk-abc1234567890123", "", ""))
+	require.NoError(t, StartHermesInstance(2, "inst-1", "", "sk-abc1234567890123", "", ""))
 	require.Equal(t, "sk-abc1234567890123", gotBody["provider_api_key"], "provider key must be forwarded under snake_case key")
 	_, hasURL := gotBody["provider_base_url"]
 	assert.False(t, hasURL, "empty base URL must be omitted")
 	_, hasModel := gotBody["provider_model"]
 	assert.False(t, hasModel, "empty model must be omitted")
+	_, hasPlan := gotBody["expected_plan"]
+	assert.False(t, hasPlan, "empty planName must be omitted")
 }
 
 // TestStartHermesInstanceForwardsAllOverrides forwards base URL + model too.
@@ -190,10 +192,11 @@ func TestStartHermesInstanceForwardsAllOverrides(t *testing.T) {
 	defer server.Close()
 	setupManagerEnv(t, server.URL)
 
-	require.NoError(t, StartHermesInstance(2, "inst-1", "sk-key", "https://base.example/v1", "gpt-5"))
+	require.NoError(t, StartHermesInstance(2, "inst-1", "PRO", "sk-key", "https://base.example/v1", "gpt-5"))
 	assert.Equal(t, "sk-key", gotBody["provider_api_key"])
 	assert.Equal(t, "https://base.example/v1", gotBody["provider_base_url"])
 	assert.Equal(t, "gpt-5", gotBody["provider_model"])
+	assert.Equal(t, "PRO", gotBody["expected_plan"], "planName must be forwarded as expected_plan")
 }
 
 // TestRevokeHermesProviderKey asserts the revoke route is hit with no body.

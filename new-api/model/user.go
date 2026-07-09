@@ -1037,6 +1037,11 @@ func GetUserGroup(id int, fromDB bool) (group string, err error) {
 	if err != nil {
 		return "", err
 	}
+	// Heal a historically-drifted group: if DB group is the baseline while an
+	// active upgrade subscription exists, reconcile to the subscription's plan.
+	// Runs only for baseline groups (the sole drift symptom); elevated groups
+	// short-circuit, so the hot path for paid users is untouched.
+	group = reconcileUserGroupIfStale(id, group)
 
 	return group, nil
 }

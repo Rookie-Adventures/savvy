@@ -1101,6 +1101,59 @@ func ExpireDueSubscriptions(limit int) (int, error) {
 	return expiredCount, nil
 }
 
+// reconcileUserGroupIfStale repairs a drifted users.group: if the group read back
+// is the baseline ("default"/empty) while an active, non-expired subscription
+// with a non-empty upgrade_group exists, that subscription's plan authoritatively
+// dictates the group — write it back and return it.
+//
+// Root cause this closes: the only paths that write users.group are the
+// subscription-activation write (CreateUserSubscriptionFromPlanTx) and the
+// expiry/downgrade writes (downgradeUserGroupForSubscriptionTx /
+// ExpireDueSubscriptions). There was no symmetry-asymmetry healer: once group
+// drifted back to baseline (a write that failed, a race, or historical cleanup),
+// the downgrade guards correctly KEPT it there (they never elevate), even while a
+// valid active upgrade subscription existed — so the user showed FREE forever.
+// Read-path symptom: GetUserGroup returned "default" -> GroupToPlanName -> FREE
+// -> manager expected_plan=FREE, which also defeated the start-instance plan
+// alignment (the manager kept inst.plan=FREE because new-api handed it FREE).
+//
+// Cheapest viable gate: only the baseline group can be a drift symptom — a paid
+// group never needs this. So we skip the sub query entirely for elevated groups;
+// the baseline case is the rare historical-drift user, not the hot path. The DB
+// write uses GORM's Update("group", v) — GORM quotes the column name per dialect
+// (PG/sq-quoted, SQLite/MySQL backquoted), so it remains safe where a hand-built
+// SET "group"= string would break on PostgreSQL's reserved word.
+func reconcileUserGroupIfStale(userId int, dbGroup string) string {
+	target := strings.TrimSpace(dbGroup)
+	if userId <= 0 {
+		return target
+	}
+	// Only baseline groups can be the drift symptom; elevated groups short-circuit.
+	if target != "" && target != "default" {
+		return target
+	}
+	now := common.GetTimestamp()
+	var sub UserSubscription
+	err := DB.Where("user_id = ? AND status = ? AND end_time > ? AND upgrade_group <> ''",
+		userId, "active", now).
+		Order("end_time desc, id desc").
+		Limit(1).
+		Find(&sub).Error
+	if err != nil || sub.Id == 0 {
+		return target
+	}
+	upgradeGroup := strings.TrimSpace(sub.UpgradeGroup)
+	if upgradeGroup == "" || upgradeGroup == target {
+		return target
+	}
+	if err := DB.Model(&User{}).Where("id = ?", userId).
+		Update("group", upgradeGroup).Error; err != nil {
+		common.SysError("failed to reconcile drifted user group: " + err.Error())
+		return target
+	}
+	return upgradeGroup
+}
+
 // SubscriptionPreConsumeRecord stores idempotent pre-consume operations per request.
 type SubscriptionPreConsumeRecord struct {
 	Id                 int    `json:"id"`

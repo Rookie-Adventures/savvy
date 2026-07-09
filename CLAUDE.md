@@ -40,7 +40,7 @@ This repository is a monorepo consisting of:
 - `relay/` contains the AI provider adapters and routing.
 
 ### `savvy-manager` (Docker Lifecycle Orchestration)
-- Manages instance records, Docker container launch, and 3-hour free session auto-sleeping.
+- Manages instance records, Docker container launch, and 2-hour free session auto-sleeping.
 - Does NOT share DB with `new-api` and communicates via signed HMAC private APIs.
 
 ## Project Governance & Brand Rules
@@ -49,4 +49,4 @@ This repository is a monorepo consisting of:
   - **`QuantumNous`** (the organization/author identity)
 - Public Brand for the SaaS is **Savvy Agent**; the hosted container product name is **Hermes Cloud Workspace**.
 - Company is **粟城科技网络工作室**; support email is `support@scheng.net`.
-- Free plan workspace containers run for 3 hours per start, then automatically sleep via manager daemon. Data/volumes are preserved.
+- Free plan workspace containers run for 2 hours per start, then automatically sleep via manager daemon. Data/volumes are preserved. (User-corrected 2026-07-09; previously listed as 3 hours.)

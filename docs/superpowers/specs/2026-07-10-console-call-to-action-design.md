@@ -36,11 +36,22 @@ Hermes Cloud Workspace 的工作区控制台（`hermes-workspace/src/screens/das
 
 ## 5. 区块内部顺序（从上到下）
 
-1. **「第一次用？」引导 + 步骤条（3 步）** — 怎么用
-2. **升档引导文（为什么云端 vs 本地）** — 给 FREE 的安全感
-3. **三档卡 FREE / STARTER / PRO（含升档 CTA）** — 能升到哪
+1. **主标题区** — 「Hermes workspace，开箱即用的自进化智能体」眉题 + 副句「轻松构建一个有记忆、有执行力、的专属工作智能体」
+2. **步骤条（3 步）** — 怎么用
+3. **升档引导文** — 一句「随走随用」定位
+4. **三档卡 FREE / STARTER / PRO（含升档 CTA）** — 能升到哪
+5. **收尾免责声明** — 开源 Agent 安全与许可提示
 
-## 6. 组件 1：使用步骤条
+## 6. 组件 1：主标题区
+
+整个区块顶部的眉题+定位句，立住「开箱即用、专属、有记忆有执行力」的产品心智，再带出后续步骤/升档/三档。
+
+**眉题**（大标题）：「Hermes workspace，开箱即用的自进化智能体」
+**副句**（定位句）：「轻松构建一个有记忆、有执行力的专属工作智能体」
+
+**布局**：左对齐，眉题大字 + 副句中字，不加 CTA（CTA 在三档卡）。视觉上是整区块的 header，不喧宾但也别被下方步骤条吞掉。
+
+## 7. 组件 2：使用步骤条
 
 新手门槛：首次启动要先有 API 密钥填进去才能唤醒专属工作区。放三档卡上方（先教怎么用，再说能升到哪）。
 
@@ -58,21 +69,13 @@ Hermes Cloud Workspace 的工作区控制台（`hermes-workspace/src/screens/das
 
 **密钥来源已定**：new-api 令牌页生成 → 回填工作区设置，与本地项目记忆 `project-provider-key-injection` 的 B 层供应商 key 注入是两套不同机制，本步骤指向令牌页那套。
 
-## 7. 组件 2：升档引导文
+## 8. 组件 3：升档引导文
 
-步骤条与三档卡之间的薄引导，两三行，首页 `local-vs-cloud` 同源但压缩成短语。主旨给 FREE 看的安全感。
+原「为什么云端 vs 本地」三句压缩成一句定位文，主旨给 FREE 看的「随走随用、数据私有」安全感，白书面质感。
 
-**主句**：「为什么用云端，不在自己电脑上搭 Hermes？」
+**单句**：「随走随用，不需要更换设备和工作环境而迁移，数据私有」
 
-**三条**（完全去掉模型维度，已按用户红线换词）：
-
-| 条 | 文案 |
-|---|---|
-| 装好即用 | 不装运行时、不 clone、不配环境 |
-| 云端常在 | 云端运行，无论你在哪里，你的任务和工作都不会中断 |
-| 随用随醒 | 关掉不丢，数据安全，再开还在 |
-
-## 8. 组件 3：三档卡
+## 9. 组件 4：三档卡
 
 **布局**：并排三张，desktop 三列等宽；移动端纵向堆叠。左→右 FREE → STARTER → PRO 递进。
 
@@ -96,28 +99,37 @@ Hermes Cloud Workspace 的工作区控制台（`hermes-workspace/src/screens/das
 
 **口径守死三条**：不喊 API Gateway；不出现海外「不绑卡」话术；FREE 卡「2 小时」是死口径（不是 3h）。
 
-## 9. 数据来源（实现时对线）
+## 10. 组件 5：收尾免责声明
+
+三档卡之下、运维底栏之上的整区块收尾。开源 Agent 的安全与许可提示，兼顾合规与质感。
+
+**文案**：「HermesAgent 为开源 AI Agent，请在使用前充分评估其安全性与稳定性并严格遵循许可协议，以切实保障系统环境与数据安全」
+
+**布局**：小字、低对比、居中或左对齐，不抢上面三档卡视线。视觉上是「页脚级」细声明，不是营销大字。
+
+## 11. 数据来源（实现时对线）
 
 - **三档枚举**：`savvy-manager/app/models.py:19-22` `PlanType(FREE/STARTER/PRO)`，仅此三档，无 TEAM/ENTERPRISE。
 - **规格映射**：`savvy-manager/app/docker_manager.py:11-21`，storage 5/20/50 GB（commit a69714935 改定）。
 - **FREE 2h**：`savvy-manager/app/instances.py:164` `if inst.plan == PlanType.FREE` 设 2h 窗口。死口径。
 - **卖点源材料**：`new-api/web/default/src/features/home/components/sections/` 落地稿 + 本地记忆 `feedback-home-trust-block.md` / `project-home-finesse-redesign.md`，已按本次红线换词。
 
-## 10. 技术约束
+## 12. 技术约束
 
 - 新区块代码落 `hermes-workspace/src/screens/dashboard/components/` 下（与现有 dashboard 组件同目录），由 `dashboard-screen.tsx` 在最末尾引入渲染。
 - 文案走该工作区现有 i18n（英文 key / zh.json value），不硬编码字符串。
 - 不改 `system-metrics-footer.tsx`、不进 `use-dashboard-layout` 可见性表。
 
-## 11. 验收
+## 13. 验收
 
-- 控制台滚到底，依次出现：步骤条 → 升档引导文 → 三档卡 → 维运维底栏。
-- 全文 grep 无「不绑卡 / 信用卡 / API Gateway / 真模型 / 降级 / 不配模型 / 模型已接」。
+- 控制台滚到底，依次出现：主标题区 → 步骤条 → 升档引导文 → 三档卡 → 免责声明 → 运维底栏。
+- 全文 grep 无「不绑卡 / 信用卡 / API Gateway / 真模型 / 降级 / 不配模型 / 模型已接 / 数据保留」。
 - FREE 卡文案逐字含「2 小时」。
+- 主标题区眉题为「Hermes workspace，开箱即用的自进化智能体」，免责声明全文为「HermesAgent 为开源 AI Agent……数据安全」。
 - 窄屏三档卡折行/堆叠不破版。
 - 步骤②热链能跳到工作区 Settings；步骤①热链指向 new-api `/token`。
 
-## 12. 后续尾巴（不在本 spec 范围）
+## 14. 后续尾巴（不在本 spec 范围）
 
 - STARTER/PRO 升档按钮的目标路由（new-api 订阅/套餐页）要实现时确认具体路径。
 - B 层供应商 key 注入（`project-provider-key-injection` 那套）与本步骤条的「令牌页密钥」是两套，UI 上是否要并存/区分，留待后续。

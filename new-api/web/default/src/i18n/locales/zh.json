@@ -4953,6 +4953,23 @@
     "Requests reach the upstream provider untouched — no rerouting to a cheaper tier, no silent downgrades. If you asked for the flagship, you run the flagship.": "请求直达上游已备案服务商,原样转发——不偷换成更便宜的档位,不暗自降级。你要的是旗舰,跑的就是旗舰。",
     "Services drop. Yours does not have to.": "服务会掉线。你的不一定要。",
     "Hosted, kept, and yours to verify first.": "托管、保留、先让你亲自验证。",
-    "We keep the lights on; your machine does not stay awake for it. Two hours free, every start — try it through your real workload before you pay a yuan.": "服务我们来维护,你的机器不用为它熬夜。每次启动两小时免费——用你真实的工作场景跑一遍,再决定付不付钱。"
+    "We keep the lights on; your machine does not stay awake for it. Two hours free, every start — try it through your real workload before you pay a yuan.": "服务我们来维护，你的机器不用为它熬夜。每次启动两小时免费——用你真实的工作场景跑一遍，再决定付不付钱。",
+    "Hermes workspace, out-of-the-box self-evolving agent": "Hermes workspace，开箱即用的自进化智能体",
+    "Easily build a dedicated working agent with memory and execution": "轻松构建一个有记忆、有执行力的专属工作智能体",
+    "First time? Three steps to awaken your dedicated workspace, free out of the box.": "第一次用？三步唤醒你的专属工作区，免费开箱即用。",
+    "Generate API Key": "生成 API 密钥",
+    "Create a key that belongs to you on the token page": "在令牌页创建一把属于你的密钥",
+    "Fill in Workspace Settings": "填入工作区设置",
+    "Paste the key into workspace settings to bind your dedicated channel": "把密钥粘进工作区设置，绑定专属模型通道",
+    "Awaken Workspace": "唤醒工作区",
+    "Once the key is in place, your cloud workspace is ready to go": "密钥就位后首次启动，云端工作区开箱即用",
+    "Use anywhere, no need to switch devices or migrate — your data stays private": "随走随用，不需要更换设备和工作环境而迁移，数据私有",
+    "Free out of the box, 2 hours per session, data secure": "免费开箱即用，每次启动 2 小时，数据安全",
+    "Current plan": "当前方案",
+    "Stay online in the background, keep tasks running long-term": "挂机不掉线，长期挂着跑任务",
+    "Upgrade to STARTER": "升级到 STARTER",
+    "Multiple workspaces in parallel, full specs for heavy workloads": "多工作区并行，吃满规格跑重活",
+    "Upgrade to PRO": "升级到 PRO",
+    "HermesAgent is an open-source AI Agent. Please fully evaluate its security and stability before use and strictly follow the license agreement to ensure system and data safety.": "HermesAgent 为开源 AI Agent，请在使用前充分评估其安全性与稳定性并严格遵循许可协议，以切实保障系统环境与数据安全"
   }
 }

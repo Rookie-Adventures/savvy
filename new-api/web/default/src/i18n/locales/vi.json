@@ -4953,6 +4953,23 @@
     "Requests reach the upstream provider untouched — no rerouting to a cheaper tier, no silent downgrades. If you asked for the flagship, you run the flagship.": "请求直达上游已备案服务商,原样转发——不偷换成更便宜的档位,不暗自降级。你要的是旗舰,跑的就是旗舰。",
     "Services drop. Yours does not have to.": "服务会掉线。你的不一定要。",
     "Hosted, kept, and yours to verify first.": "托管、保留、先让你亲自验证。",
-    "We keep the lights on; your machine does not stay awake for it. Two hours free, every start — try it through your real workload before you pay a yuan.": "服务我们来维护,你的机器不用为它熬夜。每次启动两小时免费——用你真实的工作场景跑一遍,再决定付不付钱。"
+    "We keep the lights on; your machine does not stay awake for it. Two hours free, every start — try it through your real workload before you pay a yuan.": "服务我们来维护,你的机器不用为它熬夜。每次启动两小时免费——用你真实的工作场景跑一遍,再决定付不付钱。",
+    "Hermes workspace, out-of-the-box self-evolving agent": "Hermes workspace, tác nhân tự tiến hóa sẵn sàng sử dụng",
+    "Easily build a dedicated working agent with memory and execution": "Dễ dàng xây dựng tác nhân làm việc chuyên dụng với bộ nhớ và khả năng thực thi",
+    "First time? Three steps to awaken your dedicated workspace, free out of the box.": "Lần đầu tiên? Ba bước để khởi động không gian làm việc chuyên dụng của bạn, miễn phí sẵn sàng sử dụng.",
+    "Generate API Key": "Tạo khóa API",
+    "Create a key that belongs to you on the token page": "Tạo khóa riêng của bạn trên trang token",
+    "Fill in Workspace Settings": "Điền vào cài đặt không gian làm việc",
+    "Paste the key into workspace settings to bind your dedicated channel": "Dán khóa vào cài đặt không gian làm việc để liên kết kênh chuyên dụng của bạn",
+    "Awaken Workspace": "Khởi động không gian làm việc",
+    "Once the key is in place, your cloud workspace is ready to go": "Khi khóa đã được cài đặt, không gian làm việc đám mây của bạn sẵn sàng hoạt động",
+    "Use anywhere, no need to switch devices or migrate — your data stays private": "Sử dụng ở bất kỳ đâu, không cần đổi thiết bị hoặc di chuyển — dữ liệu của bạn được bảo mật",
+    "Free out of the box, 2 hours per session, data secure": "Miễn phí sẵn sàng sử dụng, 2 giờ mỗi phiên, dữ liệu an toàn",
+    "Current plan": "Gói hiện tại",
+    "Stay online in the background, keep tasks running long-term": "Duy trì trực tuyến trong nền, giữ tác vụ chạy lâu dài",
+    "Upgrade to STARTER": "Nâng cấp lên STARTER",
+    "Multiple workspaces in parallel, full specs for heavy workloads": "Nhiều không gian làm việc song song, cấu hình đầy đủ cho tác vụ nặng",
+    "Upgrade to PRO": "Nâng cấp lên PRO",
+    "HermesAgent is an open-source AI Agent. Please fully evaluate its security and stability before use and strictly follow the license agreement to ensure system and data safety.": "HermesAgent là tác nhân AI mã nguồn mở. Vui lòng đánh giá đầy đủ tính bảo mật và ổn định trước khi sử dụng và tuân thủ nghiêm ngặt thỏa thuận cấp phép để đảm bảo an toàn hệ thống và dữ liệu."
   }
 }

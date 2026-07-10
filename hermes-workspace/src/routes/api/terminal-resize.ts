@@ -40,8 +40,11 @@ export const Route = createFileRoute('/api/terminal-resize')({
         }
         const session = getTerminalSession(sessionId)
         if (!session) {
-          return new Response(JSON.stringify({ ok: false }), {
-            status: 404,
+          // ponytail: resize is an idempotent notification — the terminal may not
+          // exist yet (tab just switched) or may already be closed. Returning a
+          // real 404 here spams the console on every height/activeTab change.
+          // Swallow: the next resize after the session comes up applies the size.
+          return new Response(JSON.stringify({ ok: true, session: 'pending' }), {
             headers: { 'Content-Type': 'application/json' },
           })
         }

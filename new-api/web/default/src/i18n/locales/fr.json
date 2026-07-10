@@ -4953,6 +4953,23 @@
     "Requests reach the upstream provider untouched — no rerouting to a cheaper tier, no silent downgrades. If you asked for the flagship, you run the flagship.": "请求直达上游已备案服务商,原样转发——不偷换成更便宜的档位,不暗自降级。你要的是旗舰,跑的就是旗舰。",
     "Services drop. Yours does not have to.": "服务会掉线。你的不一定要。",
     "Hosted, kept, and yours to verify first.": "托管、保留、先让你亲自验证。",
-    "We keep the lights on; your machine does not stay awake for it. Two hours free, every start — try it through your real workload before you pay a yuan.": "服务我们来维护,你的机器不用为它熬夜。每次启动两小时免费——用你真实的工作场景跑一遍,再决定付不付钱。"
+    "We keep the lights on; your machine does not stay awake for it. Two hours free, every start — try it through your real workload before you pay a yuan.": "服务我们来维护,你的机器不用为它熬夜。每次启动两小时免费——用你真实的工作场景跑一遍,再决定付不付钱。",
+    "Hermes workspace, out-of-the-box self-evolving agent": "Hermes workspace, agent auto-évolutif prêt à l'emploi",
+    "Easily build a dedicated working agent with memory and execution": "Construisez facilement un agent de travail dédié avec mémoire et exécution",
+    "First time? Three steps to awaken your dedicated workspace, free out of the box.": "Première fois ? Trois étapes pour activer votre espace dédié, gratuit et prêt à l'emploi.",
+    "Generate API Key": "Générer une clé API",
+    "Create a key that belongs to you on the token page": "Créez votre propre clé sur la page des jetons",
+    "Fill in Workspace Settings": "Remplir les paramètres",
+    "Paste the key into workspace settings to bind your dedicated channel": "Collez la clé dans les paramètres de l'espace pour lier votre canal dédié",
+    "Awaken Workspace": "Activer l'espace",
+    "Once the key is in place, your cloud workspace is ready to go": "Une fois la clé en place, votre espace cloud est prêt",
+    "Use anywhere, no need to switch devices or migrate — your data stays private": "Utilisable partout, sans changer d'appareil ni migrer — données privées",
+    "Free out of the box, 2 hours per session, data secure": "Gratuit et prêt à l'emploi, sessions de 2 heures, données sécurisées",
+    "Current plan": "Plan actuel",
+    "Stay online in the background, keep tasks running long-term": "Restez en ligne en arrière-plan, tâches en continu",
+    "Upgrade to STARTER": "Passer à STARTER",
+    "Multiple workspaces in parallel, full specs for heavy workloads": "Espaces multiples en parallèle, pleine puissance pour les charges lourdes",
+    "Upgrade to PRO": "Passer à PRO",
+    "HermesAgent is an open-source AI Agent. Please fully evaluate its security and stability before use and strictly follow the license agreement to ensure system and data safety.": "HermesAgent est un agent IA open source. Veuillez évaluer sa sécurité et sa stabilité avant utilisation et respecter strictement l'accord de licence."
   }
 }

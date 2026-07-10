@@ -4953,6 +4953,23 @@
     "Requests reach the upstream provider untouched — no rerouting to a cheaper tier, no silent downgrades. If you asked for the flagship, you run the flagship.": "请求直达上游已备案服务商,原样转发——不偷换成更便宜的档位,不暗自降级。你要的是旗舰,跑的就是旗舰。",
     "Services drop. Yours does not have to.": "服务会掉线。你的不一定要。",
     "Hosted, kept, and yours to verify first.": "托管、保留、先让你亲自验证。",
-    "We keep the lights on; your machine does not stay awake for it. Two hours free, every start — try it through your real workload before you pay a yuan.": "服务我们来维护,你的机器不用为它熬夜。每次启动两小时免费——用你真实的工作场景跑一遍,再决定付不付钱。"
+    "We keep the lights on; your machine does not stay awake for it. Two hours free, every start — try it through your real workload before you pay a yuan.": "服务我们来维护,你的机器不用为它熬夜。每次启动两小时免费——用你真实的工作场景跑一遍,再决定付不付钱。",
+    "Hermes workspace, out-of-the-box self-evolving agent": "Hermes workspace、すぐに使える自己進化するエージェント",
+    "Easily build a dedicated working agent with memory and execution": "記憶と実行力を備えた専用ワークエージェントを簡単に構築",
+    "First time? Three steps to awaken your dedicated workspace, free out of the box.": "初めてですか？3ステップで専用ワークスペースを起動、無料で即利用可能。",
+    "Generate API Key": "APIキーを生成",
+    "Create a key that belongs to you on the token page": "トークンページで自分専用のキーを作成",
+    "Fill in Workspace Settings": "ワークスペース設定に入力",
+    "Paste the key into workspace settings to bind your dedicated channel": "キーを設定に貼り付けて専用チャネルをバインド",
+    "Awaken Workspace": "ワークスペースを起動",
+    "Once the key is in place, your cloud workspace is ready to go": "キーが設定されれば、クラウドワークスペースは即利用可能",
+    "Use anywhere, no need to switch devices or migrate — your data stays private": "どこでも利用可能、デバイス変更や移行不要 — データはプライベート",
+    "Free out of the box, 2 hours per session, data secure": "無料で即利用可能、1回2時間、データ安全",
+    "Current plan": "現在のプラン",
+    "Stay online in the background, keep tasks running long-term": "バックグラウンドでオンライン維持、タスクを長期実行",
+    "Upgrade to STARTER": "STARTERにアップグレード",
+    "Multiple workspaces in parallel, full specs for heavy workloads": "複数ワークスペースを並列実行、フルスペックで重いタスクに対応",
+    "Upgrade to PRO": "PROにアップグレード",
+    "HermesAgent is an open-source AI Agent. Please fully evaluate its security and stability before use and strictly follow the license agreement to ensure system and data safety.": "HermesAgentはオープンソースAIエージェントです。使用前にセキュリティと安定性を十分に評価し、ライセンス契約に厳格に従ってください。"
   }
 }

@@ -42,6 +42,7 @@ import {
   startHermesInstance,
 } from './api'
 import type { HermesInstance, StartHermesInstancePayload } from './types'
+import { ConsoleCallToAction } from './console-call-to-action'
 
 function InstanceStatus({ instance }: { instance: HermesInstance }) {
   const { t } = useTranslation()
@@ -427,9 +428,11 @@ export function Hermes() {
         <CardStaggerContainer className='mx-auto flex w-full max-w-3xl flex-col gap-4 sm:gap-6'>
           <CardStaggerItem>
             <div className='mb-4'>
-              <h1 className='text-2xl font-bold'>{t('Hermes Workspace')}</h1>
+              <h1 className='text-2xl font-bold'>
+                {t('Hermes workspace, out-of-the-box self-evolving agent')}
+              </h1>
               <p className='text-muted-foreground text-sm'>
-                {t('Manage your cloud workspace')}
+                {t('Easily build a dedicated working agent with memory and execution')}
               </p>
             </div>
           </CardStaggerItem>
@@ -464,6 +467,11 @@ export function Hermes() {
                 </CardContent>
               </Card>
             )}
+          </CardStaggerItem>
+
+          {/* ── Console CTA: commercial block (always visible) ── */}
+          <CardStaggerItem>
+            <ConsoleCallToAction />
           </CardStaggerItem>
         </CardStaggerContainer>
       </div>

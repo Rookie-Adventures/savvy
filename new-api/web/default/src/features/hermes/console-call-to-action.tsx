@@ -42,7 +42,7 @@ const PLANS = [
   },
   {
     nameKey: 'STARTER',
-    storage: '2.00 vCPU · 2g',
+    storage: '2.00 vCPU · 2g · 20G',
     pitchKey: 'Stay online in the background, keep tasks running long-term',
     color: 'text-blue-500',
     borderColor: 'border-blue-500/30',
@@ -153,7 +153,7 @@ export function ConsoleCallToAction() {
               <span className={`text-xs font-bold uppercase tracking-widest ${plan.color}`}>
                 {plan.nameKey}
               </span>
-              <span className='text-foreground text-2xl font-bold'>
+              <span className='text-foreground text-base font-bold'>
                 {plan.storage}
               </span>
               <p className='text-muted-foreground flex-1 text-sm'>

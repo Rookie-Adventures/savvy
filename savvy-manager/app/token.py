@@ -40,7 +40,11 @@ def generate_access_token(
     return {
         "token": token,
         "expires_at": expires_at.isoformat(),
-        "workspace_url": f"http://{workspace_host}:{workspace_port}/",
+        "workspace_url": (
+            f"{workspace_host}:{workspace_port}/"
+            if workspace_host.startswith(("http://", "https://"))
+            else f"https://{workspace_host}:{workspace_port}/"
+        ),
     }
 
 

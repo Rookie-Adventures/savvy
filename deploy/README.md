@@ -22,7 +22,7 @@
 │  • savvy-manager (容编, docker.sock)              │
 │  • workspace-router (机B内部Nginx, 41000-41099池)  │
 │  • hermes-agent (按需 profile full)              │
-│  • (workspace 容器池由 savvy-manager 拉起, 3h自睡) │
+│  • (workspace 容器池由 savvy-manager 拉起, 2h自睡) │
 │  • 海外模型 = 控制台加聚合商渠道 (合规, 不自建代理) │
 └─────────────────────────────────────────────────┘
 ```
@@ -133,9 +133,10 @@ sudo crontab -e
 # 先手动跑一次验证:
 sudo /usr/local/bin/savvy-backup.sh
 
-# 9. 防火墙: 只开给机A + SSH, 不开公网Web
+# 9. 防火墙: 只开给机A + SSH, 不开公网Web (端口没绑回环, ufw 是唯一防线)
 sudo ufw default deny incoming
 sudo ufw allow from <机A内网IP> to any port 3000
+sudo ufw allow from <机A内网IP> to any port 41000:41099
 sudo ufw allow 22
 sudo ufw enable
 ```
@@ -148,7 +149,7 @@ sudo ufw enable
 - [ ] docker-compose 密钥全 `${VAR:?required}` 从 .env 读 (无 CHANGE_ME 明文占位了)
 - [ ] **SAVVY_HMAC_SECRET**: new-api 与 savvy-manager 两边读同一 .env 变量 (已统一)
 - [ ] **SAVVY_MOCK_MODE=false** 在 compose 已显式设 (默认 true 会假编排)
-- [ ] 机B防火墙: 3000/8000 仅机A能连, 不对公网
+- [ ] 机B防火墙: 3000/8000/41000-41099 仅机A能连, 不对公网 (现在端口不绑 127.0.0.1, ufw 是唯一防线!)
 - [ ] 机B SSH: 改非22端口 + 密钥登录 + 禁root密码 (`PasswordAuthentication no`)
 - [ ] 机A HTTPS 证书自动续签测试: `sudo certbot renew --dry-run`
 - [ ] new-api 首次管理员密码已改, 非 `123456` 之类
@@ -190,7 +191,7 @@ sudo ufw enable
 | Redis | | ✅ |
 | savvy-manager | | ✅ |
 | workspace-router (内部Nginx) | | ✅ 41000-41099端口池 |
-| Docker容器池 | | ✅ (workspace 3h自睡) |
+| Docker容器池 | | ✅ (workspace 2h自睡) |
 | 备份脚本 | | ✅ (cron 凌晨3点) |
 | 公网Web入口 | ✅ scheng.net | ❌ 不开 |
 | 备案 | ✅ 已办 | ❌ 不需要 |

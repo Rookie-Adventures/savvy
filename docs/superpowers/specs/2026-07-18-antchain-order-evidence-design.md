@@ -19,6 +19,7 @@
 - 写入函数:
   - `insertOrder(string tradeNo, string userId, string moneyFen, string planId, string provider)` — 写前 5 字段
   - `completeOrder(string tradeNo, string payTime, string status, string dataHash, string bizType)` — 写后 4 字段
+  - `logOrder(string tradeNo, string browserJson)` — 发射 `LOG_STRING` 事件,要求该 tradeNo 非空(completeOrder 之后满足)。第 3 步存证收尾。
 - 读取函数: `getTradeNo/getUserId/getMoneyFen/getPlanId/getProvider/getPayTime/getStatus/getDataHash/getBizType(string tradeNo) → string`
 - 诊断函数 `debugLengths` 不管(链上已部署删不了,正式代码不调用)。
 - 两步写入语义约束:`insertOrder` 要求该 tradeNo 空,`completeOrder` 要求非空。中间状态(已 insert 未 complete)是已知尾巴,接受。
@@ -82,7 +83,7 @@ goroutine 内失败仅 `common.SysError`,不阻塞回调响应。支付链不依
 
 - `new-api/model/hermes_notify.go` 旁加包级函数变量 `var SubmitOrderEvidenceFn func(in SubmitOrderEvidenceInput) error`(模式照抄同文件 `NotifyManagerUpgradeFn`)。`SubmitOrderEvidenceInput` 结构体定义于此或 model 包,字段见下节。
 - `new-api/service/antchain/client.go` — 封装 RestClient:启动构造(读 env + 读 access.key 文件 → NewRestClient → shake)、运行期复用。单实现,不为单实现造 interface(ponytail: 单实现不抽 interface)。
-- `new-api/service/antchain/evidence.go` — `SubmitEvidence(in SubmitOrderEvidenceInput) error` 实现,即 `SubmitOrderEvidenceFn` 的注入值。组装参数 → CallContract insertOrder → CallContract completeOrder → (可选)读 getTradeNo 自检。末尾留 `func demo()` 自检(ponytail 自验惯例,非导出)。
+- `new-api/service/antchain/evidence.go` — `SubmitEvidence(in SubmitOrderEvidenceInput) error` 实现,即 `SubmitOrderEvidenceFn` 的注入值。组装参数 → CallContract insertOrder → CallContract completeOrder → CallContract logOrder → (可选)读 getTradeNo 自检。末尾留 `func demo()` 自检(ponytail 自验惯例,非导出)。
 
 main 启动调一次 `antchainInit()` 注入 `model.SubmitOrderEvidenceFn = antchain.SubmitEvidence`,照 `service/hermes.go:585` 的 `model.NotifyManagerUpgradeFn = NotifyManager` 模式。
 
@@ -96,6 +97,7 @@ main 启动调一次 `antchainInit()` 注入 `model.SubmitOrderEvidenceFn = antc
        → antchain.SubmitEvidence
            → client.CallContract(insertOrder, [tradeNo,userId,moneyFen,planId,provider], isLocal=false)
            → client.CallContract(completeOrder, [tradeNo,payTime,status,dataHash,bizType], isLocal=false)
+           → client.CallContract(logOrder, [tradeNo,browserJson], isLocal=false)
            → (可选) client.CallContract(getTradeNo, [], ["string"], isLocal=true) 自检回读
        → 失败 common.SysError,不重试
 ```
@@ -129,6 +131,12 @@ main 启动调一次 `antchainInit()` 注入 `model.SubmitOrderEvidenceFn = antc
 - `bizType` ← `"topup"`
 
 `canonicalJSON`: 字段按固定顺序序列化(如 key 字典序),只在 new-api 端算,链下后续扯皮验证用同一算法。dataHash 算法不变即可,链上只存一个十六进制串。
+
+## logOrder 第三步载荷
+
+`logOrder(tradeNo, browserJson)` 的 `browserJson` 参数 = 整单证据 JSON 字符串,由 new-api 端组装后发射 `LOG_STRING` 事件,供蚂蚁链浏览器检索展示。内容为上述 9 字段 + `dataHash` 的可读 JSON,key 字典序固定。与 canonicalJSON(dataHash 算法原料)同源,但可读格式(缩进/时间可读化)便于人工核验。
+
+调用顺序:`insertOrder` → `completeOrder` → `logOrder`。前三者任一失败即停后续步骤,`common.SysError` 告警,不重试。
 
 ## 配置与环境
 
@@ -171,7 +179,7 @@ key 走 env/file,绝不进 git。
 
 ## 限制与已知尾巴
 
-1. 两步写入中间状态:insert 成功 complete 失败时,链上留半截,无法补 complete(合约 `require` 拒同 tradeNo 重 insert)。降级接受,仅告警。
+1. 三步写入中间状态:insert 成功、complete 或 logOrder 失败时,链上留半截,无法补后续步骤(合约 `require` 拒同 tradeNo 重 insert,complete 也拒空 tradeNo 的 complete)。降级接受,仅告警。
 2. shake 握手过期:SDK token 有有效期,运行期长时若过期需 SDK 自动重握或重启。实现期验证 SDK 是否自动 re-shake,不自动则在 client 封装加重握逻辑。
 3. dataHash 算法一旦上链即锁,后续链下验证必须用同一 canonicalJSON 实现,改算法等于断证据链。在 `evidence.go` 注释明示此约束。
 

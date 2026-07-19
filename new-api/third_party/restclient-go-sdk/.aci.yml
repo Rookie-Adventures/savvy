@@ -1,0 +1,84 @@
+stages:
+  - Static Scan
+  - Unit Test
+  - Export Env
+  - Build Release
+
+Static Scan:
+  stage: Static Scan
+  plugin: CMD
+  pluginConfig:
+    encoding: UTF-8
+    taskKind: CMD_GOLANGCI_LINT
+
+Go Unit Test:
+  aciTags: DOCKER
+  stage: Unit Test
+  agent:
+    docker:
+      image: reg.docker.alibaba-inc.com/myconnect/myconnect-dev-box:0.2.8a.1
+  beforeScript:
+    - |
+      cd $WORKSPACE
+      rm -rf /home/ant/go/src/gitlab.alipay-inc.com/antchain/restclient-go-sdk
+      mkdir -p /home/ant/go/src/gitlab.alipay-inc.com/antchain/restclient-go-sdk
+      cp -r $WORKSPACE/* /home/ant/go/src/gitlab.alipay-inc.com/antchain/restclient-go-sdk/
+      export GOPATH=/home/ant/go
+      export GO111MODULE=on
+      export GOPROXY=https://goproxy.io
+      export PATH=$PATH:$GOPATH/bin:/opt/maven/bin
+  script:
+    - |
+      export GOPATH=/home/ant/go
+      export GO111MODULE=on
+      export GOPROXY=https://goproxy.io
+      export PATH=$PATH:$GOPATH/bin:/opt/maven/bin
+      source /home/ant/.bash_profile
+      cd /home/ant/go/src/gitlab.alipay-inc.com/antchain/restclient-go-sdk
+      pwd
+      go test -p=1 -count=1 -tags=unit_test -gcflags=-l -covermode=atomic -coverprofile cover.out ./...
+      go tool cover -html=cover.out -o coverage.html
+      go tool cover -func=cover.out -o func.out
+      echo test func-coverage $(tail -1 func.out | awk '{print $3}')
+  afterScript:
+    - cp /home/ant/go/src/gitlab.alipay-inc.com/antchain/restclient-go-sdk/coverage.html $WORKSPACE/
+  coverage: '(?<=test func-coverage )\d+.\d+'
+  publisher:
+    archiveArtifacts:
+      artifacts: "coverage.html"
+      allowEmptyArchive: true
+
+Export Env:
+  stage: Export Env
+  only:
+    refs:
+      - release/*
+  script:
+    -  cd ${WORKSPACE}
+    -  export GIT_TAG=`git describe`
+  variables:
+    -  GIT_TAG
+
+Build Release Image:
+  stage: Build Release
+  only:
+    refs:
+      - release/*
+  plugin: ANT-BUILD
+  pluginConfig:
+    image: reg.docker.alibaba-inc.com/antfin-sqa/7u2-base-sofa:2020021714-42768f6
+    inputs:
+      params:
+        - name: DOCKERFILE
+          value: Dockerfile.release
+        - name: DIRECTORY
+          value: .
+    outputs:
+      ### note: modify to your image repo addr, add r/w permission for user admin.for.antb
+      ### more info: https://yuque.antfin-inc.com/docs/share/786cf0fb-e070-4484-b7a8-979991f23af9#bc90917b
+      - name: alios7u2-restclient-go-sdk
+        namespace: restclient-go-sdk
+        repository: reg.docker.alibaba-inc.com
+        type: image
+        desc: "restclient-go-sdk release image"
+        tag: ${GIT_TAG}

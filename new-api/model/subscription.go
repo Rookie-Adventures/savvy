@@ -563,6 +563,7 @@ func CompleteSubscriptionOrder(tradeNo string, providerPayload string, expectedP
 	var logMoney float64
 	var logPaymentMethod string
 	var upgradeGroup string
+	var completedOrder SubscriptionOrder
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		var order SubscriptionOrder
 		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(&order).Error; err != nil {
@@ -610,10 +611,21 @@ func CompleteSubscriptionOrder(tradeNo string, providerPayload string, expectedP
 		logPlanTitle = plan.Title
 		logMoney = order.Money
 		logPaymentMethod = order.PaymentMethod
+		completedOrder = order
 		return nil
 	})
 	if err != nil {
 		return err
+	}
+	// 蚂蚁链存证: fire-and-forget, 事务已提交, 失败仅 SysError.
+	// 同步构建 evidence input, 异步发送, 与 controller 保持一致.
+	if SubmitOrderEvidenceFn != nil {
+		evidenceInput := buildSubscriptionEvidence(&completedOrder)
+		go func(in SubmitOrderEvidenceInput) {
+			if err := SubmitOrderEvidenceFn(in); err != nil {
+				common.SysError("antchain evidence submit failed: " + err.Error())
+			}
+		}(evidenceInput)
 	}
 	if upgradeGroup != "" && logUserId > 0 {
 		_ = UpdateUserGroupCache(logUserId, upgradeGroup)

@@ -24,7 +24,10 @@ import (
 //	export ANTCHAIN_REST_URL=https://rest.baas.alipay.com
 //	export ANTCHAIN_KMS_ID=7ysf2UgpTWHRFGOY1783011006931
 //	export ANTCHAIN_ACCOUNT=savvy
-//	export ANTCHAIN_CONTRACT_NAME=savvy-solidity
+//	export ANTCHAIN_CONTRACT_NAME=OrderEvidence   # 链上注册名, 不是 savvy-solidity 编译文件名
+//	export ANTCHAIN_GAS=500000                    # 写入上限, completeOrder需350000+, 0过小→10200/408
+//	export ANTCHAIN_BIZ_ID=a00e36c5               # 必填(网关 41400)
+//	export ANTCHAIN_TENANT_ID=TWHRFGOY            # 必填(网关 41400)
 //	go test -run TestSubmitEvidence_E2E -tags=manual -v ./service/antchain/
 //
 // On pass, copy the printed TradeNo and search it on the antchain explorer →

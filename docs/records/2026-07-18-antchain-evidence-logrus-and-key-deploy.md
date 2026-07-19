@@ -137,9 +137,54 @@ func init() {
 
 到这步段2验收面三层里 **ABI 编码层已证通**(请求打到了合约并被合约接收/执行/回业务码, 证实签名编码无问题), **合约语义层 onlyOwner 这层暴露**(留痕 L112 预言成真, 不是走形式)。剩 **真留痕层**(留痕 L113)未触到(还没一次成功 insert→complete→logOrder 跑通)。
 
-可能根因 (二选一, 待控台核实):
-- A. KmsId=7ysf2UgpTWHRFGOY1783011006931 在链上**未 CreateAccount 激活**, msg.sender nil/占位, 与部署 owner 不符, onlyOwner 挡。解:控台给该 KmsId 创建/激活账户(account 名即我传啥 susc)。
-- B. **部署 `0x8d9ce16a...47f6703ed2907656e24bfc2c477f8f45` 的 owner 是另一个 KmsId/账户**(控台管理员账户), 这套 B 类存证凭证 7ysf... 根本没 onlyOwner 权限。解:换发 owner 凭证(私钥+KmsId+AccessId), 或放弃 owner-only 合约(合约已上链改不动, design L24 不动合约), 只能走复用 owner 凭证。
+### 段2a 二轮复跑 (2026-07-19) — 排除 gas 后根因修正
+
+gas=0 怀疑 → 改 `client.go` Init gas 默认 150000(控台实测写入最低值)+ `.env.example` + E2E 注释齐 GAS env。复跑 `TestSubmitEvidence_E2E` (齐 BIZ_ID=a00e36c5 + TENANT_ID=TWHRFGOY + GAS=150000):
+
+回包 `code=408 SERVICE_TX_VERIFY_FAILED result=120 gasUsed=0` — **gas 改 150000 后仍 gasUsed=0**, 且 `groupId.data=AAAA...(空)`。**gas 不是元凶**, gas 值到平台了但 tx 仍没进合约执行(gasUsed=0 说明 verify 阶段就拒, 未扣 Gas 未执行合约)。
+
+**关键交叉证据**: `TestQueryTradeNo_E2E` 调同合约同 KMS(7ysf)同 account(savvy)签名, 走 `getTradeNo(string)` 只读 → **通**。insertOrder 唯一差异 = `onlyOwner` modifier + `isLocal=false`(真写入)。同签名者, 平台不可能同签名一次过一次拒 → 差异在**写入路径 verify**, 非签名身份。
+
+根因修正(推翻上文 A/B onlyOwner 假设):
+- 部署合约 IDE 用 savvy 账户+7ysf KMS → owner identity = savvy。现 SDK 调用也 savvy+7ysf → msg.sender identity 应 = owner → onlyOwner 应自洽过。
+- `SERVICE_TX_VERIFY_FAILED` 是**平台层 tx 验签码**(早于合约 owner 检查; 合约 revert 在蚂蚁链是 utils-level 110/类码, 非 408)。所以**不是合约 onlyOwner 挡, 是平台 REST 网关代 savvy 调用合约的"写入/调用授权"未开**。
+- 蚂蚁链 BaaS: IDE 里用 savvy 部署合约 = owner 自己写自己合约天然授权; 但 **Go SDK 经 REST 网关代 savvy 调用同一合约是另一条调用通道**, 平台侧需单独给该 AccessId(KMS) 开"通过 REST 调用合约"写权限 — **IDE 部署 ≠ 给 REST/SDK 开写权, 开关分离**(对上记忆 project-antchain-evidence-stage2-stuck 早期怀疑)。
+- 用户确认控台IDE部署时绑定 savvy 账户、给 savvy 分配过 Gas — savvy 激活+有Gas双重确认, 进一步排除了 A(account 未激活)。
+
+**待用户控台查(本轮锁定唯一根因面)**: 控台「证书与开发组件 → 权限页」或「我的合约 → 调用授权」 — AccessId `pnv3kEhXTWHRFGOY` 是否勾选/绑定**合约写入或"通过 SDK 调用合约"授权**; wt-token 那条调用者列表是否含 savvy+7ysf。两路(REST + SDK)同症=授权非协议(记忆 project-antchain-evidence-stage2-stuck 已记)。
+
+根因 A/B(onlyOwner/account 名) 上文二选一**作废**, 改为: **REST 调用合约授权未开**(平台配置层), 代码层无可改路径, 等控台开授权后这套代码应直接通(gas + ABI + 认证 + 合约语义已全排)。
+
+git 状态: 段2a 二轮 wip 未 commit。gas 默认 150000 + .env.example + E2E 注释三处改本轮带入, 仍是合理生产默认(写入调 gas=0 在任何场景都会撞 review 拒, 不该回 0)。
+
+
+### 段2a 三轮诊断 (2026-07-19) — 本地模拟 ABI 限制证伪, onlyOwner 不可证
+
+加 `TestInsertOrderLocal_E2E` (isLocal=true 本地模拟 insertOrder) 和 `TestQueryOwner_E2E` (只读 `owner()`) 想一锤定音 onlyOwner vs Gas。**结果推翻本地模拟可用性**:
+
+- `insertOrder` isLocal=true → `code=0 success=SUCCESS errorCode=SUCCESS` 但 `transactionReceipt.result=120 gasUsed=0 logs=[]` — 网关层通, receipt revert。
+- `owner()` (public 自生成 getter, 纯 view 无 onlyOwner 无 require, 理论必过) isLocal=true → **同样 result=120 revert output:""** — 连无 require 只读都 revert!
+- 只有 `getTradeNo(string)→string` (纯1进1出 string) isLocal=true 才真通。
+
+**诊断学到的**: 蚂蚁链 BaaS 本地模拟 (isLocal=true) 对**多参写入/identity 类型返回**一律回 receipt.result=120, 是**ABI 编码/本地执行限制**, 非合约真实逻辑。**本地模拟不可用于判定 onlyOwner 真伪**——之前据此下"onlyOwner 是元凶"结论**作废**。
+
+两诊断测试已从 `evidence_e2e_test.go` 删除(避免误导后来人据假 result 复用结论)。
+
+**最终可靠信息回退到底线** (只能信的数据):
+- `insertOrder` 真写 isLocal=false → `408 SERVICE_TX_VERIFY_FAILED` + `gasUsed=0` (合约没真执行就拒)
+- `getTradeNo` 只读 isLocal=true → 通 (纯 string, 但只证 SDK 调合约端到端, 不证写入)
+- 根因仍卡**平台 verify 层** (Gas 余额 / 调用授权 / 签名解析), 本地模拟/合约逻辑都测不到, 代码层无解。
+
+待用户控台查 (三轮诊断后缩到只剩这俩面):
+1. **savvy 账户 Gas 余额** (不是配额度, 是「可燃 Gas 剩余」) — 控台链账户 savvy 余额页。150000gas 上限不是问题, savvy 余额够不够扣才是问题。
+2. **REST 调用合约写入授权** — AccessId `pnv3kEhXTWHRFGOY` 有无勾"调用合约写入"权限或调用者白名单含 savvy+7ysf。
+
+若 1.2 都 OK 仍 408, 才转向换 owner 凭证(因 onlyOwner 本地不可证, 这是备选非首选)。
+
+git 状态: 三轮诊断测试已删, 实留的净改 = client.go gas默认150000 + .env.example GAS 真值 + E2E注释齐BIZ/TENANT/GAS env。build干净。
+
+- A. ~~KmsId 未 CreateAccount 激活~~ (用户确认控台已绑定 savvy + 给 savvy 分配过 Gas → A 作废)
+- B. ~~部署 owner 是另一套凭证~~ (用户确认 IDE 部署时绑定 savvy 账户 → owner=savvy 调用者同 → B 作废)
 
 待用户去蚂蚁链开放联盟链控台查:
 1. 当前 KmsId `7ysf2UgpTWHRFGOY1783011006931` 是否在链上 CreateAccount 激活过 → 控台「账户管理」看账户名 + 激活态
@@ -158,6 +203,47 @@ func init() {
 - 支付宝沙箱充值一笔 → 同 tradeNo 去蚂蚁链浏览器查 `LOG_STRING` 事件
 - 段2b 失败时排查面窄: 只剩注入点接线 / 沙箱回调, 三层+认证已排除
 
+## 段2a 通 (2026-07-19 四轮) — 用户码表打通, result 码表是钥匙
+
+用户贴 result 码表后一轮打通真根因。前四轮 (含三轮本地模拟诊断) 走的死路全盲推, result 码表才是钥匙。真值链按撞码顺序:
+
+1. **`result=120 TX_DEST_ACCOUNT_NOT_FOUND`** = 交易 to 账户链上不存在。**真因**: contractName 用 `savvy-solidity`(Solidity 编译文件名/编译目标名) 不是链上注册名。蚂蚁链 deployContract 入参 contractName 才是调用时该传的, IDE 部署 `contract OrderEvidence` 用同名 `OrderEvidence` 作部署名。换 `ANTCHAIN_CONTRACT_NAME=OrderEvidence` → 120 消。
+2. **`result=106 TX_INVALID_DEST_ACCOUNT`** = to 账户无有效合约 hash。控台同名 `savvy` 是个**空合约账户占位**(部署失败/旧), 有名无字节码。`savvy` 名方向不对的边路测, 排除。
+3. **`result=10200 gas 不足`** = 单笔 Gas 上限参数过小, **非账户余额不足**。账户余额 9900 万其实够 (10200 是"单笔预算上限"非"账户余额"), 这里控单笔 budget 封顶。insertOrder 5str 150000 够, completeOrder 写 8 字段 Order struct 需 350000+, logOrder 略高。默认拉到 500000 兜三步。
+4. **`code=211 速率限制`** (NetData Code 顶层, 非 receipt.result) = 三步同 account 同秒串发撞 BaaS 风控。fire-and-forget goroutine 已异步不阻塞支付, 但同 goroutine 内三步连发仍限流。`evidence.go` 加 `stepInterval = 3*time.Second`, step1→2 与 2→3 各 sleep 3s。
+
+改 (`feature/antchain-integration` 工作树, 未 commit):
+- `service/antchain/client.go`: gas 默认 0→500000 (单笔预算上限, env 可调降)
+- `service/antchain/evidence.go`: 加 `time` import + 三步间 sleep 3s
+- `deploy/.env.example`: contractName=OrderEvidence / GAS=500000 / BIZ=a00e36c5 / TENANT=TWHRFGOY 真值 + 注释钉死"contractName 非编译文件名"
+- `evidence_e2e_test.go` 注释同上真值
+
+**E2E PASS**: `TestSubmitEvidence_E2E` 三步全通, 末笔 tradeNo=`E2E-1784465681` (蚂蚁链浏览器查此 tradeNo 该见 LOG_STRING 事件)。段2b 待机 B docker 沙箱验注入点接线 + 浏览器查事件收尾。
+
+### 本地模拟盲推全部作废 (钉死)
+
+前三轮用 isLocal=true 本地模拟推 onlyOwner/Gas/授权, **结论全错** — 本地模拟对多参写入/identity 返回一律回 receipt.result=120 ABI 限制, 把人误引到"合约名/onlyOwner"对不上自己。**蚂蚁链 BaaS 调合约排查必须看真写 (isLocal=false) 回的 result 码 + 查码表**, 本地模拟不可作为根因判定据。下次接蚂蚁链先要 result 码表文档 (用户手上有, 直接问用户查比 stacks 搜快得多)。
+
+### 段2a 真留痕层闭合 (2026-07-19) — 链上浏览器实证
+
+SDK 回包 `success:true code=0` 是网关层"tx 已接收"**不等出块结果**; 之前以为 insertOrder PASS 实为假成功。需控台链上浏览器查实际出块回执才证真通。
+
+链上浏览器查 tradeNo `E2E-1784466808` 那 logOrder tx (`77c4335d...17da1`):
+- **交易成功** + gasUsed 33771/500000 (真执行非拒)
+- 调用 selector `6cd156b3` = `logOrder(string,string)` keccak 前4字节 ✓
+- 发起地址 `3adda1a641...f5cf5b86ce` = savvy 账户地址 = owner → onlyOwner 自洽 ✓
+- 目标 `8d9ce16a...47f6703ed2907656e24bfc2c477f8f45` = OrderEvidence 合约 ✓
+- 事件 `call_contract` + `StringEvent`, data=完整 evidenceJSON: `{"bizType":"topup","tradeNo":"E2E-1784466808","dataHash":"...","payTime":"2026-07-19T20:13:28+07:00","provider":"alipay","planId":"","userId":"42","moneyFen":"999","status":"SUCCESS"}` ✓
+
+段2a 三层验收全闭合:
+1. ABI 编码层 ✓ (selector + 5-param 编码链上正确解出)
+2. 合约语义层 ✓ (onlyOwner require msg.sender==owner 过, 同 tradeNo 重 insert require 过)
+3. **真留痕层 ✓** (链上浏览器可见 LOG_STRING 事件含完整 evidence JSON + blockNumber)
+
+→ 冻资金申诉硬证据链路端到端通: 支付完成→fire-and-forget→三步上链→浏览器按 tradeNo 查得 immutable 存证。
+
+注: 控台左 ChainInsight 链首页"链近期活动"显示的"交易失败"几笔是链上别人家热门合约(`2b9cce7f...`, selector 非 OrderEvidence)的 revert, 与本项目存证无关, 勿因那几笔判段2失败。查自己交易走 **「我的合约 → OrderEvidence → 交易记录」** 或按 txHash 查询。
+
 ## 已知限制 / 尾巴
 
 - **`io.Discard` 完全静默 SDK 日志**: 若将来要排查 SDK 握手/重试问题, 需临时改 `init()` 的 sink 到可见 writer(如 `os.Stderr` 或接 common logger)再看。保留这根线, 别删 `init()`。
@@ -166,3 +252,5 @@ func init() {
 - **私钥文件生命周期**: 宿主机 `/opt/savvy/secrets/` 不在 compose 卷里, 备份脚本 `deploy/backup.sh` 是否覆盖需单独确认 — 私钥不进备份没关系(可重新生成), 但**别误把 secrets 卷纳入自动备份上传到无加密处**。
 - **两步写入中间状态**: insert 成功、complete 或 logOrder 失败时, 链上留半截, 无法补后续(合约 `require` 拒同 tradeNo 重 insert, complete 也拒空 tradeNo 的 complete)。降级接受, 仅 SysError 告警(design.md line182)。
 - **shake token 过期**: SDK 自动 re-shake 仅在 `Code=="202"` 时触发(rest_client.go line270), 长跑若过期需重启或封装再加重握逻辑(design.md line183)。段2 未验。
+
+- **三步间 sleep 3s 拖延**: evidence.go SubmitEvidence step1->2 与 2->3 各 sleep 3s 躲 BaaS 211 限流, 单证完整提交需 >=9s (生产 fire-and-forget goroutine 内不阻塞支付)。BaaS 调用配额放开前别减, 撞 211 整笔失(半截 insert 撞限流后 logOrder 缺)。安全阈值待观生产单量调节。

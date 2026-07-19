@@ -2,6 +2,7 @@ package antchain
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
@@ -17,6 +18,10 @@ func SubmitEvidence(in model.SubmitOrderEvidenceInput) error {
 		return fmt.Errorf("antchain client not initialized")
 	}
 
+	// 蚂蚁链 BaaS 同 account 高频调用限流(211), 三步串发易撞: step 间留间隔躲限流。
+	// 生产 fire-and-forget goroutine 调, sleep 只拖 goroutine 不阻塞支付回调。
+	const stepInterval = 3 * time.Second
+
 	// Step 1: insertOrder(tradeNo, userId, moneyFen, planId, provider)
 	if err := callContract(
 		"insertOrder(string,string,string,string,string)",
@@ -25,6 +30,7 @@ func SubmitEvidence(in model.SubmitOrderEvidenceInput) error {
 	); err != nil {
 		return fmt.Errorf("insertOrder: %w", err)
 	}
+	time.Sleep(stepInterval)
 
 	// Step 2: completeOrder(tradeNo, payTime, status, dataHash, bizType)
 	if err := callContract(
@@ -34,6 +40,7 @@ func SubmitEvidence(in model.SubmitOrderEvidenceInput) error {
 	); err != nil {
 		return fmt.Errorf("completeOrder: %w", err)
 	}
+	time.Sleep(stepInterval)
 
 	// Step 3: logOrder(tradeNo, browserJson) — emits LOG_STRING event for
 	// antchain explorer searchability.

@@ -74,7 +74,11 @@ func Init() {
 	if contractEnv == "" {
 		contractEnv = "savvy-solidity"
 	}
-	var gasVal int64
+	// gas = 写入调用 Gas 上限(蚂蚁链 BaaS 单笔预估)。0/过小 → result 10200 "gas不足" 或
+	// gasUsed=0 verify 拒。实测 insertOrder 5str 150000 够, completeOrder 8str Order 写入需
+	// 350000+, logOrder 略高。给 500000 兜底够三步, env 可覆盖调降。
+	// 注意: gas 是单笔上限非账户余额——账户余额按实际 gasUsed 扣, 上限只卡单笔预算。
+	var gasVal int64 = 500000
 	if gasEnv != "" {
 		if v, err := strconv.ParseInt(gasEnv, 10, 64); err == nil {
 			gasVal = v

@@ -143,9 +143,24 @@ sudo ufw enable
 
 ---
 
+## 机A 安全加固（已实施）
+
+> 2026-07-19 机A 被 SSH 暴力破解入侵并植入挖矿木马，以下措施已部署。详见 `docs/records/2026-07-19-machine-a-intrusion-cleanup.md`。
+
+| 措施 | 配置 | 说明 |
+|---|---|---|
+| nginx 自动重启 | `/etc/systemd/system/nginx.service.d/override.conf` | `Restart=always, RestartSec=5`，被杀后 5 秒自动拉起 |
+| 看门狗 cron | `/usr/local/bin/nginx-watchdog.sh` 每 2 分钟 | 检查 nginx 存活 + 内存余量，日志写 `/var/log/nginx-watchdog.log` |
+| fail2ban | `/etc/fail2ban/jail.local` | SSH 5 次失败封 IP 1 小时 |
+| SSH 加固 | `/etc/ssh/sshd_config` | `PermitRootLogin prohibit-password`, `MaxAuthTries 3` |
+| 2G Swap | `/swapfile` | `swappiness=10`，写入 `/etc/fstab` 持久化，防 OOM |
+
 ## 安全清单 (上线前过一遍)
 
 - [ ] `.env` 已填随机密钥, 未入 git (`deploy/.gitignore` 加 `.env`); 缺任一 compose 启动 hard-fail
+- [x] 机A nginx 配 `Restart=always` + 看门狗 cron
+- [x] 机A fail2ban + SSH 加固
+- [x] 机A 2G Swap 防 OOM
 - [ ] docker-compose 密钥全 `${VAR:?required}` 从 .env 读 (无 CHANGE_ME 明文占位了)
 - [ ] **SAVVY_HMAC_SECRET**: new-api 与 savvy-manager 两边读同一 .env 变量 (已统一)
 - [ ] **SAVVY_MOCK_MODE=false** 在 compose 已显式设 (默认 true 会假编排)

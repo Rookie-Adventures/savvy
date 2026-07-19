@@ -357,6 +357,18 @@ print(r["workspace_url"], r["token"])'
 # 4. 发消息 → agent 流式回复
 ```
 
+## 机A 安全加固（2026-07-19 追加）
+
+> 背景：机A 被 SSH 暴力破解入侵并植入 kswapd0 挖矿木马，nginx 反复被杀。详见 `2026-07-19-machine-a-intrusion-cleanup.md`。
+
+| 措施 | 配置 |
+|---|---|
+| nginx 自动重启 | systemd override `Restart=always, RestartSec=5` |
+| 看门狗 | `/usr/local/bin/nginx-watchdog.sh` 每 2 分钟检查 nginx + 内存 |
+| fail2ban | SSH 5 次失败封 IP 1 小时 |
+| SSH 加固 | `PermitRootLogin prohibit-password`, `MaxAuthTries 3` |
+| 2G Swap | `/swapfile`, `swappiness=10`, 持久化 `/etc/fstab` |
+
 ## 已知限制
 
 1. **端口池上限 100**：超过 100 个并发 workspace 实例会分配失败（503）。当前单用户单实例 + 3h 自动 sleep，不太可能触达。

@@ -20,6 +20,10 @@ ENV GOEXPERIMENT=greenteagc
 WORKDIR /build
 
 ADD go.mod go.sum ./
+# go.mod 有 replace ./third_party/restclient-go-sdk → download 前须先把这个本地替换目录放好,
+# 否则 replace 解析失败 "no such file or directory"。
+ADD third_party/restclient-go-sdk/go.mod third_party/restclient-go-sdk/go.sum ./third_party/restclient-go-sdk/
+ADD third_party/restclient-go-sdk ./third_party/restclient-go-sdk
 RUN go mod download
 
 COPY . .

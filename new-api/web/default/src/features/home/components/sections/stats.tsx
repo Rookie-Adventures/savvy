@@ -33,9 +33,9 @@ export function Stats(_props: StatsProps) {
   return (
     <section className='px-6 py-20 md:py-24'>
       <div className='text-muted-foreground/60 mx-auto max-w-3xl'>
-        <AnimateInView animation='fade-up' className='border-border/40 border-t'>
+        <AnimateInView animation='fade-up'>
           <p
-            className='text-foreground/90 -mt-3 bg-background inline-block pr-4 text-xl leading-relaxed font-medium [text-wrap:pretty] md:text-2xl'
+            className='text-foreground/90 text-xl leading-relaxed font-medium [text-wrap:pretty] md:text-2xl'
             style={{ fontFamily: 'var(--font-serif)' }}
           >
             {t('Free for two hours, every start.')}

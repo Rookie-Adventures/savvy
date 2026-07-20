@@ -18,6 +18,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/pkg/perf_metrics"
+	"github.com/QuantumNous/new-api/service/antchain"
 	"github.com/google/uuid"
 )
 
@@ -584,6 +585,12 @@ func init() {
 	// service import cycle. Tests override the model vars directly.
 	model.NotifyManagerUpgradeFn = NotifyManagerUpgrade
 	model.NotifyManagerDowngradeFn = NotifyManagerDowngrade
+
+	// Antchain order evidence: fire-and-forget notarization for payment callbacks.
+	// 按 design.md line160: 握手失败也装钩子 — 配错时运行期每单 SysError 逼排查,
+	// 不为握手失败切 noop。SubmitEvidence 内部 nil-client 即报错。
+	antchain.Init()
+	model.SubmitOrderEvidenceFn = antchain.SubmitEvidence
 }
 
 // UpgradeHermesInstance 通知 manager 升级在跑容器资源 + 改 plan + 清免费窗。

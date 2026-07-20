@@ -84,16 +84,14 @@ export function TrustBlock(_props: TrustBlockProps) {
             </address>
 
             {/* Right: ICP / public-security filings + protected project attribution */}
-            <div className='text-muted-foreground/55 flex flex-col items-start gap-1.5 text-xs sm:items-start sm:text-start'>
+            <div className='text-muted-foreground/55 flex flex-col gap-1.5 text-xs'>
               <LeadLabel>合规</LeadLabel>
-              <div className='flex flex-wrap items-center justify-start gap-x-1.5 gap-y-1 sm:justify-start'>
+              <div className='flex flex-wrap items-center gap-x-1.5 gap-y-1'>
                 <FilingLink no={ICP.no} href={ICP.href} badge={ICP.badge} />
                 <span aria-hidden='true' className='text-muted-foreground/30'>·</span>
                 <FilingLink no={PSB.no} href={PSB.href} badge={PSB.badge} />
               </div>
-              <div className='w-full sm:flex sm:justify-start'>
-                <ProjectAttribution currentYear={currentYear} inline />
-              </div>
+              <ProjectAttribution currentYear={currentYear} inline />
             </div>
           </div>
         </AnimateInView>

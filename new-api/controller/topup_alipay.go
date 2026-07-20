@@ -124,9 +124,18 @@ func AlipayNotify(c *gin.Context) {
 		return
 	}
 	topUp.Status = common.TopUpStatusSuccess
+	topUp.CompleteTime = common.GetTimestamp()
 	if err := topUp.Update(); err != nil {
 		_, _ = c.Writer.Write([]byte("fail"))
 		return
+	}
+	// 蚂蚁链存证: fire-and-forget, 状态已落库, 失败仅 SysError.
+	if model.SubmitOrderEvidenceFn != nil {
+		go func(in model.SubmitOrderEvidenceInput) {
+			if err := model.SubmitOrderEvidenceFn(in); err != nil {
+				common.SysError("antchain evidence submit failed: " + err.Error())
+			}
+		}(model.BuildTopupEvidence(topUp))
 	}
 	dAmount := decimal.NewFromInt(int64(topUp.Amount))
 	dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)

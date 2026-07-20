@@ -15,3 +15,23 @@ var NotifyManagerUpgradeFn func(userID int, upgradeGroup string) error
 // container back to FREE with a fresh 2h free window. Same wiring/lifecycle as
 // NotifyManagerUpgradeFn.
 var NotifyManagerDowngradeFn func(userID int) error
+
+// SubmitOrderEvidenceInput carries the fields needed for antchain order evidence.
+// Populated by buildSubscriptionEvidence / buildTopupEvidence at each trigger point.
+type SubmitOrderEvidenceInput struct {
+	TradeNo      string
+	UserId       string
+	MoneyFen     string
+	PlanId       string
+	Provider     string
+	PayTime      string
+	Status       string
+	DataHash     string
+	BizType      string
+	EvidenceJSON string // readable full-evidence JSON for logOrder
+}
+
+// SubmitOrderEvidenceFn, when set, is invoked asynchronously after a payment
+// callback commits, submitting order evidence to the antchain for timestamped
+// notarization. Wired by service/antchain at startup. nil = no-op.
+var SubmitOrderEvidenceFn func(in SubmitOrderEvidenceInput) error

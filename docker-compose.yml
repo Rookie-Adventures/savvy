@@ -22,11 +22,27 @@ services:
       dockerfile: Dockerfile
     container_name: new-api
     restart: unless-stopped
+    ports:
+      - "3000:3000"
     environment:
       - SQL_DSN=postgresql://newapi:123456@newapi-db:5432/new-api
       - REDIS_CONN_STRING=redis://:123456@redis:6379
       - SAVVY_HMAC_SECRET=${SAVVY_HMAC_SECRET:-dev-hmac-secret-change-me}
       - HERMES_MANAGER_URL=http://savvy-manager:8000
+      # 蚂蚁链链证(段2b) — 真值在根 .env (gitignored); 空默认 = 链证禁用(fail-closed)
+      - ANTCHAIN_ENABLED=${ANTCHAIN_ENABLED:-false}
+      - ANTCHAIN_ACCESS_ID=${ANTCHAIN_ACCESS_ID:-}
+      - ANTCHAIN_ACCESS_SECRET_FILE=${ANTCHAIN_ACCESS_SECRET_FILE:-}
+      - ANTCHAIN_REST_URL=${ANTCHAIN_REST_URL:-https://rest.baas.alipay.com}
+      - ANTCHAIN_KMS_ID=${ANTCHAIN_KMS_ID:-}
+      - ANTCHAIN_ACCOUNT=${ANTCHAIN_ACCOUNT:-}
+      - ANTCHAIN_CONTRACT_NAME=${ANTCHAIN_CONTRACT_NAME:-}
+      - ANTCHAIN_GAS=${ANTCHAIN_GAS:-500000}
+      - ANTCHAIN_BIZ_ID=${ANTCHAIN_BIZ_ID:-}
+      - ANTCHAIN_TENANT_ID=${ANTCHAIN_TENANT_ID:-}
+    volumes:
+      # 蚂蚁链 access.key 只读挂载(本地在 E:\mayilian\access.key, 容器内 /secrets/... 对齐机B生产路径)
+      - ${ANTCHAIN_ACCESS_KEY_HOST_PATH:-E:/mayilian/access.key}:/secrets/antchain-access.key:ro
     depends_on:
       newapi-db:
         condition: service_healthy
@@ -117,7 +133,10 @@ services:
       - savvy-net
 
 volumes:
+  # 复用 7 天前容器遗留的旧 pg 卷(new-api_pg_data), 保留沙箱支付密钥/用户/初始化数据。
   newapi-pg-data:
+    external: true
+    name: new-api_pg_data
   manager-pg-data:
 
 networks:

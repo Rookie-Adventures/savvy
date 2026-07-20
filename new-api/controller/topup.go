@@ -390,10 +390,19 @@ func EpayNotify(c *gin.Context) {
 				topUp.PaymentMethod = verifyInfo.Type
 			}
 			topUp.Status = common.TopUpStatusSuccess
+			topUp.CompleteTime = common.GetTimestamp()
 			err := topUp.Update()
 			if err != nil {
 				logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 更新充值订单失败 trade_no=%s user_id=%d client_ip=%s error=%q topup=%q", topUp.TradeNo, topUp.UserId, c.ClientIP(), err.Error(), common.GetJsonString(topUp)))
 				return
+			}
+			// 蚂蚁链存证: fire-and-forget, 状态已落库, 失败仅 SysError.
+			if model.SubmitOrderEvidenceFn != nil {
+				go func(in model.SubmitOrderEvidenceInput) {
+					if err := model.SubmitOrderEvidenceFn(in); err != nil {
+						common.SysError("antchain evidence submit failed: " + err.Error())
+					}
+				}(model.BuildTopupEvidence(topUp))
 			}
 			//user, _ := model.GetUserById(topUp.UserId, false)
 			//user.Quota += topUp.Amount * 500000

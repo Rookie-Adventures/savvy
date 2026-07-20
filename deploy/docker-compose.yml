@@ -31,6 +31,8 @@ services:
     volumes:
       - ./data/new-api:/data       # SQLite 文件在这里: /data/one-api.db
       - ./logs/new-api:/app/logs
+      # 蚂蚁链 RSA 私钥 (只读挂载, 不入镜像/仓库); 不挂则 ANTCHAIN_ENABLED=false 存证静默
+      - /opt/savvy/secrets:/secrets:ro
     environment:
       # ---- DB (SQLite 起步) ----
       # 不设 SQL_DSN = 默认 SQLite, 文件 /data/one-api.db
@@ -68,6 +70,19 @@ services:
       # 这里不硬编码, 避免密钥入仓库
       # 例如聚合商: silverroad / aiproxy / openai-sb 国内已备案转售
       # 控制台 → 渠道 → 新建 → 类型选 OpenAI → BaseURL 填聚合商的 https://agg.xxx.com
+
+      # ---- 蚂蚁链订单存证 (可选; ANTCHAIN_ENABLED!=true 则存证静默, 支付照跑) ----
+      # 私钥文件只读挂载在 /secrets/antchain-access.key (见 volumes), 其余参数从 .env 读
+      - ANTCHAIN_ENABLED=${ANTCHAIN_ENABLED:-false}
+      - ANTCHAIN_ACCESS_ID=${ANTCHAIN_ACCESS_ID:-}
+      - ANTCHAIN_ACCESS_SECRET_FILE=${ANTCHAIN_ACCESS_SECRET_FILE:-/secrets/antchain-access.key}
+      - ANTCHAIN_REST_URL=${ANTCHAIN_REST_URL:-}
+      - ANTCHAIN_ACCOUNT=${ANTCHAIN_ACCOUNT:-savvy}
+      - ANTCHAIN_CONTRACT_NAME=${ANTCHAIN_CONTRACT_NAME:-savvy-solidity}
+      - ANTCHAIN_BIZ_ID=${ANTCHAIN_BIZ_ID:-}
+      - ANTCHAIN_TENANT_ID=${ANTCHAIN_TENANT_ID:-}
+      - ANTCHAIN_KMS_ID=${ANTCHAIN_KMS_ID:-}
+      - ANTCHAIN_GAS=${ANTCHAIN_GAS:-0}
 
     depends_on:
       - redis

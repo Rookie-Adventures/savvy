@@ -85,6 +85,12 @@ func getHermesManagerClient() *http.Client {
 	return &http.Client{Timeout: 10 * time.Second}
 }
 
+// getHermesManagerLongClient returns a client with extended timeout for
+// slow operations like container start (Docker create + s6-overlay init).
+func getHermesManagerLongClient() *http.Client {
+	return &http.Client{Timeout: 60 * time.Second}
+}
+
 // signAndDo injects HMAC-SHA256 signature headers required by manager's
 // require_hmac dependency and sends the request. bodyBytes must be the exact
 // bytes that will be sent as the body (nil/empty for GET).
@@ -94,7 +100,8 @@ func getHermesManagerClient() *http.Client {
 //	f"{method}\n{path}\n{sha256(body).hexdigest()}\n{timestamp}\n{nonce}"
 //
 // where path is the URL path WITHOUT query string.
-func signAndDo(req *http.Request, userID int, bodyBytes []byte) (*http.Response, error) {
+// signAndDoWithClient is like signAndDo but uses a caller-supplied client.
+func signAndDoWithClient(req *http.Request, userID int, bodyBytes []byte, client *http.Client) (*http.Response, error) {
 	secret := getHermesHmacSecret()
 	if secret == "" {
 		return nil, fmt.Errorf("SAVVY_HMAC_SECRET is not configured")
@@ -119,7 +126,11 @@ func signAndDo(req *http.Request, userID int, bodyBytes []byte) (*http.Response,
 	req.Header.Set("X-Savvy-Signature", signature)
 	req.Header.Set("X-Savvy-User-Id", strconv.Itoa(userID))
 
-	return getHermesManagerClient().Do(req)
+	return client.Do(req)
+}
+
+func signAndDo(req *http.Request, userID int, bodyBytes []byte) (*http.Response, error) {
+	return signAndDoWithClient(req, userID, bodyBytes, getHermesManagerClient())
 }
 
 // decodeManagerResponse reads & unmarshals the manager response envelope.
@@ -254,7 +265,7 @@ func StartHermesInstance(userID int, instanceID, planName, providerAPIKey, provi
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := signAndDo(req, userID, bodyBytes)
+	resp, err := signAndDoWithClient(req, userID, bodyBytes, getHermesManagerLongClient())
 	if err != nil {
 		return fmt.Errorf("failed to connect to hermes-manager: %w", err)
 	}

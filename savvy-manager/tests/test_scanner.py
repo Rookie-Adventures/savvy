@@ -107,3 +107,49 @@ def test_check_needs_rebuild_skips_running(monkeypatch, db_session):
     _mk_instance(db_session, status=InstanceStatus.RUNNING, needs_rebuild=True)
     scanner.check_needs_rebuild(db_session)
     assert rebuilt == []   # 不动 RUNNING
+
+
+class _FakeImage:
+    def __init__(self, id_): self.id = id_
+
+
+class _FakeContainer:
+    def __init__(self, name, image_id): self.name = name; self.image = _FakeImage(image_id)
+
+
+def test_check_image_staleness_flags_outdated(monkeypatch, db_session):
+    """容器绑旧 image id != tag 当前 id → 标 needs_rebuild(等 sleep 闭合重建)。"""
+    from app import scanner, docker_manager
+
+    class _FakeClient:
+        images = type("I", (), {"get": staticmethod(lambda tag: _FakeImage("NEWID"))})
+        containers = type("C", (), {"list": staticmethod(lambda **kw: [_FakeContainer("c1", "OLDID")])})
+    monkeypatch.setattr(docker_manager, "_client_or_none", lambda: _FakeClient())
+    inst = _mk_instance(db_session, status=InstanceStatus.SLEEPING, needs_rebuild=False)
+    scanner.check_image_staleness(db_session)
+    db_session.refresh(inst)
+    assert inst.needs_rebuild is True
+
+
+def test_check_image_staleness_skips_fresh(monkeypatch, db_session):
+    """容器 image id == tag 当前 id → 不动。"""
+    from app import scanner, docker_manager
+
+    class _FakeClient:
+        images = type("I", (), {"get": staticmethod(lambda tag: _FakeImage("SAMEID"))})
+        containers = type("C", (), {"list": staticmethod(lambda **kw: [_FakeContainer("c1", "SAMEID")])})
+    monkeypatch.setattr(docker_manager, "_client_or_none", lambda: _FakeClient())
+    inst = _mk_instance(db_session, needs_rebuild=False)
+    scanner.check_image_staleness(db_session)
+    db_session.refresh(inst)
+    assert inst.needs_rebuild is False
+
+
+def test_check_image_staleness_quiet_when_no_daemon(monkeypatch, db_session):
+    """无 daemon / tag 缺失 → 安静跳过,不误标、不抛。"""
+    from app import scanner, docker_manager
+    monkeypatch.setattr(docker_manager, "_client_or_none", lambda: None)
+    inst = _mk_instance(db_session, needs_rebuild=False)
+    scanner.check_image_staleness(db_session)  # no raise, no flag
+    db_session.refresh(inst)
+    assert inst.needs_rebuild is False

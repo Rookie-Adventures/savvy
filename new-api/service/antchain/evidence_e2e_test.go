@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
 )
 
@@ -66,7 +67,17 @@ func TestSubmitEvidence_E2E(t *testing.T) {
 			err)
 	}
 
-	t.Logf("PASS: insertOrder+completeOrder+logOrder 全通, tradeNo=%s", in.TradeNo)
+	t.Logf("PASS: 付款三步(insertOrder+completeOrder+logOrder)全通, tradeNo=%s", in.TradeNo)
+
+	// 段2b 第四步: deliverOrder 发货/履约存证。
+	// 前置: 链上合约须已重新部署含 deliverOrder 函数 + deliveredAt/deliveryHash 字段
+	// (本合约改动需重新发布到 BaaS, 旧合约无此函数会 revert)。
+	if err := DeliverOrder(in); err != nil {
+		t.Fatalf("DeliverOrder failed: %v\n "+
+			"前置检查: 合约是否已重新部署含 deliverOrder? (deliverOrder 不存在 → revert)",
+			err)
+	}
+	t.Logf("PASS: 段2b deliverOrder 全通, tradeNo=%s, 全流程 付款8字段+发货2字段 链证闭合", in.TradeNo)
 }
 
 // TestQueryTradeNo_E2E 调用合约只读函数 getTradeNo(string)→string 隔离"写失败 vs 调用本身失败"。
@@ -88,6 +99,55 @@ func TestQueryTradeNo_E2E(t *testing.T) {
 		t.Fatalf("getTradeNo read failed: %v", err)
 	}
 	t.Logf("PASS: getTradeNo(%s) 只读调用通, outTypes=[\"string\"]", tradeNo)
+}
+
+// TestQueryRealTrade_E2E 只读查询真实支付回调单是否上链成功。
+// 查 getDeliveryHash(tradeNo) + getDeliveredAt(tradeNo):
+//   - getTradeNo 有值 = insertOrder 写过(付款第一步上了)
+//   - getDeliveredAt 有值 + getDeliveryHash 有值 = deliverOrder 第四步上了(段2b 成功)
+// 没值则对应步骤没走通。run:
+//
+//	(同 TestSubmitEvidence_E2E 的 export 块)
+//	go test -run TestQueryRealTrade_E2E -tags=manual -v ./service/antchain/ \
+//	  -args -tradeNo=ALIPAYUSR2NOENFDxS1784560576
+//
+// 也可直接改 defaultTradeNo 常量省去 -args。
+func TestQueryRealTrade_E2E(t *testing.T) {
+	defaultTradeNo := "ALIPAYUSR2NOENFDxS1784560576"
+	tradeNo := defaultTradeNo
+	for i, a := range os.Args {
+		if a == "-tradeNo" && i+1 < len(os.Args) {
+			tradeNo = os.Args[i+1]
+		}
+	}
+	Init()
+	if !Enabled || restClient == nil {
+		t.Skip("antchain not enabled; skipping")
+	}
+	t.Logf("查询合约 savvy1: tradeNo=%s", tradeNo)
+
+	// 3 个只读 getter, 串查: 付款存证 + 发货存证是否在链。
+	// 直接调 restClient 取 resp.Data (callContract 吞 Data), 看实际返回判空 vs 有值。
+	reads := []struct{ sig, label string }{
+		{"getTradeNo(string)", "交易号(付款insertOrder)"},
+		{"getDeliveredAt(string)", "发货时间(deliverOrder第四步)"},
+		{"getDeliveryHash(string)", "发货指纹(deliverOrder第四步)"},
+	}
+	for _, r := range reads {
+		paramBytes, _ := common.Marshal([]string{tradeNo})
+		resp, err := restClient.CallContract(
+			bizId,
+			fmt.Sprintf("q_%d", time.Now().UnixNano()),
+			account, tenantId, contractName,
+			r.sig, string(paramBytes), `["string"]`, kmsId,
+			true, gas,
+		)
+		if err != nil {
+			t.Errorf("%s 调用失败: %v", r.label, err)
+			continue
+		}
+		t.Logf("%s → code=%s data=%q", r.label, resp.Code, resp.Data)
+	}
 }
 
 // keep os import referenced even if future edits drop the env reads above.

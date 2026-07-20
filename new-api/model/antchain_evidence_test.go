@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/QuantumNous/new-api/common"
 )
 
 func TestBuildSubscriptionEvidence_MoneyFen(t *testing.T) {
@@ -91,6 +93,68 @@ func TestCanonicalJSON_DataHash(t *testing.T) {
 	hash3 := hex.EncodeToString(h3[:])
 	if hash1 == hash3 {
 		t.Error("different input produced same hash")
+	}
+}
+
+// TestBuildDeliverEvidence 验段2b 完整发货单据: 11 英文锁字段 + 中文释义易读层,
+// deliveryHash 锁前10字段(付款9+deliveredAt, 不含 deliveryHash 自身), 付款字段篡改即废。
+func TestBuildDeliverEvidence(t *testing.T) {
+	in := SubmitOrderEvidenceInput{
+		TradeNo:      "E2E-001",
+		UserId:       "42",
+		MoneyFen:     "999",
+		PlanId:       "3",
+		Provider:     "alipay",
+		PayTime:      "2026-07-20T10:00:00+08:00",
+		Status:       "SUCCESS",
+		BizType:      "topup",
+		DataHash:     "deadbeef",
+		EvidenceJSON: "{}",
+	}
+	dv := BuildDeliverEvidence(in, "2026-07-20T12:00:00+08:00")
+
+	// 1. deliveryHash 确定性: 同输入必相等。
+	dv2 := BuildDeliverEvidence(in, "2026-07-20T12:00:00+08:00")
+	if dv.DeliveryHash != dv2.DeliveryHash {
+		t.Fatal("deliveryHash not deterministic on identical input")
+	}
+	// 2. 付款字段篡改必废 hash(证明锁了付款侧, 不只 deliveredAt)。
+	in2 := in
+	in2.MoneyFen = "1000"
+	dv3 := BuildDeliverEvidence(in2, "2026-07-20T12:00:00+08:00")
+	if dv.DeliveryHash == dv3.DeliveryHash {
+		t.Fatal("deliveryHash insensitive to moneyFen change — 付款字段未锁")
+	}
+	// 3. deliveredAt 篡改必废 hash。
+	dv4 := BuildDeliverEvidence(in, "2026-07-20T13:00:00+08:00")
+	if dv.DeliveryHash == dv4.DeliveryHash {
+		t.Fatal("deliveryHash insensitive to deliveredAt change")
+	}
+
+	// 4. DeliverJSON 必须合法 JSON, 11 中文锁键全在(全进 hash, 一键一值不重复)。
+	var parsed map[string]any
+	if err := common.Unmarshal([]byte(dv.DeliverJSON), &parsed); err != nil {
+		t.Fatalf("DeliverJSON not valid JSON: %v\n%s", err, dv.DeliverJSON)
+	}
+	lockedKeys := []string{
+		"交易号", "用户ID", "付款金额_分", "套餐ID", "支付渠道",
+		"付款时间", "付款状态", "业务类型", "付款指纹", "发货时间", "发货指纹",
+		"收款主体", "收款域名",
+	}
+	for _, k := range lockedKeys {
+		if _, ok := parsed[k]; !ok {
+			t.Errorf("DeliverJSON missing 中文锁键 %q", k)
+		}
+	}
+	// 中文锁键值正确(取关键样本)。
+	if parsed["付款金额_分"] != "999" || parsed["交易号"] != "E2E-001" {
+		t.Errorf("DeliverJSON 中文键值错: %+v", parsed)
+	}
+	// 英文旧键不应残留(确认脱英文壳)。
+	for _, oldK := range []string{"tradeNo", "userId", "moneyFen", "dataHash"} {
+		if _, ok := parsed[oldK]; ok {
+			t.Errorf("DeliverJSON 残留英文键 %q — 应全中文", oldK)
+		}
 	}
 }
 

@@ -17,9 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link } from '@tanstack/react-router'
-import { ArrowRight, BookOpen } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useStatus } from '@/hooks/use-status'
 import { Button } from '@/components/ui/button'
 
 interface HeroProps {
@@ -29,37 +28,6 @@ interface HeroProps {
 
 export function Hero(props: HeroProps) {
   const { t } = useTranslation()
-  const { status } = useStatus()
-  const docsUrl =
-    (status?.docs_link as string | undefined) || 'https://docs.newapi.pro'
-
-  const renderDocsButton = () => {
-    const isExternal = docsUrl.startsWith('http')
-    if (isExternal) {
-      return (
-        <Button
-          variant='outline'
-          className='group border-border/50 hover:border-border hover:bg-muted/50 inline-flex h-11 items-center gap-1.5 rounded-lg px-5 text-sm font-medium'
-          render={
-            <a href={docsUrl} target='_blank' rel='noopener noreferrer' />
-          }
-        >
-          <BookOpen className='text-muted-foreground/80 group-hover:text-foreground size-4 transition-colors duration-200' />
-          <span>{t('Docs')}</span>
-        </Button>
-      )
-    }
-    return (
-      <Button
-        variant='outline'
-        className='group border-border/50 hover:border-border hover:bg-muted/50 inline-flex h-11 items-center gap-1.5 rounded-lg px-5 text-sm font-medium'
-        render={<Link to={docsUrl} />}
-      >
-        <BookOpen className='text-muted-foreground/80 group-hover:text-foreground size-4 transition-colors duration-200' />
-        <span>{t('Docs')}</span>
-      </Button>
-    )
-  }
 
   return (
     <section className='relative overflow-hidden px-6 pt-28 pb-24 md:pt-40 md:pb-32 lg:pt-48 lg:pb-40'>
@@ -137,7 +105,6 @@ export function Hero(props: HeroProps) {
                 {t('Go to Workspace')}
                 <ArrowRight className='ml-1.5 size-4 transition-transform duration-200 group-hover:translate-x-0.5' />
               </Button>
-              {renderDocsButton()}
             </>
           ) : (
             <>
@@ -155,7 +122,6 @@ export function Hero(props: HeroProps) {
               >
                 {t('See Pricing')}
               </Button>
-              {renderDocsButton()}
             </>
           )}
         </div>

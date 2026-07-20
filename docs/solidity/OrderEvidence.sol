@@ -524,6 +524,8 @@ contract OrderEvidence {
         string dataHash;
         string bizType;
         string preTxHash;
+        string deliveredAt;   // 段2b: 发货/履约时刻 ISO8601
+        string deliveryHash;  // 段2b: 发货防篡改指纹 SHA-256(canonicalJSON(tradeNo,deliveredAt))
     }
 
     mapping (string => Order) orders;
@@ -570,6 +572,15 @@ contract OrderEvidence {
         orders[tradeNo].preTxHash = "";
     }
 
+    // 段2b 第三步: 发货/履约存证。订单须已存在(insertOrder 写入)。
+    // 仅 emit LOG_STRING(浏览器易读 JSON), deliveredAt/deliveryHash 存入 struct 备查。
+    function deliverOrder(string tradeNo, string browserJson, string deliveredAt, string deliveryHash) public onlyOwner {
+        require(!orders[tradeNo].tradeNo.compare_string(""));
+        orders[tradeNo].deliveredAt  = deliveredAt;
+        orders[tradeNo].deliveryHash = deliveryHash;
+        emit LOG_STRING(browserJson);
+    }
+
     function getTradeNo(string tradeNo) public constant returns (string) {
         return orders[tradeNo].tradeNo;
     }
@@ -596,6 +607,12 @@ contract OrderEvidence {
     }
     function getBizType(string tradeNo) public constant returns (string) {
         return orders[tradeNo].bizType;
+    }
+    function getDeliveredAt(string tradeNo) public constant returns (string) {
+        return orders[tradeNo].deliveredAt;
+    }
+    function getDeliveryHash(string tradeNo) public constant returns (string) {
+        return orders[tradeNo].deliveryHash;
     }
 
     // 诊断:返回各字段长度,确认数据是否独立存储

@@ -22,6 +22,10 @@ func SubmitEvidence(in model.SubmitOrderEvidenceInput) error {
 	// 生产 fire-and-forget goroutine 调, sleep 只拖 goroutine 不阻塞支付回调。
 	const stepInterval = 3 * time.Second
 
+	// 成功路径留痕: fire-and-forget 默认静默无法判上链否, 每步 SysLog trace tradeNo,
+	// 完成打 PASS。失败仍由上层 SysError。便于 docker logs 验证(从前日志零 antchain 行无判)。
+	traceTag := "antchain evidence[" + in.TradeNo + "]"
+
 	// Step 1: insertOrder(tradeNo, userId, moneyFen, planId, provider)
 	if err := callContract(
 		"insertOrder(string,string,string,string,string)",
@@ -30,6 +34,7 @@ func SubmitEvidence(in model.SubmitOrderEvidenceInput) error {
 	); err != nil {
 		return fmt.Errorf("insertOrder: %w", err)
 	}
+	common.SysLog(traceTag + " step1 insertOrder ok")
 	time.Sleep(stepInterval)
 
 	// Step 2: completeOrder(tradeNo, payTime, status, dataHash, bizType)
@@ -40,6 +45,7 @@ func SubmitEvidence(in model.SubmitOrderEvidenceInput) error {
 	); err != nil {
 		return fmt.Errorf("completeOrder: %w", err)
 	}
+	common.SysLog(traceTag + " step2 completeOrder ok")
 	time.Sleep(stepInterval)
 
 	// Step 3: logOrder(tradeNo, browserJson) — emits LOG_STRING event for
@@ -51,8 +57,34 @@ func SubmitEvidence(in model.SubmitOrderEvidenceInput) error {
 	); err != nil {
 		return fmt.Errorf("logOrder: %w", err)
 	}
+	common.SysLog(traceTag + " step3 logOrder ok")
+	time.Sleep(stepInterval)
+
+	// Step 4 (段2b): deliverOrder — 发货/履约存证, 复刻付款 in 全字段成完整单据(独立可验)。
+	// deliveredAt 取此刻(≈quota 到账后)。与付款三步同 goroutine 串行 fire-and-forget,
+	// 失败仅返回 err 由上层 SysError, 不回滚扣款。
+	if err := DeliverOrder(in); err != nil {
+		return fmt.Errorf("deliverOrder: %w", err)
+	}
+	common.SysLog(traceTag + " step4 deliverOrder ok — ALL STEPS PASS")
 
 	return nil
+}
+
+// DeliverOrder 提交段2b 发货/履约存证到蚂蚁链。付费侧 in 复刻 9 字段 + deliveredAt + deliveryHash,
+// DeliverJSON 带 11 英文锁字段 + 中文释义易读层 emit。独立函数便于 payment 回调既可经
+// SubmitEvidence 串四步, 也可单独 fire-and-forget 调。
+func DeliverOrder(in model.SubmitOrderEvidenceInput) error {
+	if restClient == nil {
+		return fmt.Errorf("antchain client not initialized")
+	}
+	deliveredAt := time.Now().Format(time.RFC3339)
+	dv := model.BuildDeliverEvidence(in, deliveredAt)
+	return callContract(
+		"deliverOrder(string,string,string,string)",
+		[]string{dv.TradeNo, dv.DeliverJSON, dv.DeliveredAt, dv.DeliveryHash},
+		"[]", false,
+	)
 }
 
 // callContract wraps restClient.CallContract with orderId generation and

@@ -123,3 +123,22 @@
 4. payment 回调链路加 fire-and-forget 调 `DeliverOrder`(给 quota 后同发,不影响主流程)
 5. 段 2b 沙箱跑 E2E: 付款 8 字段 + 发货 2 字段 全流程验证
 6. 砍掉的"买方 buyer / 退款 refund" 字段维持不加(YAGNI: 买方身份走支付宝官方账单线下,退款侧等遇到再说)
+
+---
+
+## 段 2b 实施落定 (2026-07-20 代码开干)
+
+代码已落地(本地编译 + go test 全绿, 真链 E2E 待部署合约后跑):
+
+1. **合约** `docs/solidity/OrderEvidence.sol`: struct Order 加 `deliveredAt`/`deliveryHash`; 加 `deliverOrder(tradeNo, browserJson, deliveredAt, deliveryHash)` 函数(onlyOwner + require 订单已存在 + 写 struct + emit LOG_STRING); 加 getter `getDeliveredAt`/`getDeliveryHash`。
+2. **Model** `new-api/model/antchain_evidence.go`: 加 `DeliverEvidenceInput` + `BuildDeliverEvidence(tradeNo, deliveredAt)`。`deliveryHash = SHA-256(canonicalJSON({tradeNo,deliveredAt}))` 二英文 key 锁(与付款 dataHash 解耦)。易读层选 B: prettyJSON 出英文 3 key 后剥尾 `\n}` 插入中文备注段, 中文层不进 canonicalJSON(deliveryHash 算完即锁)。
+3. **Service** `new-api/service/antchain/evidence.go`: `SubmitEvidence` 尾串第四步 `DeliverOrder`; 导出 `DeliverOrder(tradeNo)` 独立函数(deliveredAt 取 goroutine 执行时刻 RFC3339)。
+4. **payment 回调 4 点未改**: 复用现有异步 `SubmitOrderEvidenceFn(BuildTopupEvidence/...)` 一处调用, 内部已串四步 → 4 回调点零改动。比计划第4项更省。
+5. **E2E** `evidence_e2e_test.go`: 付款三步 PASS 后补 `DeliverOrder` 第四步断言。
+6. **Test** `antchain_evidence_test.go`: 加 `TestBuildDeliverEvidence` — hash 确定性 + DeliverJSON JSON 合法性(剥尾拼接易错, 用 common.Unmarshal 验) + 中文易读层 key 在。
+7. 砍掉的 buyer/refund 维持不加。
+
+### 真链 E2E 前置(留痕, 未做)
+- **合约须重新部署到 BaaS**: 旧链上合约无 `deliverOrder` 函数, 调用必 revert。E2E 跑前先重发合约(`OrderEvidence.sol` 改了 struct+函数)。
+- 重发后合约地址/abi 可能变: 确认 `ANTCHAIN_CONTRACT_NAME` 指向新发合约名, 验 `insertOrder`/`completeOrder`/`logOrder`/`deliverOrder` 四函数都在。
+- 重试队列(方案三提及)未建: 现 fire-and-forget 失败仅 SysError, 无 DB 兜底重发。YAGNI: 等真出现漏调再做(段2b plan 第4项说回 DB 队列, 决策文档第4项说 fire-and-forget 即可, 取后者更省路)。

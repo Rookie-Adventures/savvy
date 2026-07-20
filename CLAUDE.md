@@ -48,5 +48,6 @@ This repository is a monorepo consisting of:
   - **`new-api`** (the project name/identity)
   - **`QuantumNous`** (the organization/author identity)
 - Public Brand for the SaaS is **Savvy Agent**; the hosted container product name is **Hermes Cloud Workspace**.
-- Company is **粟城科技网络工作室**; support email is `support@scheng.net`.
+- Company is **郑州市管城回族区栗橙网络科技工作室(个体工商户)** (工商执照登记全称; 简称/对外品牌用 **栗橙科技**); support email is `support@scheng.net`.
+  - ⚠️ 凭证/链证/备案类权威表述一律写工商执照全称"郑州市管城回族区栗橙网络科技工作室(个体工商户)", 禁用旧写"粟城科技网络工作室"(2026-07-20 核正)。
 - Free plan workspace containers run for 2 hours per start, then automatically sleep via manager daemon. Data/volumes are preserved. (User-corrected 2026-07-09; previously listed as 3 hours.)

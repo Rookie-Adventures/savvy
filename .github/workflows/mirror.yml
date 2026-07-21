@@ -1,0 +1,22 @@
+name: Mirror to GitLab
+
+on:
+  push:
+    branches: [main, dev]
+  tags: ['**']
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to GitLab
+        run: |
+          git push --prune --force \
+            "https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.com/ruciwunai/savvy.git" \
+            "refs/heads/main:refs/heads/main" \
+            "refs/heads/dev:refs/heads/dev" \
+            "refs/tags/*:refs/tags/*"

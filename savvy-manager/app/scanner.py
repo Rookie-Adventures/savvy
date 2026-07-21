@@ -179,11 +179,63 @@ def check_storage_quota():
         db.close()
 
 
+WORKSPACE_IMAGE_TAG = "hermes-unified:saas"
+
+
+def check_image_staleness(db: Session | None = None):
+    """镜像滞后自愈:拉当前 tag image id,遍历 managed 容器,容器绑定 image id
+    != tag 当前 id → 统一标 needs_rebuild=True。SLEEPING 容器立即被相邻
+    check_needs_rebuild 重建换镜像;RUNNING 容器不打断用户会话,等下次睡
+    (FREE 2h 到期 / 用户主动关)时由 check_needs_rebuild 闭合。
+    零 DB 列,复用现有重建路径(volume+provider_config 保留)。"""
+    client = docker_manager._client_or_none()
+    if client is None:
+        return
+    try:
+        tag_image_id = client.images.get(WORKSPACE_IMAGE_TAG).id
+    except Exception:
+        return  # daemon unreach / tag 缺失 → 安静跳过,别误标满库 needs_rebuild
+    try:
+        containers = client.containers.list(
+            filters={"label": "hermes.managed=true"}, all=True,
+        )
+    except Exception:
+        return
+    stale_names = {
+        c.name for c in containers
+        if getattr(getattr(c, "image", None), "id", None) != tag_image_id
+    }
+    if not stale_names:
+        return
+    own_session = db is None
+    if own_session:
+        db = SessionLocal()
+    try:
+        pending = (
+            db.query(Instance)
+            .filter(Instance.container_name.in_(stale_names))
+            .filter(Instance.needs_rebuild.is_(False))
+            .all()
+        )
+        for inst in pending:
+            inst.needs_rebuild = True
+        if pending:
+            db.commit()
+            logger.info(
+                "image staleness: flagged %d instance(s) for rebuild (tag image id=%s)",
+                len(pending), tag_image_id,
+            )
+    finally:
+        if own_session:
+            db.close()
+
+
 def start_scanner():
     scheduler.add_job(check_expired_instances, "interval", minutes=1, id="check_expired", replace_existing=True)
     scheduler.add_job(check_needs_upgrade, "interval", minutes=1, id="check_needs_upgrade", replace_existing=True)
     scheduler.add_job(check_needs_downgrade, "interval", minutes=1, id="check_needs_downgrade", replace_existing=True)
     scheduler.add_job(check_needs_rebuild, "interval", minutes=1, id="check_needs_rebuild", replace_existing=True)
+    scheduler.add_job(check_image_staleness, "interval", minutes=10, id="check_image_staleness", replace_existing=True)
     scheduler.add_job(check_storage_quota, "interval", minutes=10, id="check_storage_quota", replace_existing=True)
     scheduler.start()
 

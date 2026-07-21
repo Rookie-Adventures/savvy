@@ -10,7 +10,7 @@ COPY ./VERSION /build/VERSION
 RUN cd default && DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$(cat /build/VERSION) bun run build
 
 FROM golang:1.26.1-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039 AS builder2
-ENV GO111MODULE=on CGO_ENABLED=0
+ENV GO111MODULE=on CGO_ENABLED=0 GOPROXY=https://goproxy.cn,direct
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -20,6 +20,10 @@ ENV GOEXPERIMENT=greenteagc
 WORKDIR /build
 
 ADD go.mod go.sum ./
+# go.mod 有 replace ./third_party/restclient-go-sdk → download 前须先把这个本地替换目录放好,
+# 否则 replace 解析失败 "no such file or directory"。
+ADD third_party/restclient-go-sdk/go.mod third_party/restclient-go-sdk/go.sum ./third_party/restclient-go-sdk/
+ADD third_party/restclient-go-sdk ./third_party/restclient-go-sdk
 RUN go mod download
 
 COPY . .

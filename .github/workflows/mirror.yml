@@ -2,17 +2,20 @@ name: Mirror to GitLab
 
 on:
   push:
-    branches: [main, dev]
-  tags: ['**']
+    branches:
+      - main
+      - dev
   workflow_dispatch:
 
 jobs:
   mirror:
     runs-on: ubuntu-latest
     steps:
-      - name: Clone full repo
+      - name: Push mirror
         run: |
           git clone --mirror "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" repo.git
           cd repo.git
           git remote set-url --push origin "https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.com/ruciwunai/savvy.git"
           git push --prune --force origin "refs/heads/main:refs/heads/main" "refs/heads/dev:refs/heads/dev" "refs/tags/*:refs/tags/*"
+        env:
+          GIT_TERMINAL_PROMPT: '0'

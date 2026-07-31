@@ -86,7 +86,8 @@ func getHermesManagerClient() *http.Client {
 }
 
 // getHermesManagerLongClient returns a client with extended timeout for
-// slow operations like container start (Docker create + s6-overlay init).
+// slow operations like container start (Docker create + s6-overlay init
+// chain can take a few seconds; longer on resource-limited plans).
 func getHermesManagerLongClient() *http.Client {
 	return &http.Client{Timeout: 60 * time.Second}
 }

@@ -84,7 +84,7 @@ export function TrustBlock(_props: TrustBlockProps) {
             </address>
 
             {/* Right: ICP / public-security filings + protected project attribution */}
-            <div className='text-muted-foreground/55 flex flex-col gap-1.5 text-xs'>
+            <div className='text-muted-foreground/55 flex flex-col items-start gap-1.5 text-xs'>
               <LeadLabel>合规</LeadLabel>
               <div className='flex flex-wrap items-center gap-x-1.5 gap-y-1'>
                 <FilingLink no={ICP.no} href={ICP.href} badge={ICP.badge} />

@@ -170,10 +170,7 @@ def start_container(container_name: str) -> bool:
     except APIError:
         return False
 
-    # ready: poll container.status until running (max 5 x 1s), then a fixed
-    # 8s buffer for the workspace node server-entry to bind :3000. Timeout is
-    # not fatal — the frontend shows "Starting…" until status flips to RUNNING,
-    # so a slow start degrades to a wait, not a broken workspace shell.
+    # ready: poll container.status until running (max 5 x 1s)
     for _ in range(5):
         try:
             container.reload()
@@ -183,7 +180,26 @@ def start_container(container_name: str) -> bool:
             break
         time.sleep(1)
 
-    time.sleep(8)
+    # Health-check: wait for workspace node server to actually bind :3000
+    # inside the container.  s6-overlay init chain (cont-init → gateway →
+    # dashboard → workspace) needs a few seconds; on cold starts or
+    # resource-limited plans it can be longer.
+    # Container has no ss/netstat, so read /proc/net/tcp directly:
+    # port 3000 = 0x0BB8, state 0A = LISTEN.
+    deadline = time.monotonic() + 120  # 2-minute max wait
+    while time.monotonic() < deadline:
+        try:
+            r = container.exec_run(
+                ["sh", "-c", "grep -q ':0BB8 .* 0A' /proc/net/tcp 2>/dev/null"],
+                demux=False,
+            )
+            if getattr(r, "exit_code", 1) == 0:
+                time.sleep(1)
+                return True
+        except Exception:
+            pass
+        time.sleep(2)
+
     return True
 
 

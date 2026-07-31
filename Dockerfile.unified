@@ -38,28 +38,24 @@ COPY --from=workspace_builder --chown=hermes:hermes /workspace-src/server-entry.
 COPY --from=workspace_builder --chown=hermes:hermes /workspace-src/skills ./skills
 
 # ─── Stage 3: s6-overlay Process Supervision Wiring ──────────────────────
-# Declare 'gateway' service: runs the Hermes messaging+OpenAI-compat gateway
-# (api_server on :8642 when API_SERVER_ENABLED=1). Base image ships a
-# gateway-default s6 slot that stays 'down' by default (interactive TUI is
-# the default CMD); we declare our own always-up 'gateway' service so
-# workspace server finds :8642 reachable without a TUI.
-RUN mkdir -p /etc/s6-overlay/s6-rc.d/gateway /etc/s6-overlay/s6-rc.d/gateway/dependencies.d && \
-    echo "longrun" > /etc/s6-overlay/s6-rc.d/gateway/type && \
-    touch /etc/s6-overlay/s6-rc.d/gateway/dependencies.d/base && \
-    touch /etc/s6-overlay/s6-rc.d/user/contents.d/gateway
-RUN printf '#!/command/with-contenv sh\n\
-export HOME=/opt/data\n\
-cd /opt/data\n\
-. /opt/hermes/.venv/bin/activate\n\
-exec s6-setuidgid hermes hermes gateway run --replace\n' > /etc/s6-overlay/s6-rc.d/gateway/run && \
-    chmod +x /etc/s6-overlay/s6-rc.d/gateway/run
+# Upstream reworked gateway supervision: gateway is now a *dynamic* per-profile
+# s6 service registered at boot by /etc/cont-init.d/02-reconcile-profiles, not a
+# static s6-rc.d slot. We trigger it via CMD ["gateway","run"] below: PID 1's argv
+# contains the "gateway run" tokens, which container_boot._is_legacy_gateway_run_request
+# detects and seeds gateway_state.json=running on the volume, so 02-reconcile
+# auto-starts the gateway-default slot → :8642 comes up.
+#
+# (We used to declare a static "gateway" s6 service here running `hermes gateway
+#  run --replace`; that collided with the upstream dynamic gateway-default slot —
+# both `--replace`d each other and the container SIGTERMd itself. Removed.)
 
 # Declare 'workspace' as a new service directory for s6-overlay
 RUN mkdir -p /etc/s6-overlay/s6-rc.d/workspace /etc/s6-overlay/s6-rc.d/workspace/dependencies.d && \
     # 1. Define service type as 'longrun'
     echo "longrun" > /etc/s6-overlay/s6-rc.d/workspace/type && \
-    # 2. Set dependencies: gateway (:8642) + dashboard (:9119) must be ready
-    touch /etc/s6-overlay/s6-rc.d/workspace/dependencies.d/gateway && \
+    # 2. Dependencies: dashboard (:9119) must be ready. The gateway (:8642) is now
+    #    a boot-time dynamic slot, not a statable s6 dep, so workspace connects to
+    #    HERMES_API_URL=http://127.0.0.1:8642 at runtime and tolerates a slow start.
     touch /etc/s6-overlay/s6-rc.d/workspace/dependencies.d/dashboard && \
     # 3. Enable the service by linking it inside the 'user' bundle
     touch /etc/s6-overlay/s6-rc.d/user/contents.d/workspace
@@ -81,6 +77,9 @@ exec s6-setuidgid hermes node server-entry.js\n' "${WORKSPACE_DIR}" > /etc/s6-ov
 # 8642 -> Optional Agent Open-API Gateway
 EXPOSE 3000 8642
 
-# Restore ENTRYPOINT to /init
+# Restore ENTRYPOINT to /init (main-wrapper.sh is the system-program via /run/s6/container_environment).
+# CMD ["gateway", "run"] makes PID 1's argv contain the legacy `gateway run` tokens,
+# so container_boot seeds gateway_state.json=running and 02-reconcile auto-starts the
+# dynamic gateway-default slot → :8642 for the workspace server to reach.
 ENTRYPOINT [ "/init", "/opt/hermes/docker/main-wrapper.sh" ]
-CMD [ ]
+CMD [ "gateway", "run" ]

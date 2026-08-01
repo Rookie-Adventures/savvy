@@ -13,7 +13,6 @@ import { requireJsonContentType, safeErrorMessage } from '../../../server/rate-l
 import { normalizeTestResult } from '../../../server/mcp-normalize'
 import { runHermesMcpTest } from '../../../server/mcp-cli-bridge'
 import { setProbe } from '../../../server/mcp-tools-cache'
-import { parseMcpServerInput } from '../../../server/mcp-input-validate'
 import { createCapabilityUnavailablePayload } from '@/lib/feature-gates'
 
 const TEST_TIMEOUT_MS = 30_000
@@ -89,27 +88,42 @@ export const Route = createFileRoute('/api/mcp/test')({
         }
         try {
           const raw = (await request.json()) as Record<string, unknown>
-          let body: Record<string, unknown>
-          if (typeof raw.name === 'string' && Object.keys(raw).length === 1) {
-            body = { name: raw.name }
-          } else {
-            const parsed = parseMcpServerInput(raw)
-            if (!parsed.ok) {
-              return json(
-                { ok: false, error: 'Invalid MCP test payload', errors: parsed.errors },
-                { status: 400 },
-              )
-            }
-            body = parsed.value as unknown as Record<string, unknown>
+          const name = typeof raw.name === 'string' ? raw.name.trim() : ''
+          // Upstream `POST /api/mcp/servers/{name}/test` probes an EXISTING
+          // server by name — no ad-hoc transport. If the caller sent anything
+          // beyond {name}, it's the ad-hoc form the runtime endpoint can't
+          // serve; refuse it rather than 404 on a server that may exist.
+          if (!name || Object.keys(raw).length > 1) {
+            return json(
+              {
+                ok: false,
+                status: 'unknown',
+                discoveredTools: [],
+                error:
+                  'Live MCP test requires a server already saved by name. Create it first, then test by {name}.',
+              },
+              { status: 400 },
+            )
           }
-          const response = await mcpFetch('/api/mcp/test', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-            signal: AbortSignal.timeout(TEST_TIMEOUT_MS),
-          })
+          const response = await mcpFetch(
+            `/api/mcp/servers/${encodeURIComponent(name)}/test`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({}),
+              signal: AbortSignal.timeout(TEST_TIMEOUT_MS),
+            },
+          )
           const payload = (await response.json().catch(() => ({}))) as unknown
           const result = normalizeTestResult(payload)
+          // Persist probe result for the fallback list path to show a fresh
+          // tool count without re-probing on every refresh.
+          setProbe(name, {
+            status: result.status,
+            toolCount: result.discoveredTools.length,
+            toolNames: result.discoveredTools.map((t) => t.name),
+            error: result.error,
+          })
           return json(result, { status: response.ok ? 200 : response.status || 502 })
         } catch (err) {
           return json({ ok: false, status: 'failed', discoveredTools: [], error: safeErrorMessage(err) }, { status: 500 })

@@ -83,6 +83,24 @@ function toConfigEntry(input: McpServerInput): Record<string, unknown> {
 }
 
 /**
+ * Map `McpServerInput` → upstream dashboard `POST /api/mcp/servers` body
+ * (MCPServerCreate). The agent owns tool selection / enable separately, so
+ * only transport + auth + bearer_token are sent here. `authType: 'bearer'`
+ * (UI "bearer/API-key") maps to upstream `auth: 'header'` — the agent stores
+ * the token under the server's `headers` via its own bearer helper.
+ */
+function toCreatePayload(input: McpServerInput): Record<string, unknown> {
+  const body: Record<string, unknown> = { name: input.name }
+  if (input.url) body.url = input.url
+  if (input.command) body.command = input.command
+  if (input.args && input.args.length > 0) body.args = input.args
+  if (input.env && Object.keys(input.env).length > 0) body.env = input.env
+  body.auth = input.authType === 'bearer' ? 'header' : input.authType ?? 'none'
+  if (input.bearerToken) body.bearer_token = input.bearerToken
+  return body
+}
+
+/**
  * Read the current `config.mcp_servers` map from the dashboard config payload.
  * Always returns a fresh object (never the live reference). Empty when missing.
  */
@@ -103,7 +121,7 @@ async function readConfigServersMap(): Promise<{
   return { config: root, servers }
 }
 
-export { parseMcpServerInput, unavailableListPayload, toConfigEntry }
+export { parseMcpServerInput, unavailableListPayload, toConfigEntry, toCreatePayload }
 
 export const Route = createFileRoute('/api/mcp')({
   server: {
@@ -123,7 +141,7 @@ export const Route = createFileRoute('/api/mcp')({
 
           let servers: ReturnType<typeof normalizeMcpList>
           if (capabilities.mcp) {
-            const response = await mcpFetch('/api/mcp', {
+            const response = await mcpFetch('/api/mcp/servers', {
               signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
             })
             if (!response.ok) {
@@ -209,10 +227,10 @@ export const Route = createFileRoute('/api/mcp')({
           }
           const input = parsed.value
           if (capabilities.mcp) {
-            const response = await mcpFetch('/api/mcp', {
+            const response = await mcpFetch('/api/mcp/servers', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(input),
+              body: JSON.stringify(toCreatePayload(input)),
               signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
             })
             const body = (await response.json().catch(() => ({}))) as unknown

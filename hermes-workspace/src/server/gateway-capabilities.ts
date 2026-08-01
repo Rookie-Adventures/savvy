@@ -519,23 +519,18 @@ async function probeMcp(): Promise<boolean> {
   // Use dashboardFetch so the probe goes through the same authenticated path
   // workspace routes use at runtime — otherwise an auth-protected dashboard
   // /api/mcp would falsely report capability=false (Codex MAJOR finding).
+  // Upstream agent mounts the MCP router on the dashboard (:9119), not the
+  // gateway (:8642); the gateway exposes only LLM endpoints, so we don't
+  // probe it.
   try {
-    const res = await dashboardFetch('/api/mcp', {
+    const res = await dashboardFetch('/api/mcp/servers', {
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     })
     if (await validate(res)) return true
   } catch {
-    // fall through to gateway path
+    // fall through
   }
-  try {
-    const res = await fetch(`${CLAUDE_API}/api/mcp`, {
-      headers: authHeaders(),
-      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-    })
-    return await validate(res)
-  } catch {
-    return false
-  }
+  return false
 }
 
 /**

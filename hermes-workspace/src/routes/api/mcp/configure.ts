@@ -77,23 +77,137 @@ export const Route = createFileRoute('/api/mcp/configure')({
             return json({ ok: false, error: 'Invalid configure payload' }, { status: 400 })
           }
           if (capabilities.mcp) {
-            const response = await mcpFetch('/api/mcp/configure', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(input),
+            const nameEnc = encodeURIComponent(input.name)
+            const hasToolConfig =
+              input.toolMode !== undefined ||
+              Array.isArray(input.includeTools) ||
+              Array.isArray(input.excludeTools)
+
+            // Upstream exposes no single "configure" endpoint. enabled toggles
+            // via /servers/{name}/enabled; tool selection (toolMode/include/
+            // exclude) is persisted by whole-map replace (PUT /servers), which
+            // writes tool_mode/include_tools/exclude_tools onto the entry.
+            let latest: Response | null = null
+
+            if (typeof input.enabled === 'boolean') {
+              const r = await mcpFetch(`/api/mcp/servers/${nameEnc}/enabled`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: input.enabled }),
+                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+              })
+              if (!r.ok) {
+                const body = (await r.json().catch(() => ({}))) as Record<string, unknown>
+                const errMsg =
+                  (body.error as string | undefined) ||
+                  `MCP configure failed (${r.status})`
+                return json({ ok: false, error: errMsg }, { status: r.status || 502 })
+              }
+              latest = r
+            }
+
+            if (hasToolConfig) {
+              // Whole-map replace needs the raw config map (headers/bearer/
+              // command/args all intact), not the redacted /servers summary.
+              // GET /api/config returns mcp_servers verbatim, so we patch one
+              // entry's tool selection and PUT the whole map back. Upstream
+              // /servers is a clean replace (deepMerge can't drop keys), so
+              // missing fields would wipe a server's transport/auth — every
+              // entry must be carried through unchanged.
+              const cfgRes = await mcpFetch('/api/config', {
+                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+              })
+              if (!cfgRes.ok) {
+                const body = (await cfgRes.json().catch(() => ({}))) as Record<string, unknown>
+                const errMsg =
+                  (body.error as string | undefined) ||
+                  `MCP configure failed (${cfgRes.status})`
+                return json({ ok: false, error: errMsg }, { status: cfgRes.status || 502 })
+              }
+              const cfgRaw = (await cfgRes.json().catch(() => ({}))) as Record<string, unknown>
+              const rootCfg: Record<string, unknown> =
+                cfgRaw.config && typeof cfgRaw.config === 'object'
+                  ? (cfgRaw.config as Record<string, unknown>)
+                  : cfgRaw
+              const rawMap = rootCfg.mcp_servers
+              const servers =
+                rawMap && typeof rawMap === 'object' && !Array.isArray(rawMap)
+                  ? { ...(rawMap as Record<string, Record<string, unknown>>) }
+                  : {}
+              if (!(input.name in servers)) {
+                return json(
+                  { ok: false, error: `MCP server not found: ${input.name}` },
+                  { status: 404 },
+                )
+              }
+              const next: Record<string, unknown> = { ...servers[input.name] }
+              delete next.tool_mode
+              delete next.include_tools
+              delete next.exclude_tools
+              // Upstream schema: one `tools` key holding the enabled tool-name
+              // allow-list, or absent/None for "all tools enabled". There is no
+              // exclude/blacklist mode — the agent only supports opting tools IN.
+              // We reject `exclude` to avoid silently dropping the intent.
+              if (input.toolMode === 'exclude') {
+                return json(
+                  {
+                    ok: false,
+                    error:
+                      'Tool exclude mode is not supported by the agent (only allow-list / all).',
+                  },
+                  { status: 400 },
+                )
+              }
+              if (input.toolMode === 'include' && Array.isArray(input.includeTools)) {
+                if (input.includeTools.length > 0) {
+                  next.tools = input.includeTools
+                } else {
+                  delete next.tools
+                }
+              } else {
+                // 'all' (or no toolMode): enable every tool.
+                delete next.tools
+              }
+              servers[input.name] = next
+              const r = await mcpFetch('/api/mcp/servers', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ servers }),
+                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+              })
+              if (!r.ok) {
+                const body = (await r.json().catch(() => ({}))) as Record<string, unknown>
+                const errMsg =
+                  (body.error as string | undefined) ||
+                  `MCP configure failed (${r.status})`
+                return json({ ok: false, error: errMsg }, { status: r.status || 502 })
+              }
+              latest = r
+            }
+
+            if (!latest) {
+              return json({ ok: false, error: 'Nothing to configure' }, { status: 400 })
+            }
+            // Return a best-effort patched summary; upstream /enabled and
+            // /servers PUT return {ok:true} without the server shape, so
+            // re-read the one entry to give the UI a fresh normalized view.
+            const after = await mcpFetch('/api/mcp/servers', {
               signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
             })
-            const body = (await response.json().catch(() => ({}))) as unknown
-            const server = normalizeMcpServer(
-              (body as Record<string, unknown>).server ?? body,
-            )
-            if (!response.ok || !server) {
-              const errMsg =
-                ((body as Record<string, unknown>).error as string | undefined) ||
-                `MCP configure failed (${response.status})`
-              return json({ ok: false, error: errMsg }, { status: response.status || 502 })
+            if (after.ok) {
+              const all = (await after.json().catch(() => ({ servers: [] }))) as {
+                servers?: Array<unknown>
+              }
+              const found =
+                (all.servers ?? []).find(
+                  (s) => (s as Record<string, unknown>).name === input.name,
+                ) ?? null
+              const server = found ? normalizeMcpServer(found) : null
+              if (server) {
+                return json({ ok: true, server: maskSecretsInPlace(server) })
+              }
             }
-            return json({ ok: true, server: maskSecretsInPlace(server) })
+            return json({ ok: true })
           }
           // Phase 1.5 fallback — patch the matching `config.mcp_servers[name]`
           // entry in place. We only update the toggleable keys exposed by

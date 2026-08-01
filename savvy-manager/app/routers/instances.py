@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -64,6 +65,41 @@ def _get_instance(instance_id: str, user_id: str, db: Session) -> Instance:
     if inst.user_id != user_id:
         raise HTTPException(status_code=403, detail="Not your instance")
     return inst
+
+
+async def _wait_container_ready(container_name: str, port: int = 3000, timeout: int = 30) -> bool:
+    """Poll the container's web service until it accepts TCP connections.
+
+    Returns True if ready within timeout, False otherwise (non-fatal — the
+    caller still returns success; the user just needs to wait a moment).
+    Uses docker exec to probe from the manager side (avoids DNS resolution
+    issues from outside the docker network).
+    """
+    from ..docker_manager import _client_or_none
+
+    client = _client_or_none()
+    if client is None:
+        return False
+
+    deadline = asyncio.get_event_loop().time() + timeout
+    interval = 1.0
+    while asyncio.get_event_loop().time() < deadline:
+        try:
+            c = client.containers.get(container_name)
+            # wget is available in the hermes-unified image; fall back to
+            # shell /dev/tcp probe if not.
+            res = c.exec_run(
+                ["sh", "-c", f"wget -q -O /dev/null --timeout=2 http://127.0.0.1:{port}/ 2>/dev/null || curl -s -o /dev/null --max-time 2 http://127.0.0.1:{port}/ 2>/dev/null"]
+            )
+            if getattr(res, "exit_code", 1) == 0:
+                return True
+        except Exception:
+            pass
+        await asyncio.sleep(interval)
+        # tighten polling after first few attempts
+        if interval < 2:
+            interval = 1.5
+    return False
 
 
 class StartRequest(BaseModel):
@@ -205,6 +241,11 @@ async def start_instance(
     inst.started_at = now
     inst.expires_at = expires_at
     db.commit()
+
+    # Wait for the container's web service (port 3000) to become reachable.
+    # Without this, the frontend shows "Open Workspace" immediately but nginx
+    # proxies to a not-yet-listening upstream → 502/403 for the user.
+    await _wait_container_ready(inst.container_name, timeout=30)
 
     # Reconcile + write back provider config into the now-running container's
     # /opt/data/config.yaml. Done AFTER start because docker exec requires a

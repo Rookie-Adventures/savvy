@@ -143,10 +143,13 @@ function InstanceStatus({ instance }: { instance: HermesInstance }) {
   // creating = NOT_CREATED yet (first start, key REQUIRED).
   // sleeping = wake (key OPTIONAL — empty key means backend uses DB snapshot).
   const canStart = instance.status === 'creating' || instance.status === 'sleeping'
-  const isFirstStart = instance.status === 'creating'
+  // Key is required when: true first start (creating) OR key was revoked
+  // (hasProviderKey=false while sleeping). After revoke the backend clears the
+  // snapshot, so start without a key would 400.
+  const keyRequired = instance.status === 'creating' || (instance.status === 'sleeping' && instance.hasProviderKey === false)
 
   const handleStartSubmit = () => {
-    if (isFirstStart && !providerApikey.trim()) {
+    if (keyRequired && !providerApikey.trim()) {
       toast.error(t('First start requires an API key'))
       return
     }
@@ -224,7 +227,7 @@ function InstanceStatus({ instance }: { instance: HermesInstance }) {
                 disabled={startMutation.isPending}
               >
                 {startMutation.isPending
-                  ? (isFirstStart ? t('Starting first setup…') : t('Waking up…'))
+                  ? (keyRequired ? t('Starting first setup…') : t('Waking up…'))
                   : t('Start')}
               </Button>
               <Dialog
@@ -234,12 +237,12 @@ function InstanceStatus({ instance }: { instance: HermesInstance }) {
                   if (!open) setProviderApikey('')
                 }}
                 title={
-                  isFirstStart
+                  keyRequired
                     ? t('First start requires an API key')
                     : t('Start workspace')
                 }
                 description={
-                  isFirstStart
+                  keyRequired
                     ? t(
                         'First-time setup takes 10–30 seconds to configure the environment. Please wait.'
                       ) +
@@ -269,14 +272,14 @@ function InstanceStatus({ instance }: { instance: HermesInstance }) {
                       disabled={startMutation.isPending}
                     >
                       {startMutation.isPending
-                        ? (isFirstStart ? t('Setting up environment…') : t('Waking up…'))
-                        : (isFirstStart ? t('Start setup') : t('Start'))}
+                        ? (keyRequired ? t('Setting up environment…') : t('Waking up…'))
+                        : (keyRequired ? t('Start setup') : t('Start'))}
                     </Button>
                   </>
                 }
               >
                 <div className='space-y-2'>
-                  {isFirstStart ? (
+                  {keyRequired ? (
                     <>
                       <label className='text-sm font-medium'>
                         {t('Provider key (required on first start)')}

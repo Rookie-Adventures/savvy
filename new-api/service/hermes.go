@@ -39,6 +39,9 @@ type HermesInstance struct {
 	MemLimit       string `json:"mem_limit"`
 	PidsLimit      int    `json:"pids_limit"`
 	StorageQuotaGB int    `json:"storage_quota_gb"`
+	// Whether a provider key snapshot exists at the manager. Frontend uses this
+	// to decide if the start dialog must require a key (e.g. after revoke).
+	HasProviderKey bool `json:"has_provider_key"`
 }
 
 // HermesAccessToken mirrors manager's AccessTokenResponse.

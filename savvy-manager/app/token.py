@@ -48,6 +48,20 @@ def generate_access_token(
     }
 
 
+def renew_access_token(
+    instance_id: str,
+    user_id: str,
+    expires_in_minutes: int = 30,
+) -> str:
+    """Sign a fresh access token (sliding renewal). Reuses generate_access_token's
+    signing path; returns just the token string, no workspace_url."""
+    return generate_access_token(
+        instance_id=instance_id,
+        user_id=user_id,
+        expires_in_minutes=expires_in_minutes,
+    )["token"]
+
+
 def verify_access_token(token: str) -> dict | None:
     try:
         from urllib.parse import unquote

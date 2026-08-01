@@ -28,6 +28,9 @@ type hermesInstanceVO struct {
 	MemLimit       string `json:"memLimit"`
 	PidsLimit      int    `json:"pidsLimit"`
 	StorageQuotaGB int    `json:"storageGb"`
+	// Whether a provider key is stored at the manager. Frontend uses this to
+	// require a key in the start dialog after revoke (status=sleeping but no key).
+	HasProviderKey bool `json:"hasProviderKey"`
 }
 
 // toVO converts the manager's raw instance into the frontend view object.
@@ -42,6 +45,7 @@ func toVO(inst *service.HermesInstance) hermesInstanceVO {
 		MemLimit:       inst.MemLimit,
 		PidsLimit:      inst.PidsLimit,
 		StorageQuotaGB: inst.StorageQuotaGB,
+		HasProviderKey: inst.HasProviderKey,
 	}
 	if inst.StartedAt != "" {
 		vo.CreatedAt = inst.StartedAt

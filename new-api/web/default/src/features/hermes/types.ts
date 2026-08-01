@@ -34,6 +34,7 @@ export interface HermesInstance {
   memLimit?: string
   pidsLimit?: number
   storageGb?: number
+  hasProviderKey?: boolean
 }
 
 export interface HermesAccessToken {

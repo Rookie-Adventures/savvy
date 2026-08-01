@@ -31,6 +31,9 @@ class InstanceResponse(BaseModel):
     mem_limit: str | None = None
     pids_limit: int | None = None
     storage_quota_gb: int | None = None
+    # Whether a provider key snapshot exists in the DB. Frontend uses this to
+    # decide if the start dialog must require a key (revoked → None → require).
+    has_provider_key: bool = False
 
 
 def _spec_for_plan(plan: PlanType) -> dict:
@@ -90,6 +93,7 @@ async def get_instance(user_id: str, auth=Depends(require_hmac), db: Session = D
         assigned_port=inst.assigned_port,
         started_at=inst.started_at.isoformat() if inst.started_at else None,
         expires_at=inst.expires_at.isoformat() if inst.expires_at else None,
+        has_provider_key=inst.provider_config_enc is not None,
         **spec,
     )
 
@@ -116,6 +120,7 @@ async def create_instance(user_id: str, auth=Depends(require_hmac), db: Session 
             assigned_port=existing.assigned_port,
             started_at=existing.started_at.isoformat() if existing.started_at else None,
             expires_at=existing.expires_at.isoformat() if existing.expires_at else None,
+            has_provider_key=existing.provider_config_enc is not None,
             **spec,
         )
 

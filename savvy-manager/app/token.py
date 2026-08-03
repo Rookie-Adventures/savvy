@@ -70,6 +70,8 @@ def verify_access_token(token: str) -> dict | None:
 
         parts = token.split(".")
         if len(parts) != 2:
+            # TEMP DIAG: 记 401 具体分支，定位完删。
+            print(f"[DIAG_401] branch=bad_parts n={len(parts)} len={len(token)} head={token[:12]!r}", flush=True)
             return None
 
         payload_b64, signature = parts
@@ -81,13 +83,16 @@ def verify_access_token(token: str) -> dict | None:
         ).hexdigest()
 
         if not hmac.compare_digest(expected_signature, signature):
+            print(f"[DIAG_401] branch=sig_mismatch len={len(token)} head={payload_b64[:12]!r}", flush=True)
             return None
 
         payload = json.loads(urlsafe_b64decode(payload_b64))
 
         if payload.get("exp", 0) < time.time():
+            print(f"[DIAG_401] branch=expired exp={payload.get('exp')} now={int(time.time())} inst={payload.get('instance_id')}", flush=True)
             return None
 
         return payload
-    except Exception:
+    except Exception as e:
+        print(f"[DIAG_401] branch=exception type={type(e).__name__} msg={e} len={len(token)}", flush=True)
         return None

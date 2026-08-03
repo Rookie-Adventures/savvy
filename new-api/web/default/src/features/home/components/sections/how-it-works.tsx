@@ -46,7 +46,7 @@ export function HowItWorks() {
       n: '03',
       title: t('Return'),
       desc: t(
-        'Close the tab and the agent sleeps after two hours free. Open it again anywhere and carry on.'
+        'Close the tab and the agent sleeps. Open it again anywhere and carry on.'
       ),
     },
   ]

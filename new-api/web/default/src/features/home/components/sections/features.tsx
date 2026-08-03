@@ -58,7 +58,7 @@ export function Features(_props: FeaturesProps) {
     {
       title: t('Your work survives the close'),
       body: t(
-        'Shut the tab and the agent sleeps after two hours free. Open it again from any browser and pick up where you stopped.'
+        'Shut the tab and the agent sleeps. Open it again from any browser and pick up where you stopped.'
       ),
     },
   ]

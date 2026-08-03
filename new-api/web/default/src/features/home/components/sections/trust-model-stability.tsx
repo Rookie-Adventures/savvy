@@ -49,7 +49,7 @@ export function TrustModelStability(_props: TrustModelStabilityProps) {
             </h3>
             <p className='text-muted-foreground/80 mt-5 text-base leading-relaxed [text-wrap:pretty]'>
               {t(
-                'Requests reach the upstream provider untouched — no rerouting to a cheaper tier, no silent downgrades. If you asked for the flagship, you run the flagship.'
+                'Requests reach the upstream provider untouched. No rerouting to a cheaper tier, no silent downgrades. If you asked for the flagship, you run the flagship.'
               )}
             </p>
           </AnimateInView>
@@ -66,7 +66,7 @@ export function TrustModelStability(_props: TrustModelStabilityProps) {
             </h3>
             <p className='text-muted-foreground/80 mt-5 text-base leading-relaxed [text-wrap:pretty]'>
               {t(
-                'We keep the lights on; your machine does not stay awake for it. Two hours free, every start — try it through your real workload before you pay a yuan.'
+                'We keep the lights on; your machine does not stay awake for it. Try it through your real workload before you pay a yuan.'
               )}
             </p>
           </AnimateInView>

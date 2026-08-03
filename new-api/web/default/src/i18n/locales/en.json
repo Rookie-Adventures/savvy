@@ -4743,6 +4743,7 @@
     "WeChat merchant private key (PEM)": "WeChat merchant private key (PEM)",
     "WeChat platform cert path": "WeChat platform cert path",
     "Scan with Alipay to pay": "Scan with Alipay to pay",
+    "1 Scan · 2 Confirm payment · 3 Check result": "1 Scan · 2 Confirm payment · 3 Check result",
     "Scan with WeChat to pay": "Scan with WeChat to pay",
     "I have completed payment": "I have completed payment",
     "Direct Payment": "Direct Payment",

@@ -162,6 +162,79 @@ func SubscriptionRequestAlipay(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"pay_link": url.String()}})
 }
 
+// SubscriptionRequestAlipayQR creates a subscription order and returns an Alipay order-code (precreate) QR string.
+// 与 SubscriptionRequestAlipay 同配置同回调,仅下单接口不同;回调复用 /api/subscription/alipay/notify。
+func SubscriptionRequestAlipayQR(c *gin.Context) {
+	if !requirePaymentCompliance(c) {
+		return
+	}
+	var req SubscriptionAlipayPayRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.PlanId <= 0 {
+		common.ApiErrorMsg(c, "参数错误")
+		return
+	}
+	plan, err := model.GetSubscriptionPlanById(req.PlanId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if !plan.Enabled {
+		common.ApiErrorMsg(c, "套餐未启用")
+		return
+	}
+	if plan.PriceAmount < 0.01 {
+		common.ApiErrorMsg(c, "套餐金额过低")
+		return
+	}
+	userId := c.GetInt("id")
+	if plan.MaxPurchasePerUser > 0 {
+		count, err := model.CountUserSubscriptionsByPlan(userId, plan.Id)
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		if count >= int64(plan.MaxPurchasePerUser) {
+			common.ApiErrorMsg(c, "已达到该套餐购买上限")
+			return
+		}
+	}
+	cli := GetAlipayClient()
+	if cli == nil {
+		common.ApiErrorMsg(c, "当前管理员未配置支付信息")
+		return
+	}
+	tradeNo := fmt.Sprintf("SUBQRUSR%dNO%s%d", userId, common.GetRandomString(6), time.Now().Unix())
+	order := &model.SubscriptionOrder{
+		UserId:          userId,
+		PlanId:          plan.Id,
+		Money:           plan.PriceAmount,
+		TradeNo:         tradeNo,
+		PaymentMethod:   model.PaymentMethodAlipay,
+		PaymentProvider: model.PaymentProviderAlipay,
+		CreateTime:      time.Now().Unix(),
+		Status:          common.TopUpStatusPending,
+	}
+	if err := order.Insert(); err != nil {
+		common.ApiErrorMsg(c, "创建订单失败")
+		return
+	}
+	callbackBase := service.GetCallbackAddress()
+	var p = alipay.TradePreCreate{}
+	p.NotifyURL = callbackBase + "/api/subscription/alipay/notify"
+	p.Subject = fmt.Sprintf("SUB:%s", plan.Title)
+	p.OutTradeNo = tradeNo
+	p.TotalAmount = fmt.Sprintf("%.2f", plan.PriceAmount)
+	// 订单码支付与当面付同产品码,二维码 2 小时有效(支付宝侧默认)。
+	p.ProductCode = "FACE_TO_FACE_PAYMENT"
+	rsp, err := cli.TradePreCreate(context.Background(), p)
+	if err != nil || rsp == nil || rsp.Code != alipay.CodeSuccess || rsp.QRCode == "" {
+		_ = model.ExpireSubscriptionOrder(tradeNo, model.PaymentProviderAlipay)
+		common.ApiErrorMsg(c, "拉起支付失败")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"code_url": rsp.QRCode}})
+}
+
 // SubscriptionAlipayNotify handles Alipay async notify (must return literal "success").
 func SubscriptionAlipayNotify(c *gin.Context) {
 	if err := c.Request.ParseForm(); err != nil {

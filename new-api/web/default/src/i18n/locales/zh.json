@@ -4743,6 +4743,7 @@
     "WeChat merchant private key (PEM)": "微信商户 API 私钥(PEM)",
     "WeChat platform cert path": "微信平台证书路径(可空, 自动下载)",
     "Scan with Alipay to pay": "请使用支付宝扫码支付",
+    "1 Scan · 2 Confirm payment · 3 Check result": "1 扫码 · 2 确认支付 · 3 查看结果",
     "Scan with WeChat to pay": "请使用微信扫码支付",
     "I have completed payment": "我已完成支付",
     "Direct Payment": "直连支付",

@@ -167,6 +167,8 @@ func SetApiRouter(router *gin.Engine) {
 			subscriptionRoute.POST("/epay/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestEpay)
 			// ponytail: 订阅 alipay/wechat 直连, 对齐 subscriptionRoute /epay/pay L159 范式
 			subscriptionRoute.POST("/alipay/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestAlipay)
+			// ponytail: 订阅订单码(扫码)与网站支付同配置同回调,复用合规 gate,不新增后台开关
+			subscriptionRoute.POST("/alipay/qr/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestAlipayQR)
 			subscriptionRoute.POST("/wechat/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestWechat)
 			subscriptionRoute.POST("/stripe/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestStripePay)
 			subscriptionRoute.POST("/creem/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestCreemPay)

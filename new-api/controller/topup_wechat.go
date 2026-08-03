@@ -69,7 +69,7 @@ func RequestWechatPay(c *gin.Context) {
 	resp, _, err := svc.Prepay(context.Background(), native.PrepayRequest{
 		Appid:       core.String(operation_setting.WechatAppId),
 		Mchid:       core.String(operation_setting.WechatMchID),
-		Description: core.String("栗橙科技云服务费"),
+		Description: core.String("栗橙科技云服务"),
 		OutTradeNo:  core.String(tradeNo),
 		NotifyUrl:   core.String(callbackBase + "/api/user/wechat/notify"),
 		Amount: &native.Amount{

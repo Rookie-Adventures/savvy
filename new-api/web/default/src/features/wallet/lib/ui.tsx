@@ -103,6 +103,14 @@ export function getPaymentIcon(
           style={{ color: PAYMENT_ICON_COLORS[PAYMENT_TYPES.ALIPAY] }}
         />
       )
+    case PAYMENT_TYPES.ALIPAY_QR:
+      // 订单码(扫码)入口:与网站支付同品牌色,靠按钮文案区分
+      return (
+        <SiAlipay
+          className={className}
+          style={{ color: PAYMENT_ICON_COLORS[PAYMENT_TYPES.ALIPAY_QR] }}
+        />
+      )
     case PAYMENT_TYPES.WECHAT:
       return (
         <SiWechat

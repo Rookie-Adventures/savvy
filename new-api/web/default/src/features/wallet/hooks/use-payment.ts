@@ -26,6 +26,7 @@ import {
   requestPayment,
   requestStripePayment,
   requestAlipayPayment,
+  requestAlipayQRPayment,
   requestWechatPayment,
   isApiSuccess,
 } from '../api'
@@ -33,6 +34,7 @@ import {
   isStripePayment,
   isWaffoPancakePayment,
   isAlipayPayment,
+  isAlipayQRPayment,
   isWechatPayment,
   submitPaymentForm,
 } from '../lib'
@@ -42,7 +44,7 @@ import {
 // ============================================================================
 
 export type PaymentResult =
-  | { ok: true; wechatCodeUrl?: string }
+  | { ok: true; qrCodeUrl?: string }
   | { ok: false }
 
 export function usePayment() {
@@ -92,6 +94,7 @@ export function usePayment() {
 
         const isStripe = isStripePayment(paymentType)
         const isAlipay = isAlipayPayment(paymentType)
+        const isAlipayQR = isAlipayQRPayment(paymentType)
         const isWechat = isWechatPayment(paymentType)
         const amount = Math.floor(topupAmount)
 
@@ -116,6 +119,24 @@ export function usePayment() {
           return { ok: false }
         }
 
+        if (isAlipayQR) {
+          const response = await requestAlipayQRPayment({
+            amount,
+            payment_method: 'alipay',
+          })
+          if (!isApiSuccess(response)) {
+            toast.error(
+              response.message || i18next.t('Payment request failed')
+            )
+            return { ok: false }
+          }
+          if (response.data?.code_url) {
+            // Caller renders the QR; no redirect.
+            return { ok: true, qrCodeUrl: response.data.code_url }
+          }
+          return { ok: false }
+        }
+
         if (isWechat) {
           const response = await requestWechatPayment({
             amount,
@@ -129,7 +150,7 @@ export function usePayment() {
           }
           if (response.data?.code_url) {
             // Caller renders the QR; no redirect.
-            return { ok: true, wechatCodeUrl: response.data.code_url }
+            return { ok: true, qrCodeUrl: response.data.code_url }
           }
           return { ok: false }
         }

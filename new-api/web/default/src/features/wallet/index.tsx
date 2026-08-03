@@ -33,7 +33,7 @@ import { TransferDialog } from './components/dialogs/transfer-dialog'
 import { RechargeFormCard } from './components/recharge-form-card'
 import { SubscriptionPlansCard } from './components/subscription-plans-card'
 import { WalletStatsCard } from './components/wallet-stats-card'
-import { DEFAULT_DISCOUNT_RATE } from './constants'
+import { DEFAULT_DISCOUNT_RATE, PAYMENT_TYPES } from './constants'
 import {
   useTopupInfo,
   usePayment,
@@ -76,7 +76,11 @@ export function Wallet(props: WalletProps) {
   const [selectedCreemProduct, setSelectedCreemProduct] =
     useState<CreemProduct | null>(null)
   const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(true)
-  const [wechatCodeUrl, setWechatCodeUrl] = useState<string | null>(null)
+  // 扫码支付弹窗(微信扫码/支付宝订单码共用): provider 决定弹窗文案
+  const [qrPay, setQrPay] = useState<{
+    url: string
+    provider: 'wechat' | 'alipay'
+  } | null>(null)
 
   const { status } = useStatus()
   const { currency } = useSystemConfig()
@@ -216,8 +220,14 @@ export function Wallet(props: WalletProps) {
     const result = await processPayment(topupAmount, selectedPaymentMethod.type)
     if (result.ok) {
       setConfirmDialogOpen(false)
-      if (result.wechatCodeUrl) {
-        setWechatCodeUrl(result.wechatCodeUrl)
+      if (result.qrCodeUrl) {
+        setQrPay({
+          url: result.qrCodeUrl,
+          provider:
+            selectedPaymentMethod.type === PAYMENT_TYPES.ALIPAY_QR
+              ? 'alipay'
+              : 'wechat',
+        })
       } else {
         await fetchUser()
       }
@@ -393,24 +403,24 @@ export function Wallet(props: WalletProps) {
       />
 
       <Dialog
-        open={!!wechatCodeUrl}
+        open={!!qrPay}
         onOpenChange={(open) => {
-          if (!open) setWechatCodeUrl(null)
+          if (!open) setQrPay(null)
         }}
-        title={t('WeChat Pay')}
+        title={qrPay?.provider === 'alipay' ? t('Alipay') : t('WeChat Pay')}
         contentClassName='max-sm:w-[calc(100vw-1.5rem)] sm:max-w-sm'
         bodyClassName='flex flex-col items-center gap-4 py-6'
       >
         <p className='text-muted-foreground text-sm'>
-          {t('Scan with WeChat to pay')}
+          {qrPay?.provider === 'alipay'
+            ? t('Scan with Alipay to pay')
+            : t('Scan with WeChat to pay')}
         </p>
-        {wechatCodeUrl && (
-          <QRCodeSVG value={wechatCodeUrl} size={200} includeMargin />
-        )}
+        {qrPay && <QRCodeSVG value={qrPay.url} size={200} includeMargin />}
         <Button
           variant='outline'
           onClick={async () => {
-            setWechatCodeUrl(null)
+            setQrPay(null)
             await fetchUser()
           }}
         >

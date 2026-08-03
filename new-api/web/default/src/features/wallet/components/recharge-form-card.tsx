@@ -21,6 +21,7 @@ import { Gift, ExternalLink, Loader2, Receipt, WalletCards } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -116,6 +117,7 @@ export function RechargeFormCard({
   onDirectPaymentSelect,
 }: RechargeFormCardProps) {
   const { t } = useTranslation()
+  const isMobile = useIsMobile()
   const [localAmount, setLocalAmount] = useState(topupAmount.toString())
 
   useEffect(() => {
@@ -489,6 +491,27 @@ export function RechargeFormCard({
                             getPaymentIcon('alipay', 'h-4 w-4')
                           )}
                           <span className='truncate'>{t('Alipay')}</span>
+                        </Button>
+                      )}
+                      {enableAlipayTopup && !isMobile && (
+                        // 订单码(扫码)入口:仅桌面展示,手机端无法扫自己屏幕,保持原网站支付流程
+                        <Button
+                          variant='outline'
+                          onClick={() =>
+                            onDirectPaymentSelect({
+                              name: t('Alipay (Scan)'),
+                              type: 'alipay_qr',
+                            })
+                          }
+                          disabled={!!paymentLoading}
+                          className='min-h-14 min-w-0 justify-start gap-2 rounded-lg px-3 py-2 text-left'
+                        >
+                          {paymentLoading === 'alipay_qr' ? (
+                            <Loader2 className='h-4 w-4 animate-spin' />
+                          ) : (
+                            getPaymentIcon('alipay_qr', 'h-4 w-4')
+                          )}
+                          <span className='truncate'>{t('Alipay (Scan)')}</span>
                         </Button>
                       )}
                       {enableWechatTopup && (

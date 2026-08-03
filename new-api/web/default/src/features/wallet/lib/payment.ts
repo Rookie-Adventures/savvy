@@ -94,6 +94,13 @@ export function isAlipayPayment(paymentType: string): boolean {
 }
 
 /**
+ * Check if payment method is Alipay order-code (QR scan, trade.precreate)
+ */
+export function isAlipayQRPayment(paymentType: string): boolean {
+  return paymentType === PAYMENT_TYPES.ALIPAY_QR
+}
+
+/**
  * Check if payment method is WeChat Pay direct (not epay-routed wxpay)
  */
 export function isWechatPayment(paymentType: string): boolean {

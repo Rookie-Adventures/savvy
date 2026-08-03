@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -56,12 +58,43 @@ func GetAlipayClient() *alipay.Client {
 	return alipayClient
 }
 
+// isMobileClient 按 UA 关键词判移动端,决定网站支付走 WAP 还是 PC 收银台。
+// ponytail: 不引设备检测库,四个关键词覆盖主流移动 UA;iPadOS 默认桌面 UA 走 PC 分支无碍。
+func isMobileClient(c *gin.Context) bool {
+	ua := c.Request.UserAgent()
+	return strings.Contains(ua, "Mobile") || strings.Contains(ua, "Android") ||
+		strings.Contains(ua, "iPhone") || strings.Contains(ua, "iPad")
+}
+
+// alipayWebPayURL 网站支付统一下单:移动端用 TradeWapPay(QUICK_WAP_WAY,唤起支付宝 App),
+// PC 保持 TradePagePay(FAST_INSTANT_TRADE_PAY)。两条链路共用同一回调与返跳。
+func alipayWebPayURL(cli *alipay.Client, subject, tradeNo, totalAmount, notifyURL, returnURL string, wap bool) (*url.URL, error) {
+	if wap {
+		var p = alipay.TradeWapPay{}
+		p.NotifyURL = notifyURL
+		p.ReturnURL = returnURL
+		p.Subject = subject
+		p.OutTradeNo = tradeNo
+		p.TotalAmount = totalAmount
+		p.ProductCode = "QUICK_WAP_WAY"
+		return cli.TradeWapPay(p)
+	}
+	var p = alipay.TradePagePay{}
+	p.NotifyURL = notifyURL
+	p.ReturnURL = returnURL
+	p.Subject = subject
+	p.OutTradeNo = tradeNo
+	p.TotalAmount = totalAmount
+	p.ProductCode = "FAST_INSTANT_TRADE_PAY"
+	return cli.TradePagePay(p)
+}
+
 type SubscriptionAlipayPayRequest struct {
 	PlanId        int    `json:"plan_id"`
 	PaymentMethod string `json:"payment_method"`
 }
 
-// SubscriptionRequestAlipay creates a subscription order and returns an Alipay PC page-pay URL.
+// SubscriptionRequestAlipay creates a subscription order and returns an Alipay web-pay URL (WAP on mobile, PC page-pay otherwise).
 func SubscriptionRequestAlipay(c *gin.Context) {
 	if !requirePaymentCompliance(c) {
 		return
@@ -119,14 +152,8 @@ func SubscriptionRequestAlipay(c *gin.Context) {
 	}
 	callbackBase := service.GetCallbackAddress()
 	notifyURL := callbackBase + "/api/subscription/alipay/notify"
-	var p = alipay.TradePagePay{}
-	p.NotifyURL = notifyURL
-	p.ReturnURL = paymentReturnPath("/console/topup")
-	p.Subject = fmt.Sprintf("SUB:%s", plan.Title)
-	p.OutTradeNo = tradeNo
-	p.TotalAmount = fmt.Sprintf("%.2f", plan.PriceAmount)
-	p.ProductCode = "FAST_INSTANT_TRADE_PAY"
-	url, err := cli.TradePagePay(p)
+	url, err := alipayWebPayURL(cli, fmt.Sprintf("SUB:%s", plan.Title), tradeNo,
+		fmt.Sprintf("%.2f", plan.PriceAmount), notifyURL, paymentReturnPath("/console/topup"), isMobileClient(c))
 	if err != nil {
 		_ = model.ExpireSubscriptionOrder(tradeNo, model.PaymentProviderAlipay)
 		common.ApiErrorMsg(c, "拉起支付失败")

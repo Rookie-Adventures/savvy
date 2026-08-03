@@ -103,6 +103,8 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/pay", middleware.CriticalRateLimit(), controller.RequestEpay)
 				// ponytail: 充值 alipay/wechat 直连, 对齐 selfRoute /pay L100 范式
 				selfRoute.POST("/alipay/pay", middleware.CriticalRateLimit(), controller.RequestAlipayPay)
+				// ponytail: 订单码(扫码)充值与网站支付同配置同回调,复用 isAlipayTopUpEnabled 合规 gate,不新增后台开关
+				selfRoute.POST("/alipay/qr/pay", middleware.CriticalRateLimit(), controller.RequestAlipayQRPay)
 				selfRoute.POST("/wechat/pay", middleware.CriticalRateLimit(), controller.RequestWechatPay)
 				selfRoute.POST("/amount", controller.RequestAmount)
 				selfRoute.POST("/stripe/pay", middleware.CriticalRateLimit(), controller.RequestStripePay)

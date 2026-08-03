@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatLocalCurrencyAmount } from '@/lib/currency'
@@ -29,6 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DEFAULT_DISCOUNT_RATE } from '../../constants'
 import { formatCurrency, getPaymentIcon } from '../../lib'
@@ -60,6 +62,11 @@ export function PaymentConfirmDialog({
   usdExchangeRate = 1,
 }: PaymentConfirmDialogProps) {
   const { t } = useTranslation()
+  // 支付前同意闸门:每次打开弹窗重置,不跨单持久化
+  const [agreed, setAgreed] = useState(false)
+  useEffect(() => {
+    if (open) setAgreed(false)
+  }, [open])
   const hasDiscount = discountRate > 0 && discountRate < 1 && paymentAmount > 0
   const originalAmount = hasDiscount ? paymentAmount / discountRate : 0
   const discountAmount = hasDiscount ? originalAmount - paymentAmount : 0
@@ -137,13 +144,44 @@ export function PaymentConfirmDialog({
               </div>
             </div>
           </div>
+
+          <label className='flex cursor-pointer items-start gap-2'>
+            <Checkbox
+              checked={agreed}
+              onCheckedChange={(v) => setAgreed(v === true)}
+              className='mt-0.5'
+            />
+            <span className='text-muted-foreground text-xs leading-relaxed'>
+              {t('I have read and agree to the')}{' '}
+              <a
+                href='/user-agreement'
+                target='_blank'
+                rel='noopener noreferrer'
+                className='text-primary underline-offset-4 hover:underline'
+              >
+                {t('User Agreement')}
+              </a>{' '}
+              {t('and')}{' '}
+              <a
+                href='/privacy-policy'
+                target='_blank'
+                rel='noopener noreferrer'
+                className='text-primary underline-offset-4 hover:underline'
+              >
+                {t('Privacy Policy')}
+              </a>
+            </span>
+          </label>
         </div>
 
         <AlertDialogFooter className='grid grid-cols-2 gap-2 sm:flex'>
           <AlertDialogCancel disabled={processing}>
             {t('Cancel')}
           </AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} disabled={processing}>
+          <AlertDialogAction
+            onClick={onConfirm}
+            disabled={processing || !agreed}
+          >
             {processing && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
             {t('Confirm Payment')}
           </AlertDialogAction>

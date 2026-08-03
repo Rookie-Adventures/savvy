@@ -183,6 +183,14 @@ export async function paySubscriptionAlipay(
   return res.data
 }
 
+// Alipay order-code (QR scan) subscription payment — returns code_url for QR render.
+export async function paySubscriptionAlipayQR(
+  data: SubscriptionPayRequest
+): Promise<SubscriptionPayResponse & { data?: { code_url?: string } }> {
+  const res = await api.post('/api/subscription/alipay/qr/pay', data)
+  return res.data
+}
+
 // WeChat Pay direct subscription payment — returns code_url for QR render.
 export async function paySubscriptionWechat(
   data: SubscriptionPayRequest

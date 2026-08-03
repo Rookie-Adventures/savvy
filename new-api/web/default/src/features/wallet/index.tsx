@@ -417,6 +417,9 @@ export function Wallet(props: WalletProps) {
             : t('Scan with WeChat to pay')}
         </p>
         {qrPay && <QRCodeSVG value={qrPay.url} size={200} includeMargin />}
+        <p className='text-muted-foreground/60 text-xs'>
+          {t('1 Scan · 2 Confirm payment · 3 Check result')}
+        </p>
         <Button
           variant='outline'
           onClick={async () => {

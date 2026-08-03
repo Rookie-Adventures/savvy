@@ -152,7 +152,7 @@ func SubscriptionRequestAlipay(c *gin.Context) {
 	}
 	callbackBase := service.GetCallbackAddress()
 	notifyURL := callbackBase + "/api/subscription/alipay/notify"
-	url, err := alipayWebPayURL(cli, plan.Title+"套餐", tradeNo,
+	url, err := alipayWebPayURL(cli, "栗橙科技-"+plan.Title+"套餐", tradeNo,
 		fmt.Sprintf("%.2f", plan.PriceAmount), notifyURL, paymentReturnPath("/console/topup"), isMobileClient(c))
 	if err != nil {
 		_ = model.ExpireSubscriptionOrder(tradeNo, model.PaymentProviderAlipay)
@@ -221,8 +221,8 @@ func SubscriptionRequestAlipayQR(c *gin.Context) {
 	callbackBase := service.GetCallbackAddress()
 	var p = alipay.TradePreCreate{}
 	p.NotifyURL = callbackBase + "/api/subscription/alipay/notify"
-	// ponytail: subject 用"套餐名+套餐"(如"STARTER套餐"),去掉 SUB: 内部前缀,避免黑话漏进用户账单。
-	p.Subject = plan.Title + "套餐"
+	// ponytail: subject 用"栗橙科技-套餐名+套餐"(如"栗橙科技-STARTER套餐"),统一"主体-商品"账单口径。
+	p.Subject = "栗橙科技-" + plan.Title + "套餐"
 	p.OutTradeNo = tradeNo
 	p.TotalAmount = fmt.Sprintf("%.2f", plan.PriceAmount)
 	// 订单码支付与当面付同产品码,二维码 2 小时有效(支付宝侧默认)。

@@ -121,7 +121,7 @@ func SubscriptionRequestWechat(c *gin.Context) {
 	resp, _, err := svc.Prepay(context.Background(), native.PrepayRequest{
 		Appid:       core.String(operation_setting.WechatAppId),
 		Mchid:       core.String(operation_setting.WechatMchID),
-		Description: core.String(plan.Title+"套餐"),
+		Description: core.String("栗橙科技-" + plan.Title + "套餐"),
 		OutTradeNo:  core.String(tradeNo),
 		NotifyUrl:   core.String(callbackBase + "/api/subscription/wechat/notify"),
 		Amount: &native.Amount{

@@ -66,7 +66,7 @@ func RequestAlipayPay(c *gin.Context) {
 		return
 	}
 	callbackBase := service.GetCallbackAddress()
-	url, err := alipayWebPayURL(cli, "栗橙科技云服务", tradeNo,
+	url, err := alipayWebPayURL(cli, "栗橙科技-服务包", tradeNo,
 		strconv.FormatFloat(payMoney, 'f', 2, 64),
 		callbackBase+"/api/user/alipay/notify", paymentReturnPath("/console/log"), isMobileClient(c))
 	if err != nil {
@@ -120,7 +120,7 @@ func RequestAlipayQRPay(c *gin.Context) {
 	var p = alipay.TradePreCreate{}
 	p.NotifyURL = callbackBase + "/api/user/alipay/notify"
 	// ponytail: subject 不用"充值"——预付/储值类目词在新商户风控模型里敏感,改与实际经营一致的服务口径。
-	p.Subject = "栗橙科技云服务"
+	p.Subject = "栗橙科技-服务包"
 	p.OutTradeNo = tradeNo
 	p.TotalAmount = strconv.FormatFloat(payMoney, 'f', 2, 64)
 	// 订单码支付与当面付同产品码,二维码 2 小时有效(支付宝侧默认)。

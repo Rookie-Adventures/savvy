@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { Copy, PanelRight, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatSessionList } from "@/components/ChatSessionList";
@@ -63,6 +63,7 @@ import {
   transferMayContainImage,
   uploadChatImage,
 } from "@/lib/chatImagePaste";
+import { maybeReloadForLoopbackWsAuthFailure } from "@/lib/dashboard-auth-reload";
 import { PluginSlot } from "@/plugins";
 import { useTheme } from "@/themes";
 import { useProfileScope } from "@/contexts/useProfileScope";
@@ -1093,6 +1094,9 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
       console.warn(`[chat] PTY WebSocket closed code=${ev.code}${why}`);
       setLastCloseCode(ev.code);
       if (ev.code === 4401) {
+        if (maybeReloadForLoopbackWsAuthFailure(ev.code)) {
+          return;
+        }
         setPtyState("closed");
         setBanner(
           ev.reason

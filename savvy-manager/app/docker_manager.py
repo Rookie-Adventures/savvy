@@ -83,7 +83,14 @@ def create_container(
         container = client.containers.run(
             "hermes-unified:saas",
             name=container_name,
-            volumes={volume_name: {"bind": "/workspace", "mode": "rw"}},
+            # /workspace 用户文件卷 + /opt/data agent 状态卷(会话/记忆/config)。
+            # ponytail: /opt/data 必须用命名卷 —— 匿名卷在 rebuild(rm+create) 时
+            # 会丢，用户的会话/记忆就没了(2026-08-05 事故)。命名卷按容器名派生，
+            # docker run 不存在时自动建，重建闭合不丢数据。
+            volumes={
+                volume_name: {"bind": "/workspace", "mode": "rw"},
+                f"{container_name}-opt": {"bind": "/opt/data", "mode": "rw"},
+            },
             environment={
                 "HERMES_ALLOW_INSECURE_REMOTE": "1",
                 "HOST": "0.0.0.0",

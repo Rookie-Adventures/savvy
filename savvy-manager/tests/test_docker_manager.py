@@ -75,6 +75,26 @@ def test_create_container_skips_config_write_when_none(monkeypatch):
     assert not any("cat > /opt/data/config.yaml" in str(c) for c in calls)
 
 
+def test_create_container_mounts_opt_data_named_volume(monkeypatch):
+    """/opt/data 必须挂命名卷，匿名卷在 rebuild 时会丢 agent 会话/记忆。"""
+    monkeypatch.setattr(settings, "mock_mode", False)
+    fake_container = MagicMock()
+    fake_container.id = "abc"
+    fake_container.name = "savvy-u1-w1"
+    fake_client = MagicMock()
+    fake_client.containers.run.return_value = fake_container
+    monkeypatch.setattr(dm, "_client", fake_client)
+
+    dm.create_container(
+        container_name="savvy-u1-w1", volume_name="savvy-u1-data",
+        user_id="1", workspace_id="inst-1", plan="FREE",
+        expires_at=None, provider_config=None,
+    )
+    vols = fake_client.containers.run.call_args.kwargs["volumes"]
+    assert vols["savvy-u1-data"]["bind"] == "/workspace"
+    assert vols["savvy-u1-w1-opt"]["bind"] == "/opt/data"
+
+
 def test_start_container_old_start_with_mock_client():
     fake_container = MagicMock()
     # 模拟 docker start 后 status 从 pending 转 running

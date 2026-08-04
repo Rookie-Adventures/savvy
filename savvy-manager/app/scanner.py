@@ -201,9 +201,17 @@ def check_image_staleness(db: Session | None = None):
         )
     except Exception:
         return
+    def _container_image_id(c):
+        # c.image 懒查镜像；旧镜像被 prune 掉时抛 ImageNotFound → 视为 stale
+        # (重建路径会 rm 旧容器换新镜像，正好闭合)。别让单容器拖死整个扫描。
+        try:
+            return c.image.id
+        except Exception:
+            return None
+
     stale_names = {
         c.name for c in containers
-        if getattr(getattr(c, "image", None), "id", None) != tag_image_id
+        if _container_image_id(c) != tag_image_id
     }
     if not stale_names:
         return

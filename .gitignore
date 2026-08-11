@@ -77,6 +77,9 @@ dist-electron/
 # Local agent skills (design tooling, not for VCS)
 .agents/
 **/.agents/
+.claude/skills/
+.qoder/skills/
+skills-lock.json
 
 # Superpowers skill local SDD state (review diffs + progress), not for VCS
 .superpowers/

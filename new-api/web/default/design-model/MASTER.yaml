@@ -1,0 +1,64 @@
+# design-model/MASTER.yaml — extracted from real code (finesse `document`, 2026-08-11)
+# This is NOT invented — every value below is cited to the file/line it came from.
+# Source: new-api/web/default. Two registers live in this codebase (brand home page,
+# product dashboard) — see pages/home.yaml and pages/dashboard.yaml for what each overrides.
+
+meta:
+  name: new-api / Savvy Agent
+  industry: LLM gateway SaaS console
+  extracted_from: real-code           # this file is `document`-generated, not `init`-authored
+  confidence: high                    # tokens are consistent; a few ad hoc values flagged below
+
+# ── PRIMITIVES ── as they literally appear in src/styles/theme.css
+color:
+  # Light is the unscoped CSS default; dark is an opt-in `.dark` class override
+  # (runtime default is chosen by theme-provider, not by the CSS itself).
+  bg_light:      "oklch(1 0 0)"              # #ffffff — pure white, zero chroma
+  ink_light:     "oklch(0.145 0 0)"          # #0a0a0a — near-black
+  primary_light: "oklch(0.13 0 0)"           # ~#070707
+  muted_light:   "oklch(0.49 0 0)"           # ~#606060
+  border_light:  "oklch(0.93 0 0)"           # ~#e8e8e8
+  bg_dark:       "oklch(0.235 0 0)"          # "OpenAI-like crisp charcoal" — theme.css:174 comment
+  card_dark:     "oklch(0.285 0 0)"
+  border_dark:   "oklch(1 0 0 / 10%)"
+  # semantic accents (not brand accent — these are status colors)
+  warning_light: "oklch(0.681 0.162 75.834)" # ~#d08700 — used as the hero's one hot-accent word
+  warning_dark:  "oklch(0.769 0.188 70.08)"  # ~#fe9a00
+  strategy: restrained                       # default preset is grayscale; color is spent sparingly (warning-token only)
+  file: src/styles/theme.css:21-91,93-243
+
+  # DRIFT NOTE — there is no locked `--accent`/`--primary` brand hue at all in the
+  # default preset (it's pure grayscale). The only warm color on the home hero is the
+  # semantic `--warning` token repurposed as a brand accent (hero.tsx:71). This works
+  # but is borrowed, not owned — a real accent lock (design-dna.md §3) is missing.
+
+  alt_preset_anthropic:                      # exists, NOT the shipped default
+    bg:      "oklch(0.984 0.004 95)"         # ≈#faf9f5 warm cream
+    ink:     "oklch(0.205 0.005 60)"         # ≈#141413
+    primary: "oklch(0.685 0.142 38)"         # ≈#e37756 clay/coral
+    file: src/styles/theme-presets.css:486-539
+    default_confirmed_false: src/lib/theme-customization.ts:125   # data-theme-preset: 'default'
+
+type:
+  body: "Public Sans"                 # var(--font-sans) — actual shipped body face
+  body_weight_default: 400
+  display_opt_in: "Lora Variable"     # var(--font-serif) — swapped in per-element via [data-theme-font], not the base
+  mono: null                          # no --font-mono token defined; Tailwind's stock mono stack is what's used
+  scale: unlocked                     # no single documented type-scale ratio found
+  file: src/styles/theme.css:21-41,102; src/styles/index.css:22,28
+  loaded_via: "@fontsource-variable (npm), not Google Fonts CDN"
+
+substrate:
+  radius_base: "1rem"                 # --radius, theme.css:94 — single source, derived scale below
+  radius_scale:
+    sm: "calc(var(--radius) * 0.6)"
+    md: "calc(var(--radius) * 0.8)"
+    lg: "var(--radius)"
+    xl: "calc(var(--radius) * 1.4)"
+    2xl: "calc(var(--radius) * 1.8)"
+    3xl: "calc(var(--radius) * 2.2)"
+    4xl: "calc(var(--radius) * 2.6)"
+  file: src/styles/theme.css:84-94
+  drift: "19 files use arbitrary rounded-[...] brackets outside the scale (e.g. complete-step.tsx, glow.tsx, badge.tsx) — minor, not systemic"
+  grain: "present in exactly one place (home hero) — see pages/home.yaml. Absent everywhere else, including dashboard."
+  dark_mode_default: false            # :root (light) is the unscoped base block; dark is opt-in .dark class

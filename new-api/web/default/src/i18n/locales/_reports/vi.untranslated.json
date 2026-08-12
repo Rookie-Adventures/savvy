@@ -19,5 +19,16 @@
   "Leave blank to use server address + /api/user/alipay/notify": "Leave blank to use server address + /api/user/alipay/notify",
   "Public callback URL for Alipay async notify. Leave blank to auto-derive from server address.": "Public callback URL for Alipay async notify. Leave blank to auto-derive from server address.",
   "You can generate one on the API Keys page and paste it here. We recommend the key you generated on this platform (billed to your account balance).": "You can generate one on the API Keys page and paste it here. We recommend the key you generated on this platform (billed to your account balance).",
-  "Your data (sessions, files, memory, skills) is preserved. Revoking only clears the key — sending messages will fail until you re-enter a key.": "Your data (sessions, files, memory, skills) is preserved. Revoking only clears the key — sending messages will fail until you re-enter a key."
+  "Your data (sessions, files, memory, skills) is preserved. Revoking only clears the key — sending messages will fail until you re-enter a key.": "Your data (sessions, files, memory, skills) is preserved. Revoking only clears the key — sending messages will fail until you re-enter a key.",
+  "Try it before you commit to it.": "Try it before you commit to it.",
+  "The same workspace you would sign into, previewed here.": "The same workspace you would sign into, previewed here.",
+  "Free to start, no card needed — every session gives you": "Free to start, no card needed — every session gives you",
+  "hours. This is the same workspace you would sign into.": "hours. This is the same workspace you would sign into.",
+  "Open the real workspace to chat.": "Open the real workspace to chat.",
+  "Sign in to start chatting.": "Sign in to start chatting.",
+  "Ask it to draft a listing, a script, a spec…": "Ask it to draft a listing, a script, a spec…",
+  "No new SDK to learn": "No new SDK to learn",
+  "OpenAI-compatible request shape — no new SDK to learn": "OpenAI-compatible request shape — no new SDK to learn",
+  "Free to start, no card needed": "Free to start, no card needed",
+  "One endpoint. The OpenAI request shape you already know.": "One endpoint. The OpenAI request shape you already know."
 }

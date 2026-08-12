@@ -73,7 +73,7 @@ export function TrustBlock(_props: TrustBlockProps) {
 
   return (
     <section className='border-border/40 border-t px-6 py-12 md:py-16'>
-      <div className='mx-auto max-w-5xl'>
+      <div className='mx-auto max-w-4xl'>
         <AnimateInView animation='fade-up'>
           <div className='grid grid-cols-1 gap-x-12 gap-y-6 md:grid-cols-2 md:gap-16'>
             {/* Left: legal subject + registered office */}

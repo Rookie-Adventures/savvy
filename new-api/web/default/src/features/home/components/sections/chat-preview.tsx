@@ -52,25 +52,22 @@ export function ChatPreview(props: ChatPreviewProps) {
             className='text-foreground mb-3 text-center text-xl leading-snug font-medium md:text-2xl'
             style={{ fontFamily: 'var(--font-serif)' }}
           >
-            {t('Try it before you commit to it.')}
+            {t('No complex setup — a digital worker you carry everywhere.')}
           </h3>
-          <p className='text-muted-foreground/80 mx-auto mb-10 max-w-md text-center text-base leading-relaxed [text-wrap:pretty]'>
-            {t('Free to start, no card needed — every session gives you')}{' '}
-            <span
-              className='text-warning text-xl font-semibold'
-              style={{ fontFamily: 'var(--font-serif)' }}
-            >
-              2
-            </span>{' '}
-            {t('hours. This is the same workspace you would sign into.')}
+          <p className='text-muted-foreground-soft mx-auto mb-10 max-w-md text-center text-base leading-relaxed [text-wrap:pretty]'>
+            {t('No payment limits')}
           </p>
 
-          <div className='border-border/50 bg-background overflow-hidden border'>
-            <div className='border-border/40 flex items-center justify-between border-b px-6 py-5'>
-              <span className='text-muted-foreground/70 font-mono text-sm'>
+          {/* ponytail: fill stays bg-background — the lighter panel was the
+            "割裂" the user rejected. The edge carries the separation instead,
+            at full --border rather than /50, which on white was a 1.11:1
+            hairline the card effectively did not have. */}
+          <div className='border-border bg-background overflow-hidden border'>
+            <div className='border-border flex items-center justify-between border-b px-6 py-5'>
+              <span className='text-muted-foreground-soft font-mono text-sm'>
                 {t('Hermes Work Agent')}
               </span>
-              <span className='text-muted-foreground/50 font-mono text-xs'>
+              <span className='text-muted-foreground-faint font-mono text-xs'>
                 claude-opus-4.8
               </span>
             </div>
@@ -82,7 +79,7 @@ export function ChatPreview(props: ChatPreviewProps) {
                 aria-hidden='true'
                 className='h-32 w-auto max-w-full object-contain'
               />
-              <p className='text-muted-foreground/60 flex items-center gap-1.5 text-sm'>
+              <p className='text-muted-foreground-soft flex items-center gap-1.5 text-sm'>
                 <Lock className='size-3.5' aria-hidden='true' />
                 {props.isAuthenticated
                   ? t('Open the real workspace to chat.')
@@ -90,7 +87,7 @@ export function ChatPreview(props: ChatPreviewProps) {
               </p>
             </div>
 
-            <div className='border-border/40 flex items-end gap-2 border-t p-4'>
+            <div className='border-border flex items-end gap-2 border-t p-4'>
               <Textarea
                 disabled
                 rows={1}

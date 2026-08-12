@@ -48,17 +48,22 @@ export function ApiTerminal(_props: ApiTerminalProps) {
     <section className='px-6 pt-16 pb-24 md:pt-20 md:pb-32'>
       <div className='mx-auto max-w-4xl'>
         <AnimateInView animation='fade-up'>
-          <p className='text-muted-foreground/50 mb-5 text-center font-mono text-[11px] tracking-[0.2em] uppercase'>
+          <p className='text-muted-foreground-faint mb-5 text-center font-mono text-[11px] tracking-[0.2em] uppercase'>
             {t('No new SDK to learn')}
           </p>
           <h3
-            className='text-foreground mb-10 text-center text-2xl leading-snug font-medium md:text-3xl'
+            className='text-foreground mb-3 text-center text-2xl leading-snug font-medium md:text-3xl'
             style={{ fontFamily: 'var(--font-serif)' }}
           >
             {t('One endpoint. The OpenAI request shape you already know.')}
           </h3>
+          <p className='text-muted-foreground-soft mb-10 text-center text-sm leading-relaxed'>
+            {t(
+              'We guarantee it: every model on this platform is a genuine, manufacturer-mapped model — never faked, downgraded, or swapped.'
+            )}
+          </p>
 
-          <div className='border-border/50 overflow-hidden border'>
+          <div className='border-border overflow-hidden border'>
             {/* ponytail: real macOS traffic-light hex, not a themed gray —
               this is window chrome, not brand-accent surface, so the site's
               single-accent lock doesn't apply here. Background left to
@@ -85,8 +90,8 @@ export function ApiTerminal(_props: ApiTerminalProps) {
               window some room to breathe below the command instead of the
               pane ending right at the last line, closer to how a real
               terminal looks with the cursor waiting on the next line. */}
-            <div className='bg-background text-muted-foreground/40 px-7 pb-20 font-mono text-base'>
-              <span className='text-muted-foreground/60'>$</span>{' '}
+            <div className='bg-background text-muted-foreground-faint px-7 pb-20 font-mono text-base'>
+              <span className='text-muted-foreground-soft'>$</span>{' '}
               <span className='animate-pulse'>▍</span>
             </div>
           </div>

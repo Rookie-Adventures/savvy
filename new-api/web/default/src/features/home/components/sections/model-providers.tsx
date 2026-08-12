@@ -66,7 +66,7 @@ export function ModelProviders(_props: ModelProvidersProps) {
             {PROVIDERS.map((provider) => (
               <div
                 key={provider.name}
-                className='text-muted-foreground/70 hover:text-foreground flex flex-col items-center gap-2.5 transition-colors'
+                className='text-muted-foreground-soft hover:text-foreground flex flex-col items-center gap-2.5 transition-colors'
               >
                 <provider.Icon aria-hidden='true' className='size-8' />
                 <span className='text-sm font-medium'>{provider.name}</span>

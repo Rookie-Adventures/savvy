@@ -60,10 +60,9 @@ export function Hero(props: HeroProps) {
       />
 
       <div className='relative z-10 mx-auto flex max-w-4xl flex-col items-start'>
-        {/* ponytail: trimmed to headline + one line + buttons on user
-          request — the eyebrow, second paragraph, and mono capability line
-          all got cut. The model roster now lives in ModelProviders below,
-          so this section doesn't need to carry that fact too. */}
+        {/* ponytail: eyebrow stays cut per the earlier trim — the mono
+          capability line below was restored on user request (2026-08-12);
+          only the eyebrow tag and second paragraph remain cut. */}
         <h1
           className='landing-animate-fade-up text-foreground text-[clamp(2.5rem,6vw,4.75rem)] font-medium leading-[1.02] tracking-[-0.035em] opacity-0 [text-wrap:balance]'
           style={{ fontFamily: 'var(--font-serif)' }}
@@ -76,7 +75,7 @@ export function Hero(props: HeroProps) {
         </h1>
 
         <p
-          className='landing-animate-fade-up text-muted-foreground/80 mt-8 max-w-xl text-base leading-relaxed opacity-0 md:text-lg [text-wrap:pretty]'
+          className='landing-animate-fade-up text-muted-foreground-soft mt-8 max-w-xl text-base leading-relaxed opacity-0 md:text-lg [text-wrap:pretty]'
           style={{ animationDelay: '80ms' }}
         >
           {t(
@@ -84,9 +83,20 @@ export function Hero(props: HeroProps) {
           )}
         </p>
 
+        {/* ponytail: restored capability sub-line (2026-08-12) — same
+          i18n key the pre-redesign hero used; zh.json already carries the
+          "多款主流 AI 能力已接入 · 无需配置 · 注册即开工" copy the user
+          asked back for, so no locale-file edit was needed here. */}
+        <p
+          className='landing-animate-fade-up text-muted-foreground-soft mt-3 max-w-xl font-mono text-[13px] leading-relaxed opacity-0 [text-wrap:pretty]'
+          style={{ animationDelay: '120ms' }}
+        >
+          {t('Forty-plus models, already wired in.')}
+        </p>
+
         <div
           className='landing-animate-fade-up mt-12 flex flex-wrap items-center gap-3 opacity-0'
-          style={{ animationDelay: '160ms' }}
+          style={{ animationDelay: '200ms' }}
         >
           {props.isAuthenticated ? (
             <>

@@ -43,7 +43,7 @@ const PSB = { no: '豫公网安备 41010402003621号', href: 'https://beian.mps.
 
 function LeadLabel(props: { children: string }) {
   return (
-    <span className='text-muted-foreground/40 font-mono text-[11px] tracking-[0.1em] uppercase'>
+    <span className='text-muted-foreground-faint font-mono text-[11px] tracking-[0.1em] uppercase'>
       {props.children}
     </span>
   )
@@ -77,18 +77,18 @@ export function TrustBlock(_props: TrustBlockProps) {
         <AnimateInView animation='fade-up'>
           <div className='grid grid-cols-1 gap-x-12 gap-y-6 md:grid-cols-2 md:gap-16'>
             {/* Left: legal subject + registered office */}
-            <address className='text-muted-foreground/55 flex flex-col gap-1.5 text-xs leading-relaxed not-italic sm:text-start'>
+            <address className='text-muted-foreground-soft flex flex-col gap-1.5 text-xs leading-relaxed not-italic sm:text-start'>
               <LeadLabel>主体</LeadLabel>
               <span>{ENTITY}</span>
               <span>{OFFICE}</span>
             </address>
 
             {/* Right: ICP / public-security filings + protected project attribution */}
-            <div className='text-muted-foreground/55 flex flex-col items-start gap-1.5 text-xs'>
+            <div className='text-muted-foreground-soft flex flex-col items-start gap-1.5 text-xs'>
               <LeadLabel>合规</LeadLabel>
               <div className='flex flex-wrap items-center gap-x-1.5 gap-y-1'>
                 <FilingLink no={ICP.no} href={ICP.href} badge={ICP.badge} />
-                <span aria-hidden='true' className='text-muted-foreground/30'>·</span>
+                <span aria-hidden='true' className='text-muted-foreground-faint'>·</span>
                 <FilingLink no={PSB.no} href={PSB.href} badge={PSB.badge} />
               </div>
               <ProjectAttribution currentYear={currentYear} inline />

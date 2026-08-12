@@ -52,6 +52,14 @@ For commercial licensing, please contact support@quantumnous.com
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  /* Two quieter steps below --muted-foreground. These exist because the
+   * `text-muted-foreground/NN` alpha idiom is not theme-symmetric: fading a
+   * gray toward a near-black canvas loses contrast slowly, but fading the
+   * same gray toward white collapses it. `/50` reads at 3.1:1 on the dark
+   * canvas and 2.2:1 on white. Each step below is tuned per theme instead,
+   * so the hierarchy survives the light/dark swap. */
+  --color-muted-foreground-soft: var(--muted-foreground-soft);
+  --color-muted-foreground-faint: var(--muted-foreground-faint);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
@@ -111,14 +119,20 @@ For commercial licensing, please contact support@quantumnous.com
   --secondary: oklch(0.95 0 0);
   --secondary-foreground: oklch(0.145 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.49 0 0);
+  --muted-foreground: oklch(0.49 0 0); /* 6.3:1 on --background */
+  --muted-foreground-soft: oklch(0.547 0 0); /* 4.9:1 — AA floor for body/meta */
+  --muted-foreground-faint: oklch(0.645 0 0); /* 3.3:1 — decorative only */
   --accent: oklch(0.95 0 0);
   --accent-foreground: oklch(0.145 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
   --success: oklch(0.596 0.145 163.225);
   --success-foreground: oklch(0.985 0 0);
-  --warning: oklch(0.681 0.162 75.834);
+  /* Dropped from L 0.681 → 0.64: the old amber sat at 2.94:1 on white, just
+   * under the 3:1 large-text floor, and the home hero sets its headline in
+   * it. Hue and chroma are untouched, so it is the same accent, one step
+   * deeper. Still 5.8:1 against --warning-foreground when used as a fill. */
+  --warning: oklch(0.64 0.162 75.834); /* 3.4:1 on --background */
   --warning-foreground: oklch(0.145 0 0);
   --info: oklch(0.588 0.158 241.966);
   --info-foreground: oklch(0.985 0 0);
@@ -183,7 +197,9 @@ For commercial licensing, please contact support@quantumnous.com
   --secondary: oklch(0.335 0 0);
   --secondary-foreground: oklch(0.965 0 0);
   --muted: oklch(0.305 0 0);
-  --muted-foreground: oklch(0.78 0 0);
+  --muted-foreground: oklch(0.78 0 0); /* 8.3:1 on --background */
+  --muted-foreground-soft: oklch(0.642 0 0); /* 5.0:1 — AA floor for body/meta */
+  --muted-foreground-faint: oklch(0.54 0 0); /* 3.3:1 — decorative only */
   --accent: oklch(0.365 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);

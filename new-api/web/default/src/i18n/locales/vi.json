@@ -4925,6 +4925,7 @@
     "Free to start, no card needed": "Free to start, no card needed",
     "terminal": "terminal",
     "One endpoint. The OpenAI request shape you already know.": "One endpoint. The OpenAI request shape you already know.",
+    "We guarantee it: every model on this platform is a genuine, manufacturer-mapped model — never faked, downgraded, or swapped.": "We guarantee it: every model on this platform is a genuine, manufacturer-mapped model — never faked, downgraded, or swapped.",
     "Your work agent.": "一个随时随地",
     "Open one, ship today.": "开箱即用的工作空间。",
     "One workspace for sellers, writers, designers and everyone who ships.": "面向电商、创作者与设计师——按需选配你的工作助手。",
@@ -4989,6 +4990,9 @@
     "Upgrade to STARTER": "Nâng cấp lên STARTER",
     "Multiple workspaces in parallel, full specs for heavy workloads": "Nhiều không gian làm việc song song, cấu hình đầy đủ cho tác vụ nặng",
     "Upgrade to PRO": "Nâng cấp lên PRO",
-    "HermesAgent is an open-source AI Agent. Please fully evaluate its security and stability before use and strictly follow the license agreement to ensure system and data safety.": "HermesAgent là tác nhân AI mã nguồn mở. Vui lòng đánh giá đầy đủ tính bảo mật và ổn định trước khi sử dụng và tuân thủ nghiêm ngặt thỏa thuận cấp phép để đảm bảo an toàn hệ thống và dữ liệu."
+    "HermesAgent is an open-source AI Agent. Please fully evaluate its security and stability before use and strictly follow the license agreement to ensure system and data safety.": "HermesAgent là tác nhân AI mã nguồn mở. Vui lòng đánh giá đầy đủ tính bảo mật và ổn định trước khi sử dụng và tuân thủ nghiêm ngặt thỏa thuận cấp phép để đảm bảo an toàn hệ thống và dữ liệu.",
+    "No setup required,": "无需复杂配置，",
+    "a digital coworker you carry with you.": "随身携带的数字员工",
+    "No payment limits.": "无付费限制"
   }
 }

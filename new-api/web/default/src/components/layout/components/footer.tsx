@@ -130,7 +130,7 @@ export function LegalLinks(props: { leadingSeparator?: boolean }) {
 export function ProjectAttribution(props: { currentYear: number; inline?: boolean }) {
   const { t } = useTranslation()
   const content = (
-    <span className='text-muted-foreground/45'>
+    <span className='text-muted-foreground-soft'>
       <a
         href={LICHENG_REPO}
         target='_blank'
@@ -140,7 +140,7 @@ export function ProjectAttribution(props: { currentYear: number; inline?: boolea
         {LICHENG_BRAND}
       </a>{' '}
       &copy; {props.currentYear} {LICHENG_ORG}
-      <span className='text-muted-foreground/30 mx-2' aria-hidden='true'>
+      <span className='text-muted-foreground-faint mx-2' aria-hidden='true'>
         |
       </span>
       {t('footer.attribution.basedOnPrefix')}{' '}
@@ -159,7 +159,7 @@ export function ProjectAttribution(props: { currentYear: number; inline?: boolea
     return content
   }
   return (
-    <div className='text-muted-foreground/45 text-center text-xs sm:text-right'>
+    <div className='text-muted-foreground-soft text-center text-xs sm:text-right'>
       {content}
     </div>
   )

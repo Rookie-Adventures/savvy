@@ -82,8 +82,13 @@ export async function highlightCode(
 
   return codeToHtml(code, {
     lang: language,
+    // one-light → github-light: one-light's string green lands at 3.2:1 on a
+    // white pre, and its keyword/operator blues at ~4.1:1, so a light-theme
+    // code block was the least readable text on the page. github-light keeps
+    // the same neutral-background look with a much deeper token palette.
+    // one-dark-pro is unchanged — the dark side was already fine.
     themes: {
-      light: 'one-light',
+      light: 'github-light',
       dark: 'one-dark-pro',
     },
     transformers,

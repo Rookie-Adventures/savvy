@@ -1,0 +1,48 @@
+# design-model/pages/home.yaml — brand register (home / landing)
+extends: MASTER
+
+meta:
+  register: brand
+  persona: editorial-restrained        # closest style-personas.md fit: Public Sans body + opt-in Lora
+                                        # serif display, near-zero color, CSS-only substrate
+  design_read_as_built: "SaaS console home · editorial-quiet, not cinematic-tech · SPECTACLE≈2-3"
+
+dials:
+  soul: 5              # a clear-enough vibe (serif hero + grain), not an unmistakable one
+  spectacle: 2          # CSS-only grain + vignette + fade-up keyframes; no Canvas/Three/GSAP
+  density: 5
+
+type:
+  hero_h1: "clamp(2.5rem,6vw,4.75rem) font-medium leading-[1.02] tracking-[-0.035em], font-family: var(--font-serif)"
+  file: src/features/home/components/sections/hero.tsx:65-68
+
+substrate:
+  grain:
+    present: true
+    detail: "inline SVG feTurbulence, type='fractalNoise' baseFrequency=0.75 numOctaves=4, opacity .03 (.04 dark)"
+    file: src/features/home/components/sections/hero.tsx:42
+  vignette:
+    present: true
+    detail: "radial-gradient overlay, dark mode only"
+    file: src/features/home/components/sections/hero.tsx:45-52
+  motion: "CSS @keyframes fade-up on scroll entrance (landing-animate-fade-up), no JS engine"
+  file: src/styles/index.css:401-410,450-452
+
+hero_engine:
+  type: none            # no Canvas/Three.js/GSAP — CSS-only per substrate above
+  reduced_motion: not_verified   # document did not confirm a prefers-reduced-motion branch; check before next redesign
+
+structure:
+  sections: [hero, stats, product-intro, features, local-vs-cloud, trust-model-stability, how-it-works, cta, trust-block]
+  count: 9
+  file: src/features/home/index.tsx:62-73
+  # DRIFT vs project memory (project-home-finesse-redesign.md, 2026-08-04): memory says
+  # "8 section + dual footer(C案)". Real code now has 9 sections and the SECOND footer
+  # was explicitly removed — trust-block.tsx:26-38 and footer.tsx:79-84,126-130 both
+  # carry comments stating the dual-footer bug was fixed. Memory is stale on both counts;
+  # recommend updating project-home-finesse-redesign.md to match.
+
+color:
+  accent_in_use: "text-warning token (~#d08700 light / ~#fe9a00 dark) — the hero's one hot-accent word"
+  file: src/features/home/components/sections/hero.tsx:71
+  note: "borrowed from the semantic warning token, not a dedicated brand accent — see MASTER.yaml drift note"

@@ -1,0 +1,32 @@
+# design-model/pages/dashboard.yaml — product register (dashboard / admin)
+extends: MASTER
+
+meta:
+  register: product
+  job: read              # a dashboard you read, not a workflow you operate — product-ui.md applies unchanged
+
+dials:
+  soul: 3
+  spectacle: 1
+  density: 7
+
+structure:
+  shell: sidebar             # <Sidebar> via src/components/ui/sidebar.tsx, wired in app-sidebar.tsx:23,50
+  file: src/features/dashboard/index.tsx
+
+cards:
+  generic_card:
+    style: "rounded-xl, ring-1 ring-foreground/10 (ring, not border)"
+    file: src/components/ui/card.tsx:32
+  panel_wrapper:
+    style: "rounded-2xl border bg-card shadow-xs"
+    file: src/features/dashboard/components/ui/panel-wrapper.tsx:69-70
+  drift: "two different card treatments (ring-based vs border-based, rounded-xl vs rounded-2xl) coexist — not a locked single card system. Flag for a future audit/redesign, not fixed here."
+
+color:
+  stat_card_tones: "hardcoded Tailwind stock colors rose-500 / teal-500 for sparkline gradients, plus text-warning/text-primary/text-muted-foreground for line tones"
+  file: src/features/dashboard/components/ui/stat-card.tsx:53-63
+  drift: "ad hoc palette layered on top of brand tokens rather than derived from a chosen product-palettes.md accent — dashboard currently has no locked accent of its own (see product-palettes.md if this gets revisited)."
+
+hero_engine:
+  type: none    # product register correctly has no hero engine — this is not drift, it's correct per finesse §4

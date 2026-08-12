@@ -16,11 +16,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+export { ApiTerminal } from './sections/api-terminal'
+export { ChatPreview } from './sections/chat-preview'
 export { CTA } from './sections/cta'
 export { Features } from './sections/features'
 export { Hero } from './sections/hero'
 export { HowItWorks } from './sections/how-it-works'
 export { LocalVsCloud } from './sections/local-vs-cloud'
+export { ModelProviders } from './sections/model-providers'
 export { ProductIntro } from './sections/product-intro'
 export { Stats } from './sections/stats'
 export { TrustBlock } from './sections/trust-block'

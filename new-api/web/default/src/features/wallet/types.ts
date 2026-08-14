@@ -40,6 +40,7 @@ export type PaymentResponse = ApiResponse<Record<string, unknown>> & {
 }
 export type StripePaymentResponse = ApiResponse<{ pay_link: string }>
 export type AlipayPaymentResponse = ApiResponse<{ pay_link: string }>
+export type AlipayQRPaymentResponse = ApiResponse<{ code_url: string }>
 export type WechatPaymentResponse = ApiResponse<{ code_url: string }>
 export type AffiliateCodeResponse = ApiResponse<string>
 export type AffiliateTransferResponse = ApiResponse

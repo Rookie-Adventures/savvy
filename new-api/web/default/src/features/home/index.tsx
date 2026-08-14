@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/auth-store'
 import { Markdown } from '@/components/ui/markdown'
 import { PublicLayout } from '@/components/layout'
-import { CTA, Features, Hero, HowItWorks, LocalVsCloud, ProductIntro, Stats, TrustBlock, TrustModelStability } from './components'
+import { ApiTerminal, ChatPreview, Hero, ModelProviders, TrustBlock } from './components'
 import { useHomePageContent } from './hooks'
 
 export function Home() {
@@ -61,14 +61,15 @@ export function Home() {
 
   return (
     <PublicLayout showMainContainer={false}>
+      {/* ponytail: Stats/ProductIntro/Features/LocalVsCloud/TrustModelStability/
+        HowItWorks/CTA pulled per user request (2026-08-11) — all their copy
+        was called out as unwanted. Components still exist under
+        ./components/sections if this content comes back with new copy;
+        not deleted, just unmounted. */}
       <Hero isAuthenticated={isAuthenticated} />
-      <Stats />
-      <ProductIntro />
-      <Features />
-      <LocalVsCloud />
-      <TrustModelStability />
-      <HowItWorks />
-      <CTA isAuthenticated={isAuthenticated} />
+      <ModelProviders />
+      <ChatPreview isAuthenticated={isAuthenticated} />
+      <ApiTerminal />
       <TrustBlock />
     </PublicLayout>
   )

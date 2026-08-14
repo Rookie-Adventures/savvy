@@ -42,12 +42,12 @@ export function LocalVsCloud(_props: LocalVsCloudProps) {
       cloud: t('Forty-plus models already wired in. Bring your own key only if you want.'),
     },
     {
-      local: t('Run it on your own machine — leave it on, pay the power, keep it alive.'),
+      local: t('Run it on your own machine: leave it on, pay the power, keep it alive.'),
       cloud: t('We host it. Close the tab, it sleeps free for two hours; reopen, resume.'),
     },
     {
       local: t('It is a command-line agent. You get a terminal, not an interface.'),
-      cloud: t('You get the agent — plus a full graphical UI to drive it.'),
+      cloud: t('You get the agent, plus a full graphical UI to drive it.'),
     },
   ]
 

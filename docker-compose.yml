@@ -92,7 +92,9 @@ services:
       - SAVVY_HMAC_SECRET=${SAVVY_HMAC_SECRET:-dev-hmac-secret-change-me}
       - SAVVY_MOCK_MODE=false
       - SAVVY_WORKSPACE_NETWORK=savvy_savvy-net
-      - SAVVY_PUBLIC_HOST=localhost
+      # 从根 .env 读; 需带协议前缀(http://localhost 走 token.py if 分支,
+      # 避免被强制套 https:// 触发浏览器 ERR_SSL_PROTOCOL_ERROR)。prod=https://scheng.net
+      - SAVVY_PUBLIC_HOST=${SAVVY_PUBLIC_HOST:-http://localhost}
       - SAVVY_WORKSPACE_PORT_START=41000
       - SAVVY_WORKSPACE_PORT_END=41099
       - SAVVY_DEBUG=true

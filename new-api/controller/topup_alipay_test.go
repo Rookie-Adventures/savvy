@@ -31,3 +31,25 @@ func TestRequestAlipayPayRejectsUnconfigured(t *testing.T) {
 		t.Fatalf("expected nil-client guard message, got %s", w.Body.String())
 	}
 }
+
+func TestIsMobileClient(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	cases := []struct {
+		ua   string
+		want bool
+	}{
+		{"Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", true},
+		{"Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36", true},
+		{"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36", false},
+		{"", false},
+	}
+	for _, tc := range cases {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodPost, "/api/user/alipay/pay", nil)
+		c.Request.Header.Set("User-Agent", tc.ua)
+		if got := isMobileClient(c); got != tc.want {
+			t.Errorf("isMobileClient(ua=%q) = %v, want %v", tc.ua, got, tc.want)
+		}
+	}
+}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -56,12 +58,43 @@ func GetAlipayClient() *alipay.Client {
 	return alipayClient
 }
 
+// isMobileClient 按 UA 关键词判移动端,决定网站支付走 WAP 还是 PC 收银台。
+// ponytail: 不引设备检测库,四个关键词覆盖主流移动 UA;iPadOS 默认桌面 UA 走 PC 分支无碍。
+func isMobileClient(c *gin.Context) bool {
+	ua := c.Request.UserAgent()
+	return strings.Contains(ua, "Mobile") || strings.Contains(ua, "Android") ||
+		strings.Contains(ua, "iPhone") || strings.Contains(ua, "iPad")
+}
+
+// alipayWebPayURL 网站支付统一下单:移动端用 TradeWapPay(QUICK_WAP_WAY,唤起支付宝 App),
+// PC 保持 TradePagePay(FAST_INSTANT_TRADE_PAY)。两条链路共用同一回调与返跳。
+func alipayWebPayURL(cli *alipay.Client, subject, tradeNo, totalAmount, notifyURL, returnURL string, wap bool) (*url.URL, error) {
+	if wap {
+		var p = alipay.TradeWapPay{}
+		p.NotifyURL = notifyURL
+		p.ReturnURL = returnURL
+		p.Subject = subject
+		p.OutTradeNo = tradeNo
+		p.TotalAmount = totalAmount
+		p.ProductCode = "QUICK_WAP_WAY"
+		return cli.TradeWapPay(p)
+	}
+	var p = alipay.TradePagePay{}
+	p.NotifyURL = notifyURL
+	p.ReturnURL = returnURL
+	p.Subject = subject
+	p.OutTradeNo = tradeNo
+	p.TotalAmount = totalAmount
+	p.ProductCode = "FAST_INSTANT_TRADE_PAY"
+	return cli.TradePagePay(p)
+}
+
 type SubscriptionAlipayPayRequest struct {
 	PlanId        int    `json:"plan_id"`
 	PaymentMethod string `json:"payment_method"`
 }
 
-// SubscriptionRequestAlipay creates a subscription order and returns an Alipay PC page-pay URL.
+// SubscriptionRequestAlipay creates a subscription order and returns an Alipay web-pay URL (WAP on mobile, PC page-pay otherwise).
 func SubscriptionRequestAlipay(c *gin.Context) {
 	if !requirePaymentCompliance(c) {
 		return
@@ -119,20 +152,88 @@ func SubscriptionRequestAlipay(c *gin.Context) {
 	}
 	callbackBase := service.GetCallbackAddress()
 	notifyURL := callbackBase + "/api/subscription/alipay/notify"
-	var p = alipay.TradePagePay{}
-	p.NotifyURL = notifyURL
-	p.ReturnURL = paymentReturnPath("/console/topup")
-	p.Subject = fmt.Sprintf("SUB:%s", plan.Title)
-	p.OutTradeNo = tradeNo
-	p.TotalAmount = fmt.Sprintf("%.2f", plan.PriceAmount)
-	p.ProductCode = "FAST_INSTANT_TRADE_PAY"
-	url, err := cli.TradePagePay(p)
+	url, err := alipayWebPayURL(cli, "栗橙科技-"+plan.Title+"套餐", tradeNo,
+		fmt.Sprintf("%.2f", plan.PriceAmount), notifyURL, paymentReturnPath("/console/topup"), isMobileClient(c))
 	if err != nil {
 		_ = model.ExpireSubscriptionOrder(tradeNo, model.PaymentProviderAlipay)
 		common.ApiErrorMsg(c, "拉起支付失败")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"pay_link": url.String()}})
+}
+
+// SubscriptionRequestAlipayQR creates a subscription order and returns an Alipay order-code (precreate) QR string.
+// 与 SubscriptionRequestAlipay 同配置同回调,仅下单接口不同;回调复用 /api/subscription/alipay/notify。
+func SubscriptionRequestAlipayQR(c *gin.Context) {
+	if !requirePaymentCompliance(c) {
+		return
+	}
+	var req SubscriptionAlipayPayRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.PlanId <= 0 {
+		common.ApiErrorMsg(c, "参数错误")
+		return
+	}
+	plan, err := model.GetSubscriptionPlanById(req.PlanId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if !plan.Enabled {
+		common.ApiErrorMsg(c, "套餐未启用")
+		return
+	}
+	if plan.PriceAmount < 0.01 {
+		common.ApiErrorMsg(c, "套餐金额过低")
+		return
+	}
+	userId := c.GetInt("id")
+	if plan.MaxPurchasePerUser > 0 {
+		count, err := model.CountUserSubscriptionsByPlan(userId, plan.Id)
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		if count >= int64(plan.MaxPurchasePerUser) {
+			common.ApiErrorMsg(c, "已达到该套餐购买上限")
+			return
+		}
+	}
+	cli := GetAlipayClient()
+	if cli == nil {
+		common.ApiErrorMsg(c, "当前管理员未配置支付信息")
+		return
+	}
+	tradeNo := fmt.Sprintf("SUBQRUSR%dNO%s%d", userId, common.GetRandomString(6), time.Now().Unix())
+	order := &model.SubscriptionOrder{
+		UserId:          userId,
+		PlanId:          plan.Id,
+		Money:           plan.PriceAmount,
+		TradeNo:         tradeNo,
+		PaymentMethod:   model.PaymentMethodAlipay,
+		PaymentProvider: model.PaymentProviderAlipay,
+		CreateTime:      time.Now().Unix(),
+		Status:          common.TopUpStatusPending,
+	}
+	if err := order.Insert(); err != nil {
+		common.ApiErrorMsg(c, "创建订单失败")
+		return
+	}
+	callbackBase := service.GetCallbackAddress()
+	var p = alipay.TradePreCreate{}
+	p.NotifyURL = callbackBase + "/api/subscription/alipay/notify"
+	// ponytail: subject 用"栗橙科技-套餐名+套餐"(如"栗橙科技-STARTER套餐"),统一"主体-商品"账单口径。
+	p.Subject = "栗橙科技-" + plan.Title + "套餐"
+	p.OutTradeNo = tradeNo
+	p.TotalAmount = fmt.Sprintf("%.2f", plan.PriceAmount)
+	// 订单码支付与当面付同产品码,二维码 2 小时有效(支付宝侧默认)。
+	p.ProductCode = "FACE_TO_FACE_PAYMENT"
+	rsp, err := cli.TradePreCreate(context.Background(), p)
+	if err != nil || rsp == nil || rsp.Code != alipay.CodeSuccess || rsp.QRCode == "" {
+		_ = model.ExpireSubscriptionOrder(tradeNo, model.PaymentProviderAlipay)
+		common.ApiErrorMsg(c, "拉起支付失败")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"code_url": rsp.QRCode}})
 }
 
 // SubscriptionAlipayNotify handles Alipay async notify (must return literal "success").

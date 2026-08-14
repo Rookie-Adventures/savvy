@@ -66,3 +66,22 @@ class TestAccessToken:
         # Tamper with the token
         tampered = token[:-5] + "XXXXX"
         assert verify_access_token(tampered) is None
+
+    def test_renew_access_token_returns_valid_new_token(self):
+        from app.token import renew_access_token
+        token = renew_access_token("inst-123", "user-456", expires_in_minutes=30)
+        assert isinstance(token, str)
+        assert "." in token  # payload.signature shape
+        payload = verify_access_token(token)
+        assert payload is not None
+        assert payload["instance_id"] == "inst-123"
+        assert payload["user_id"] == "user-456"
+        # renewed token must have a fresh exp in the future
+        import time
+        assert payload["exp"] > int(time.time())
+
+    def test_renewed_token_independent_of_old(self):
+        from app.token import renew_access_token
+        old = generate_access_token("inst-1", "u-1", expires_in_minutes=1)
+        new = renew_access_token("inst-1", "u-1", expires_in_minutes=30)
+        assert old["token"] != new  # different exp → different payload → different token

@@ -24,6 +24,7 @@ import { AnimateInView } from '@/components/animate-in-view'
 
 interface CTAProps {
   className?: string
+  isAuthenticated?: boolean
 }
 
 export function CTA(props: CTAProps) {

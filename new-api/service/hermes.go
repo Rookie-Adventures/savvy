@@ -39,6 +39,9 @@ type HermesInstance struct {
 	MemLimit       string `json:"mem_limit"`
 	PidsLimit      int    `json:"pids_limit"`
 	StorageQuotaGB int    `json:"storage_quota_gb"`
+	// Whether a provider key snapshot exists at the manager. Frontend uses this
+	// to decide if the start dialog must require a key (e.g. after revoke).
+	HasProviderKey bool `json:"has_provider_key"`
 }
 
 // HermesAccessToken mirrors manager's AccessTokenResponse.
@@ -86,7 +89,8 @@ func getHermesManagerClient() *http.Client {
 }
 
 // getHermesManagerLongClient returns a client with extended timeout for
-// slow operations like container start (Docker create + s6-overlay init).
+// slow operations like container start (Docker create + s6-overlay init
+// chain can take a few seconds; longer on resource-limited plans).
 func getHermesManagerLongClient() *http.Client {
 	return &http.Client{Timeout: 60 * time.Second}
 }

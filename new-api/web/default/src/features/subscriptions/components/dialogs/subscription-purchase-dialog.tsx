@@ -24,8 +24,10 @@ import { toast } from 'sonner'
 import { DEFAULT_CURRENCY_CONFIG } from '@/stores/system-config-store'
 import { formatQuota } from '@/lib/format'
 import { useSystemConfig } from '@/hooks/use-system-config'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -44,6 +46,7 @@ import {
   paySubscriptionWaffoPancake,
   paySubscriptionBalance,
   paySubscriptionAlipay,
+  paySubscriptionAlipayQR,
   paySubscriptionWechat,
 } from '../../api'
 import { formatDuration, formatResetPeriod } from '../../lib'
@@ -74,9 +77,16 @@ interface Props {
 export function SubscriptionPurchaseDialog(props: Props) {
   const { t } = useTranslation()
   const { currency } = useSystemConfig()
+  const isMobile = useIsMobile()
   const [paying, setPaying] = useState(false)
   const [selectedEpayMethod, setSelectedEpayMethod] = useState('')
-  const [wechatCodeUrl, setWechatCodeUrl] = useState<string | null>(null)
+  // 扫码支付弹窗(微信扫码/支付宝订单码共用): provider 决定弹窗文案
+  const [qrPay, setQrPay] = useState<{
+    url: string
+    provider: 'wechat' | 'alipay'
+  } | null>(null)
+  // 支付前同意闸门:每次打开弹窗重置,不跨单持久化
+  const [agreed, setAgreed] = useState(false)
 
   useEffect(() => {
     if (props.open && props.epayMethods && props.epayMethods.length > 0) {
@@ -84,6 +94,7 @@ export function SubscriptionPurchaseDialog(props: Props) {
     } else if (!props.open) {
       setSelectedEpayMethod('')
     }
+    if (props.open) setAgreed(false)
   }, [props.open, props.epayMethods])
 
   const plan = props.plan?.plan
@@ -216,7 +227,28 @@ export function SubscriptionPurchaseDialog(props: Props) {
     try {
       const res = await paySubscriptionWechat({ plan_id: plan.id })
       if (res.message === 'success' && res.data?.code_url) {
-        setWechatCodeUrl(res.data.code_url)
+        setQrPay({ url: res.data.code_url, provider: 'wechat' })
+      } else {
+        toast.error(
+          res.message && res.message !== 'success'
+            ? res.message
+            : t('Payment request failed')
+        )
+      }
+    } catch {
+      toast.error(t('Payment request failed'))
+    } finally {
+      setPaying(false)
+    }
+  }
+
+  // Alipay order-code: render precreate qr_code as QR in-dialog overlay.
+  const handlePayAlipayQR = async () => {
+    setPaying(true)
+    try {
+      const res = await paySubscriptionAlipayQR({ plan_id: plan.id })
+      if (res.message === 'success' && res.data?.code_url) {
+        setQrPay({ url: res.data.code_url, provider: 'alipay' })
       } else {
         toast.error(
           res.message && res.message !== 'success'
@@ -406,12 +438,45 @@ export function SubscriptionPurchaseDialog(props: Props) {
             variant='outline'
             onClick={handlePayBalance}
             disabled={
-              paying || limitReached || !allowBalancePay || insufficientBalance
+              paying ||
+              limitReached ||
+              !allowBalancePay ||
+              insufficientBalance ||
+              !agreed
             }
           >
             {t('Pay with Balance')}
           </Button>
         </div>
+
+        {/* 支付前同意闸门:未勾选则所有支付方式不可点 */}
+        <label className='flex cursor-pointer items-start gap-2'>
+          <Checkbox
+            checked={agreed}
+            onCheckedChange={(v) => setAgreed(v === true)}
+            className='mt-0.5'
+          />
+          <span className='text-muted-foreground text-xs leading-relaxed'>
+            {t('I have read and agree to the')}{' '}
+            <a
+              href='/user-agreement'
+              target='_blank'
+              rel='noopener noreferrer'
+              className='text-primary underline-offset-4 hover:underline'
+            >
+              {t('User Agreement')}
+            </a>{' '}
+            {t('and')}{' '}
+            <a
+              href='/privacy-policy'
+              target='_blank'
+              rel='noopener noreferrer'
+              className='text-primary underline-offset-4 hover:underline'
+            >
+              {t('Privacy Policy')}
+            </a>
+          </span>
+        </label>
 
         {hasAnyPayment && (
           <div className='space-y-3'>
@@ -425,7 +490,7 @@ export function SubscriptionPurchaseDialog(props: Props) {
                     variant='outline'
                     className='flex-1'
                     onClick={handlePayStripe}
-                    disabled={paying || limitReached}
+                    disabled={paying || limitReached || !agreed}
                   >
                     Stripe
                   </Button>
@@ -435,7 +500,7 @@ export function SubscriptionPurchaseDialog(props: Props) {
                     variant='outline'
                     className='flex-1'
                     onClick={handlePayCreem}
-                    disabled={paying || limitReached}
+                    disabled={paying || limitReached || !agreed}
                   >
                     Creem
                   </Button>
@@ -445,7 +510,7 @@ export function SubscriptionPurchaseDialog(props: Props) {
                     variant='outline'
                     className='flex-1'
                     onClick={handlePayWaffoPancake}
-                    disabled={paying || limitReached}
+                    disabled={paying || limitReached || !agreed}
                   >
                     Waffo Pancake
                   </Button>
@@ -459,9 +524,20 @@ export function SubscriptionPurchaseDialog(props: Props) {
                     variant='outline'
                     className='flex-1'
                     onClick={handlePayAlipay}
-                    disabled={paying || limitReached}
+                    disabled={paying || limitReached || !agreed}
                   >
                     {t('Alipay')}
+                  </Button>
+                )}
+                {hasAlipay && !isMobile && (
+                  // 订单码(扫码)入口:仅桌面展示,手机端无法扫自己屏幕
+                  <Button
+                    variant='outline'
+                    className='flex-1'
+                    onClick={handlePayAlipayQR}
+                    disabled={paying || limitReached || !agreed}
+                  >
+                    {t('Alipay (Scan)')}
                   </Button>
                 )}
                 {hasWechat && (
@@ -469,7 +545,7 @@ export function SubscriptionPurchaseDialog(props: Props) {
                     variant='outline'
                     className='flex-1'
                     onClick={handlePayWechat}
-                    disabled={paying || limitReached}
+                    disabled={paying || limitReached || !agreed}
                   >
                     {t('WeChat Pay')}
                   </Button>
@@ -504,7 +580,7 @@ export function SubscriptionPurchaseDialog(props: Props) {
                 </Select>
                 <Button
                   onClick={handlePayEpay}
-                  disabled={paying || !selectedEpayMethod || limitReached}
+                  disabled={paying || !selectedEpayMethod || limitReached || !agreed}
                 >
                   {t('Pay')}
                 </Button>
@@ -515,24 +591,27 @@ export function SubscriptionPurchaseDialog(props: Props) {
       </div>
 
       <Dialog
-        open={!!wechatCodeUrl}
+        open={!!qrPay}
         onOpenChange={(open) => {
-          if (!open) setWechatCodeUrl(null)
+          if (!open) setQrPay(null)
         }}
-        title={t('WeChat Pay')}
+        title={qrPay?.provider === 'alipay' ? t('Alipay') : t('WeChat Pay')}
         contentClassName='max-sm:w-[calc(100vw-1.5rem)] sm:max-w-sm'
         bodyClassName='flex flex-col items-center gap-4 py-6'
       >
         <p className='text-muted-foreground text-sm'>
-          {t('Scan with WeChat to pay')}
+          {qrPay?.provider === 'alipay'
+            ? t('Scan with Alipay to pay')
+            : t('Scan with WeChat to pay')}
         </p>
-        {wechatCodeUrl && (
-          <QRCodeSVG value={wechatCodeUrl} size={200} includeMargin />
-        )}
+        {qrPay && <QRCodeSVG value={qrPay.url} size={200} includeMargin />}
+        <p className='text-muted-foreground/60 text-xs'>
+          {t('1 Scan · 2 Confirm payment · 3 Check result')}
+        </p>
         <Button
           variant='outline'
           onClick={() => {
-            setWechatCodeUrl(null)
+            setQrPay(null)
             void props.onPurchaseSuccess?.()
             props.onOpenChange(false)
           }}

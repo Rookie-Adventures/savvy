@@ -53,7 +53,7 @@ export function ProductIntro(_props: ProductIntroProps) {
         >
           <p className='text-base leading-relaxed [text-wrap:pretty]'>
             {t(
-              'No servers, no environments, no keys to fetch yourself. Whatever you ship — a product listing, a script, a design pass — open the agent and the work begins. Models already wired in, files where you left them.'
+              'No servers, no environments, no keys to fetch yourself. Whatever you ship, a product listing, a script, a design pass: open the agent and the work begins. Models already wired in, files where you left them.'
             )}
           </p>
           <p className='mt-4 text-sm leading-relaxed [text-wrap:pretty]'>

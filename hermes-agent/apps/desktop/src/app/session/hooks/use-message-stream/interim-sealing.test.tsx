@@ -4,9 +4,9 @@ import { useEffect, useRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ClientSessionState } from '@/app/types'
-import { createClientSessionState } from '@/lib/chat-runtime'
 import { chatMessageText } from '@/lib/chat-messages'
-import { $todosBySession, clearSessionTodos, setSessionTodos } from '@/store/todos'
+import { createClientSessionState } from '@/lib/chat-runtime'
+import { clearSessionTodos } from '@/store/todos'
 import type { RpcEvent } from '@/types/hermes'
 
 import { useMessageStream } from './index'
@@ -55,10 +55,13 @@ async function mountStream() {
 
 const start = () => act(() => handleEvent!({ payload: {}, session_id: SID, type: 'message.start' }))
 const delta = (text: string) => act(() => handleEvent!({ payload: { text }, session_id: SID, type: 'message.delta' }))
+
 const interim = (text: string) =>
   act(() => handleEvent!({ payload: { text, already_streamed: true }, session_id: SID, type: 'message.interim' }))
+
 const complete = (text: string) =>
   act(() => handleEvent!({ payload: { text }, session_id: SID, type: 'message.complete' }))
+
 const completePreviewed = (text: string) =>
   act(() => handleEvent!({ payload: { text, response_previewed: true }, session_id: SID, type: 'message.complete' }))
 
@@ -69,11 +72,13 @@ function getState(): ClientSessionState {
 function assistantText(): string {
   const state = getState()
   const last = [...state.messages].reverse().find(m => m.role === 'assistant' && !m.hidden)
+
   return last ? chatMessageText(last) : ''
 }
 
 function assistantMessages(): string[] {
   const state = getState()
+
   return state.messages
     .filter(m => m.role === 'assistant' && !m.hidden)
     .map(m => chatMessageText(m))
@@ -104,6 +109,36 @@ describe('useMessageStream interim text sealing', () => {
     const texts = assistantMessages()
     expect(texts).toContain('awaaaaa clean!! tsc zero errors')
     expect(texts).toContain('All checks passed.')
+  })
+
+  it('marks sealed interim bubbles interim and leaves the final reply unmarked', async () => {
+    await mountStream()
+    await start()
+
+    await delta('Let me check the files.')
+    await interim('Let me check the files.')
+    await delta('Now the second pass.')
+    await interim('Now the second pass.')
+    await complete('All done.')
+
+    const assistants = getState().messages.filter(m => m.role === 'assistant' && !m.hidden)
+    const byText = (text: string) => assistants.find(m => chatMessageText(m) === text)
+
+    expect(byText('Let me check the files.')?.interim).toBe(true)
+    expect(byText('Now the second pass.')?.interim).toBe(true)
+    expect(byText('All done.')?.interim).toBeFalsy()
+  })
+
+  it('clears the interim mark when a previewed final settles onto the interim bubble', async () => {
+    await mountStream()
+    await start()
+
+    await interim('same reply')
+    await completePreviewed('same reply')
+
+    const assistants = getState().messages.filter(m => m.role === 'assistant' && !m.hidden)
+    expect(assistants).toHaveLength(1)
+    expect(assistants[0].interim).toBeFalsy()
   })
 
   it('dedupes interim text when the final response includes it', async () => {
@@ -151,18 +186,51 @@ describe('useMessageStream interim text sealing', () => {
     expect(getState().interimBoundaryPending).toBe(true)
   })
 
-  it('keeps an identical final completion distinct from an interim reply without response_previewed', async () => {
+  it('settles an identical final onto a non-previewed interim (tool-call turn) instead of duplicating (#63679)', async () => {
     await mountStream()
     await start()
 
+    // A plain tool-call turn: the streamed text is sealed as an interim at the
+    // tool boundary (no response_previewed — that flag is only for verify-on-
+    // stop). The final completion is the SAME turn's reply. It must settle onto
+    // the interim, not append a second bubble — the DB has one row. This is the
+    // "renders twice" bug: partial streamed copy + clean final copy side by side.
     await interim('same reply')
     await complete('same reply')
 
-    // Without response_previewed, the interim and terminal replies are
-    // distinct messages — the gateway didn't signal that the final reuses
-    // the provisional candidate.
     const texts = assistantMessages()
-    expect(texts.filter(t => t === 'same reply')).toHaveLength(2)
+    expect(texts.filter(t => t === 'same reply')).toHaveLength(1)
+  })
+
+  it('settles a prefix-extended final onto a non-previewed interim (streamed + trailing delta)', async () => {
+    await mountStream()
+    await start()
+
+    // The stream dropped/settled early at the tool boundary; the final adds a
+    // trailing delta. Same turn — one bubble with the full final text.
+    await delta('partial')
+    await interim('partial')
+    await complete('partial answer continued')
+
+    const texts = assistantMessages()
+    expect(texts.filter(t => t.includes('partial'))).toHaveLength(1)
+    expect(texts[0]).toBe('partial answer continued')
+  })
+
+  it('appends a genuinely different final as its own bubble (two real assistant segments)', async () => {
+    await mountStream()
+    await start()
+
+    // The interim is one segment (pre-tool commentary); the final is different
+    // content, not a continuation of it. These are two real messages and must
+    // both render — the fix must not over-collapse distinct replies.
+    await interim('let me check the files')
+    await complete('the answer is 42')
+
+    const texts = assistantMessages()
+    expect(texts).toContain('let me check the files')
+    expect(texts).toContain('the answer is 42')
+    expect(texts).toHaveLength(2)
   })
 
   it('settles an identical final completion onto the interim when response_previewed', async () => {
@@ -222,7 +290,9 @@ describe('useMessageStream interim text sealing', () => {
     // Empty text
     await act(() => handleEvent!({ payload: { text: '' }, session_id: SID, type: 'message.interim' } as RpcEvent))
     // Undefined text
-    await act(() => handleEvent!({ payload: { text: undefined }, session_id: SID, type: 'message.interim' } as RpcEvent))
+    await act(() =>
+      handleEvent!({ payload: { text: undefined }, session_id: SID, type: 'message.interim' } as RpcEvent)
+    )
 
     // Turn continues without finalizing or throwing
     expect(getState().busy).toBe(true)

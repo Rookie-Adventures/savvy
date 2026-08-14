@@ -26,7 +26,7 @@ type AlipayTopUpRequest struct {
 	Amount int64 `json:"amount"`
 }
 
-// RequestAlipayPay creates a wallet top-up order and returns an Alipay PC page-pay URL.
+// RequestAlipayPay creates a wallet top-up order and returns an Alipay web-pay URL (WAP on mobile, PC page-pay otherwise).
 func RequestAlipayPay(c *gin.Context) {
 	var req AlipayTopUpRequest
 	if err := c.ShouldBindJSON(&req); err != nil || req.Amount <= 0 {
@@ -66,20 +66,72 @@ func RequestAlipayPay(c *gin.Context) {
 		return
 	}
 	callbackBase := service.GetCallbackAddress()
-	var p = alipay.TradePagePay{}
-	p.NotifyURL = callbackBase + "/api/user/alipay/notify"
-	p.ReturnURL = paymentReturnPath("/console/log")
-	p.Subject = "充值"
-	p.OutTradeNo = tradeNo
-	p.TotalAmount = strconv.FormatFloat(payMoney, 'f', 2, 64)
-	p.ProductCode = "FAST_INSTANT_TRADE_PAY"
-	url, err := cli.TradePagePay(p)
+	url, err := alipayWebPayURL(cli, "栗橙科技-服务包", tradeNo,
+		strconv.FormatFloat(payMoney, 'f', 2, 64),
+		callbackBase+"/api/user/alipay/notify", paymentReturnPath("/console/log"), isMobileClient(c))
 	if err != nil {
 		_ = model.UpdatePendingTopUpStatus(tradeNo, model.PaymentProviderAlipay, common.TopUpStatusFailed)
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"pay_link": url.String()}})
+}
+
+// RequestAlipayQRPay creates a wallet top-up order and returns an Alipay order-code (precreate) QR string.
+// 与 RequestAlipayPay 同配置同回调,仅下单接口不同;回调复用 /api/user/alipay/notify。
+func RequestAlipayQRPay(c *gin.Context) {
+	var req AlipayTopUpRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.Amount <= 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
+		return
+	}
+	cli := GetAlipayClient()
+	if cli == nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "当前管理员未配置支付信息"})
+		return
+	}
+	userId := c.GetInt("id")
+	group, err := model.GetUserGroup(userId, true)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
+		return
+	}
+	payMoney := getPayMoney(req.Amount, group)
+	if payMoney < 0.01 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
+		return
+	}
+	tradeNo := fmt.Sprintf("ALIPAYQRUSR%dNO%s%d", userId, common.GetRandomString(6), time.Now().Unix())
+	topUp := &model.TopUp{
+		UserId:          userId,
+		Amount:          req.Amount,
+		Money:           payMoney,
+		TradeNo:         tradeNo,
+		PaymentMethod:   model.PaymentMethodAlipay,
+		PaymentProvider: model.PaymentProviderAlipay,
+		CreateTime:      time.Now().Unix(),
+		Status:          common.TopUpStatusPending,
+	}
+	if err := topUp.Insert(); err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "创建订单失败"})
+		return
+	}
+	callbackBase := service.GetCallbackAddress()
+	var p = alipay.TradePreCreate{}
+	p.NotifyURL = callbackBase + "/api/user/alipay/notify"
+	// ponytail: subject 不用"充值"——预付/储值类目词在新商户风控模型里敏感,改与实际经营一致的服务口径。
+	p.Subject = "栗橙科技-服务包"
+	p.OutTradeNo = tradeNo
+	p.TotalAmount = strconv.FormatFloat(payMoney, 'f', 2, 64)
+	// 订单码支付与当面付同产品码,二维码 2 小时有效(支付宝侧默认)。
+	p.ProductCode = "FACE_TO_FACE_PAYMENT"
+	rsp, err := cli.TradePreCreate(context.Background(), p)
+	if err != nil || rsp == nil || rsp.Code != alipay.CodeSuccess || rsp.QRCode == "" {
+		_ = model.UpdatePendingTopUpStatus(tradeNo, model.PaymentProviderAlipay, common.TopUpStatusFailed)
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"code_url": rsp.QRCode}})
 }
 
 // AlipayNotify handles Alipay async notify for wallet top-up. Returns literal "success" on completion.

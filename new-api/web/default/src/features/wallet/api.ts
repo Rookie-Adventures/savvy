@@ -29,6 +29,7 @@ import type {
   PaymentResponse,
   StripePaymentResponse,
   AlipayPaymentResponse,
+  AlipayQRPaymentResponse,
   WechatPaymentResponse,
   AffiliateCodeResponse,
   AffiliateTransferResponse,
@@ -129,6 +130,18 @@ export async function requestAlipayPayment(
   request: PaymentRequest
 ): Promise<AlipayPaymentResponse> {
   const res = await api.post('/api/user/alipay/pay', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
+}
+
+/**
+ * Request Alipay order-code (QR scan) topup payment (returns code_url for QR render)
+ */
+export async function requestAlipayQRPayment(
+  request: PaymentRequest
+): Promise<AlipayQRPaymentResponse> {
+  const res = await api.post('/api/user/alipay/qr/pay', request, {
     skipBusinessError: true,
   } as Record<string, unknown>)
   return res.data

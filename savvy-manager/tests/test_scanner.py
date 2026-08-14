@@ -117,6 +117,15 @@ class _FakeContainer:
     def __init__(self, name, image_id): self.name = name; self.image = _FakeImage(image_id)
 
 
+class _FakeContainerImageGone:
+    """容器还在，但它绑的旧镜像被 prune 掉了 → c.image 抛 ImageNotFound。"""
+    def __init__(self, name): self.name = name
+
+    @property
+    def image(self):
+        raise RuntimeError("404 Client Error: image not found")
+
+
 def test_check_image_staleness_flags_outdated(monkeypatch, db_session):
     """容器绑旧 image id != tag 当前 id → 标 needs_rebuild(等 sleep 闭合重建)。"""
     from app import scanner, docker_manager
@@ -153,3 +162,17 @@ def test_check_image_staleness_quiet_when_no_daemon(monkeypatch, db_session):
     scanner.check_image_staleness(db_session)  # no raise, no flag
     db_session.refresh(inst)
     assert inst.needs_rebuild is False
+
+
+def test_check_image_staleness_flags_missing_image(monkeypatch, db_session):
+    """容器绑的旧镜像被 prune 掉(c.image 抛异常) → 不崩整个扫描,标 stale。"""
+    from app import scanner, docker_manager
+
+    class _FakeClient:
+        images = type("I", (), {"get": staticmethod(lambda tag: _FakeImage("NEWID"))})
+        containers = type("C", (), {"list": staticmethod(lambda **kw: [_FakeContainerImageGone("c1")])})
+    monkeypatch.setattr(docker_manager, "_client_or_none", lambda: _FakeClient())
+    inst = _mk_instance(db_session, status=InstanceStatus.SLEEPING, needs_rebuild=False)
+    scanner.check_image_staleness(db_session)  # no raise
+    db_session.refresh(inst)
+    assert inst.needs_rebuild is True

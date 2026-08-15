@@ -219,3 +219,16 @@ POST /v1/chat/completions {model: "hermes-agent"} → 503
 **真实根因未定位**，下次从这里接着挖：为什么 mock 的 `fs.existsSync`/`readFileSync` 没让 `readClaudeDefaultModel()` 拿到 config。
 
 优先级低：**纯测试问题，不影响任何线上行为**。但套件长期红着会有"狼来了"效应 —— 本次就差点误导（第一反应以为是自己改坏的，专门 stash 验证才排除），值得排期修掉。
+
+### 【待办·下个对话】`savvy-manager/tests/test_docker_manager.py` 2 条陈旧失败 + 跑一次 22 分钟
+
+全量跑该文件：`2 failed, 11 passed in 1344.66s`。**同样不是本次引入** —— 本次对 `docker_manager.py` 只改了 `stop_container` 一行（`NotFound` 分支 `return False`→`return True`），没碰下面两个被测函数：
+
+- `test_start_container_old_start_with_mock_client`
+- `test_update_container_resources_calls_docker_update`
+
+第一条根因已看出来：它断言 `assert 8 in [c.args[0] for c in fake_sleep.call_args_list if c.args]`，期望 `start_container` 里有个 **8 秒固定缓冲**；而当前实现只有 `sleep(1)`（状态轮询）/ `sleep(1)`（就绪后缓冲）/ `sleep(2)`（端口轮询），**没有 `sleep(8)`**。属于实现改过、测试没跟的陈旧断言。第二条未查。
+
+**另一个更值钱的问题：这个文件跑一次要 22 分钟。** 大概率是 `time.sleep` 被 mock 成 no-op、但 `time.monotonic()` 没 mock，导致 120 秒 deadline 的 while 循环空转到真实超时（`start_container` 的端口就绪轮询）。这会拖垮任何人跑 manager 测试的意愿，建议连同上面两条一起修：把 `time.monotonic` 也 mock 掉，或给轮询超时做成可注入参数。
+
+（本次提交时只跑了该文件 `-k stop_container` 的 3 条 + `test_scanner` + `test_instances_router` 共 26 条，全过；全文件是后台跑完才拿到结果。）

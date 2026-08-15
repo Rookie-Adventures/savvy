@@ -432,7 +432,15 @@ const config = defineConfig(({ mode, command }) => {
   }
 
   return {
-    base: '/workspace/',
+    // 每个 workspace 实例独占一个端口的根路径（deploy/nginx.conf 端口池 41000-41099，
+    // location / 原样转发无前缀 strip），所以不需要子路径前缀。
+    // 曾设 '/workspace/'（commit 4158f5d7，端口池之前的共享域名架构遗留）：SSR 会把所有
+    // 入口 307 到 /workspace/*，而 TanStack Start 启动时无条件执行
+    // router.update({basepath: process.env.TSS_ROUTER_BASEPATH})，tanstackStart() 没配
+    // basepath → undefined → router basepath 退回 '/' → 拿 '/' 规则匹配 /workspace/* →
+    // 全部落 splat 路由 $.tsx → 首屏 404 蒙版。base 与 router basepath 必须同源，
+    // 这里统一回根路径，两侧自然对齐。
+    base: '/',
     test: {
       exclude: [
         '**/node_modules/**',

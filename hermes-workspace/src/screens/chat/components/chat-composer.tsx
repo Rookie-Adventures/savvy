@@ -56,6 +56,7 @@ import { cn } from '@/lib/utils'
 import { useVoiceInput } from '@/hooks/use-voice-input'
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder'
 import { toast } from '@/components/ui/toast'
+import { setDefaultModelInConfig } from '@/lib/set-default-model'
 import {
   SEARCH_MODAL_EVENTS,
   emitSearchModalEvent,
@@ -1111,6 +1112,7 @@ function ChatComposerComponent({
     s.getModel(sessionKey),
   )
   const setPersistedSessionModel = useSessionModelStore((s) => s.setModel)
+  const clearPersistedSessionModel = useSessionModelStore((s) => s.clearModel)
 
   // Model switching is now per-session via the persistent store above.
   // Previously this issued a PATCH /api/hermes-proxy/api/config to write to
@@ -1138,15 +1140,28 @@ function ChatComposerComponent({
       }
       setModelNotice(null)
       const resolved = getResolvedModelKey(model, provider)
-      // Per-session, browser-local persistence. No global config write —
-      // picking a model here only affects this chat. The actual model is
-      // passed on each request via the chat-completion `model` field.
+      // 先乐观更新标签，下面写 config 是异步的，失败再回滚。
       if (normalizedSessionKey) {
         setPersistedSessionModel(normalizedSessionKey, resolved)
       }
       setIsModelMenuOpen(false)
+
+      // 真正生效的只有 config.yaml（原因见 setDefaultModelInConfig 的注释）。
+      void (async () => {
+        try {
+          await setDefaultModelInConfig(model)
+        } catch (err) {
+          if (normalizedSessionKey) {
+            clearPersistedSessionModel(normalizedSessionKey)
+          }
+          toast(
+            `Failed to switch model: ${err instanceof Error ? err.message : String(err)}`,
+          )
+        }
+      })()
     },
     [
+      clearPersistedSessionModel,
       gatewayModeQuery.data,
       sessionKey,
       setPersistedSessionModel,

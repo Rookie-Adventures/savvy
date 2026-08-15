@@ -107,6 +107,7 @@ import { ErrorToastContainer, showErrorToast } from '@/components/error-toast'
 // ContextMeter removed — ContextBar (PR #32) replaces it
 import { persistRecoveryMessage, useChatStore } from '@/stores/chat-store'
 import { useSessionModelStore } from '@/stores/session-model-store'
+import { setDefaultModelInConfig } from '@/lib/set-default-model'
 import { useResearchCard } from '@/hooks/use-research-card'
 // MOBILE_TAB_BAR_OFFSET removed — tab bar always hidden in chat
 import { useTapDebug } from '@/hooks/use-tap-debug'
@@ -1596,28 +1597,20 @@ export function ChatScreen({
     }
   }, [activeIsRealtimeStreaming, waitingForResponse, streamFinish])
 
-  const handleSwitchModel = useCallback(async () => {
+  const handleSwitchModel = useCallback(() => {
     if (!suggestion) return
-
-    try {
-      const res = await fetch('/api/model-switch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionKey: resolvedSessionKey || 'main',
-          model: suggestion.suggestedModel,
-        }),
-      })
-
-      if (res.ok) {
-        dismiss()
-        // Optionally show success toast or update UI
-      }
-    } catch (err) {
+    // 原来这里 POST /api/model-switch —— 这个路由从来没实现过，请求会落到 SPA
+    // catch-all 拿到 200 text/html，res.ok 为真 → 照常 dismiss，界面像是切了、
+    // 实际一个字节都没改。改走和 composer 同一条真正生效的路径：写 config.yaml。
+    const model = suggestion.suggestedModel
+    useSessionModelStore.getState().setModel(resolvedSessionKey || 'main', model)
+    dismiss()
+    void setDefaultModelInConfig(model).catch((err: unknown) => {
+      useSessionModelStore.getState().clearModel(resolvedSessionKey || 'main')
       setError(
         `Failed to switch model. ${err instanceof Error ? err.message : String(err)}`,
       )
-    }
+    })
   }, [suggestion, resolvedSessionKey, dismiss])
 
   // Sync chat activity to global store for sidebar orchestrator avatar
@@ -2045,7 +2038,14 @@ export function ChatScreen({
         thinking:
           currentThinkingLevel === 'off' ? undefined : currentThinkingLevel,
         fastMode,
-        model: currentModel || undefined,
+        // 每会话模型优先：composer 选模型只写 session-model-store（不落 config.yaml，
+        // 免得改一个会话把全局默认和其他渠道一起改了）。这里必须按同一个 sessionKey
+        // 读回来，否则界面显示已切换、请求里发的还是 session-status 返回的旧模型。
+        // 用 getState() 而不是 hook：这里在发送回调里，且要拿本次发送的 sessionKey。
+        model:
+          useSessionModelStore.getState().getModel(sessionKey) ||
+          currentModel ||
+          undefined,
         idempotencyKey: optimisticClientId || crypto.randomUUID(),
       }).catch((err: unknown) => {
         const messageText = err instanceof Error ? err.message : String(err)

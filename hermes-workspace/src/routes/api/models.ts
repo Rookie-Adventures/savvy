@@ -457,6 +457,20 @@ export const Route = createFileRoute('/api/models')({
           if (liveProxyModels.length > 0) {
             models = mergeModelEntries(models, liveProxyModels)
             source = `${source}+live-proxy`
+
+            // 推理走外部网关时，能用的只有网关目录里有的模型。上面 agent 自带
+            // 目录那一路（fetchClaudeModels）会塞进 `hermes-agent` 这类网关不认
+            // 的条目：选中它写 config 会"成功"，要等发消息才 503
+            // model_not_found —— 又是一次"显示切了实际用不了"。所以拿到活目录后
+            // 按 id 收敛一次，把根本选不了的选项从源头去掉。
+            //
+            // 只在活目录非空时收敛：拉取失败就退回原行为，免得把选择器清空。
+            // 当前默认模型无条件保留，否则界面连自己正在用的模型都显示不出来。
+            // 收敛放在本地发现（ollama 等）合并之前，那些是直连本机、不经网关的，
+            // 不能被网关目录裁掉。
+            const availableIds = new Set(liveProxyModels.map((m) => m.id))
+            if (defaultModel) availableIds.add(defaultModel.id)
+            models = models.filter((m) => availableIds.has(m.id))
           }
 
           // Merge auto-discovered local models (Ollama, Atomic Chat, etc.)

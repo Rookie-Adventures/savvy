@@ -211,7 +211,7 @@ async def start_instance(
             inst.provider_config_enc, inst.provider_config_alg or "fernet"
         )
 
-    docker_result = start_container(inst.container_name)
+    docker_result = await asyncio.to_thread(start_container, inst.container_name)
     if not docker_result:
         # Fallback: container might not exist yet. Try creating it first.
         from ..docker_manager import create_container
@@ -231,7 +231,7 @@ async def start_instance(
             )
 
         # Try starting again
-        if not start_container(inst.container_name):
+        if not await asyncio.to_thread(start_container, inst.container_name):
             raise HTTPException(
                 status_code=500,
                 detail="Failed to start container after creation",

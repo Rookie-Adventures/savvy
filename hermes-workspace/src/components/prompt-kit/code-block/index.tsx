@@ -55,32 +55,38 @@ export function CodeBlock({
 
   useEffect(() => {
     let active = true
-    getHighlighter()
-      .then(async (highlighter) => {
-        let lang = resolveLanguage(normalizedLanguage)
-        if (lang !== 'text') {
-          try {
-            await highlighter.loadLanguage(lang as BundledLanguage)
-          } catch {
-            lang = 'text'
+    // ponytail: debounce so streaming tokens don't re-tokenize the whole
+    // block on every chunk; upgrade to incremental highlighting if 150ms
+    // still feels laggy on very long blocks.
+    const timer = window.setTimeout(() => {
+      getHighlighter()
+        .then(async (highlighter) => {
+          let lang = resolveLanguage(normalizedLanguage)
+          if (lang !== 'text') {
+            try {
+              await highlighter.loadLanguage(lang as BundledLanguage)
+            } catch {
+              lang = 'text'
+            }
           }
-        }
-        const highlighted = highlighter.codeToHtml(content, {
-          lang: lang as BundledLanguage,
-          theme: themeName,
+          const highlighted = highlighter.codeToHtml(content, {
+            lang: lang as BundledLanguage,
+            theme: themeName,
+          })
+          if (active) {
+            setResolvedLanguage(lang)
+            setHtml(highlighted)
+            const theme = highlighter.getTheme(themeName)
+            setHeaderBg(theme.bg)
+          }
         })
-        if (active) {
-          setResolvedLanguage(lang)
-          setHtml(highlighted)
-          const theme = highlighter.getTheme(themeName)
-          setHeaderBg(theme.bg)
-        }
-      })
-      .catch(() => {
-        if (active) setHtml(null)
-      })
+        .catch(() => {
+          if (active) setHtml(null)
+        })
+    }, 150)
     return () => {
       active = false
+      window.clearTimeout(timer)
     }
   }, [content, normalizedLanguage, themeName])
 

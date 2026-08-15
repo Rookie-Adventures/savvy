@@ -31,22 +31,15 @@ async def validate_workspace_token(request: Request, db: Session = Depends(get_d
     # 3. X-Original-URI 的 query token (绕 nginx 变量作用域问题)
     # 4. Referer 的 query token (首屏并发子资源：favicon/sw.js 无 cookie 时兜底)
     token = request.headers.get("X-Token", "")
-    token_src = "arg" if token else "none"
 
     if not token:
         token = request.headers.get("X-Token-Cookie", "")
-        token_src = "cookie" if token else "none"
 
     if not token:
         token = _token_from_uri_query(request.headers.get("X-Original-URI", ""))
-        token_src = "uri" if token else "none"
 
     if not token:
         token = _token_from_uri_query(request.headers.get("Referer", ""))
-        token_src = "referer" if token else "none"
-
-    # TEMP DIAG: 记 token 来源与长度，抓首启 401。定位完删。
-    print(f"[DIAG_VALIDATE] src={token_src} len={len(token)}", flush=True)
 
     if not token:
         raise HTTPException(status_code=401, detail="Missing token")

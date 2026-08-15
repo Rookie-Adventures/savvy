@@ -195,3 +195,52 @@ def test_plan_resource_constants_present():
     assert PLAN_RESOURCES["STARTER"] == {"cpu_quota": 200000, "mem_limit": "2g", "pids_limit": 512}
     assert PLAN_STORAGE_GB == {"FREE": 5, "STARTER": 20, "PRO": 50}
 
+
+
+def test_stop_container_missing_container_counts_as_success():
+    """容器不存在要算 stop 成功,否则 DB 状态永久卡 RUNNING。
+
+    三个调用方(scanner 到期睡/sleep/stop)都是 `if not stop_container(...)`
+    才改状态。容器被 manager 之外的途径删掉后若这里返回 False,status 永远
+    落不回 SLEEPING,用户点启动会被 "Cannot start from status RUNNING" 拒掉,
+    只能人工改库。
+    """
+    from docker.errors import NotFound
+
+    fake_client = MagicMock()
+    fake_client.containers.get.side_effect = NotFound("no such container")
+
+    with patch("app.docker_manager._client_or_none", return_value=fake_client), \
+         patch("app.docker_manager.settings") as fake_settings:
+        fake_settings.mock_mode = False
+        from app.docker_manager import stop_container
+        assert stop_container("ws-gone") is True
+
+
+def test_stop_container_api_error_still_fails():
+    """真停不掉(APIError)必须返回 False —— 故障信号不能跟着一起吞掉。"""
+    from docker.errors import APIError
+
+    fake_container = MagicMock()
+    fake_container.stop.side_effect = APIError("daemon boom")
+    fake_client = MagicMock()
+    fake_client.containers.get.return_value = fake_container
+
+    with patch("app.docker_manager._client_or_none", return_value=fake_client), \
+         patch("app.docker_manager.settings") as fake_settings:
+        fake_settings.mock_mode = False
+        from app.docker_manager import stop_container
+        assert stop_container("ws-stuck") is False
+
+
+def test_stop_container_normal_stop_succeeds():
+    fake_container = MagicMock()
+    fake_client = MagicMock()
+    fake_client.containers.get.return_value = fake_container
+
+    with patch("app.docker_manager._client_or_none", return_value=fake_client), \
+         patch("app.docker_manager.settings") as fake_settings:
+        fake_settings.mock_mode = False
+        from app.docker_manager import stop_container
+        assert stop_container("ws-ok") is True
+    fake_container.stop.assert_called_once()

@@ -144,6 +144,20 @@ def create_container(
 
 
 def stop_container(container_name: str) -> bool:
+    """确保容器不在运行。返回 False 只表示「真的停不掉」。
+
+    容器不存在(NotFound)算成功：stop 的目标就是让它别跑，容器都没了自然达成。
+    这里必须返回 True —— 三个调用方(scanner 免费到期睡、sleep、stop)清一色
+    `if not stop_container(...)` 才改状态。容器被 manager 之外的途径干掉后
+    (手动 rm/prune、宿主重启无 restart policy、OOM 清理)，若这里返回 False:
+      - scanner 每分钟扫到、每次 stop 失败、status 永远停在 RUNNING，爬不出来
+      - 用户点开工作区，nginx 看 RUNNING 放行却 proxy 到不存在的容器 → 502
+      - 用户想自救点启动，又被 "Cannot start from status RUNNING" 拒掉
+    结果就是用户被锁死、只能人工改库。判 NotFound 为成功后，状态会落回
+    SLEEPING，用户点一下启动就能走 create 重建。
+
+    APIError 仍返回 False：那是真停不掉，故障信号不能吞掉。
+    """
     if settings.mock_mode:
         return True
 
@@ -156,7 +170,7 @@ def stop_container(container_name: str) -> bool:
         container.stop()
         return True
     except NotFound:
-        return False
+        return True
     except APIError:
         return False
 

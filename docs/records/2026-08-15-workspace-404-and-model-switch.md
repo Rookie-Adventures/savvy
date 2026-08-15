@@ -153,6 +153,47 @@ POST /v1/chat/completions {model: "hermes-agent"} → 503
 
 ---
 
+---
+
+## 顺手修的 2：容器被外部删掉后实例状态永久卡 RUNNING
+
+重建容器验证时撞出来的。`docker rm` 掉容器后想走 manager 唤醒，被拒：`Cannot start from status RUNNING`。
+
+### 根因
+
+`stop_container` 在容器不存在（`NotFound`）时返回 `False`，而**三个调用方清一色**是"返回 True 才改状态"：
+
+| 调用方 | 位置 | 卡住的后果 |
+|---|---|---|
+| scanner 免费到期睡 | `scanner.py:33` | 每分钟扫到、每次 stop 失败、status 永远 RUNNING |
+| sleep | `instances.py:380` | 500 "Failed to stop container"，状态不变 |
+| stop | `instances.py:395` | 同上 |
+
+所以容器只要以 manager 之外的途径消失（手动 `rm`/`prune`、宿主重启无 restart policy、OOM 清理），DB 就永久停在 RUNNING，自己爬不出来 —— 6 个定时任务里**没有任何一个**负责把 DB 状态和 docker 实际状态对账。
+
+对用户的后果：
+
+1. 点开工作区 → nginx 看 status=RUNNING 放行 → proxy 到不存在的容器 → 502（nginx 的友好等待页只兜 403，兜不住 502）。*（这一环是代码推断，未实测）*
+2. 想自救点启动 → `Cannot start from status RUNNING` 拒掉。***（这一环实测撞到）***
+
+**用户没有任何自救路径，只能人工改库。**
+
+### 改动
+
+`docker_manager.py` `stop_container`：`NotFound` 从返回 `False` 改成返回 `True`。
+
+语义上站得住：这个函数的契约是"确保容器不在运行"，容器都没了就是目标已达成，幂等。修在共享函数一处，三个调用方一起好 —— 比在每个调用方各加一个判断都小。
+
+`APIError` **仍然返回 `False`**：那是真停不掉，故障信号不能跟着一起吞掉。这个区分是关键，不能图省事一律返 True。
+
+修完后：容器意外消失 → 状态自动落回 SLEEPING → 用户点一下启动就走 create 重建。
+
+### 验证
+
+`tests/test_docker_manager.py` 追加 3 条，全过：NotFound 算成功、APIError 仍失败、正常 stop 成功。
+
+---
+
 ## 限制与尾巴
 
 - **模型切换现在是全局默认，不是每会话。** `session-model-store` 保留着做乐观 UI 更新，但"每会话不同模型"在当前上游下**做不到**。哪天上游让 `chat/stream` 真的采用 body 里的 model，才能恢复成每会话。
@@ -161,3 +202,20 @@ POST /v1/chat/completions {model: "hermes-agent"} → 503
 - `chat-composer.tsx:352` 那个局部 `switchModel`（PATCH `/api/claude-proxy/api/config`，实测 404）同样是死代码，未清理。
 - 容器里 `docker cp` 会留下旧 hash 的 chunk（cp 不删文件）。正式镜像重建后干净，不影响运行（新 HTML 只引新 hash）。
 - 排查中临时给 `deploy/nginx.conf` 加过 `sub_filter` 注入实验，**已完整还原**，该文件最终无改动。
+
+### 【待办·下个对话】`src/routes/api/__tests__/-models.test.ts` 2 条预先失败
+
+**不是本次改动引入的** —— `git stash` 撤掉 `models.ts` 的改动重跑，照样这 2 条红，已证。文件来自上游 initial commit（`3d9de215fc`），我们从没改过。
+
+失败的两条：
+
+- `reads default model from CLAUDE_HOME config using YAML.parse`
+- `reads nested model object syntax from config using YAML.parse`
+
+现象：`json.models[0]` 是 `undefined`（列表为空），所以取 `.id` 炸掉。
+
+**已排除的猜测**：原以为是 `models.ts:19` 的 `CLAUDE_HOME` 模块级常量在加载时求值、盖不住测试运行时改的 `process.env`。但测试里 `getHandler()` 做了 `vi.resetModules()` + 动态 `import('../models')`，模块会重新求值，**这个猜测不成立**。本机也没设 `HERMES_HOME`/`CLAUDE_HOME`，`.env` 里也没有。
+
+**真实根因未定位**，下次从这里接着挖：为什么 mock 的 `fs.existsSync`/`readFileSync` 没让 `readClaudeDefaultModel()` 拿到 config。
+
+优先级低：**纯测试问题，不影响任何线上行为**。但套件长期红着会有"狼来了"效应 —— 本次就差点误导（第一反应以为是自己改坏的，专门 stash 验证才排除），值得排期修掉。

@@ -12,6 +12,17 @@ export async function setDefaultModelInConfig(modelId: string): Promise<void> {
   if (!model) throw new Error('modelId is empty')
 
   const current = await fetchJson('/api/hermes-config')
+
+  // GET 在 config 能力不可用时返回的是 200 + 降级包（ok:false、activeProvider
+  // 为空串），HTTP 状态骗不出来。不拦住的话下面会 fallback 成 'custom' —— 那是
+  // 猜的，不是读到的。猜错 provider 会让模型脱离 new-api 网关直接把调用打挂，
+  // 所以这里宁可报错也不猜。
+  if ((current as { ok?: boolean })?.ok === false) {
+    const reason =
+      (current as { message?: unknown })?.message ?? 'config capability unavailable'
+    throw new Error(`无法读取当前配置：${String(reason)}`)
+  }
+
   // providerId 沿用 config 现值，不按 UI 分组名改：本部署所有模型都经 new-api
   // 网关代理（provider=custom，base_url 指向 new-api），把 provider 改成
   // deepseek/openai 这类分组名会脱离网关，直接把调用打挂。

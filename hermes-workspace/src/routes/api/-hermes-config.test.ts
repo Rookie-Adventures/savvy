@@ -11,9 +11,18 @@ vi.mock('../../server/auth-middleware', () => ({
   isAuthenticated: () => true,
 }))
 
+// 用可变状态 + 顶层 vi.mock，别用 doMock/doUnmock：doUnmock 是把模块还原成
+// 真实实现（而不是恢复这个顶层 mock），真实 getCapabilities() 返回未探测的
+// 初始值 config:false，会让它后面的用例走降级分支拿到空 providers 而误红。
+const gateway = vi.hoisted(() => ({
+  capabilities: { config: true } as { config: boolean },
+  forceReprobeGateway: vi.fn(),
+}))
+
 vi.mock('../../server/gateway-capabilities', () => ({
   ensureGatewayProbed: vi.fn(),
-  getCapabilities: () => ({ config: true }),
+  forceReprobeGateway: gateway.forceReprobeGateway,
+  getCapabilities: () => gateway.capabilities,
 }))
 
 vi.mock('../../server/local-provider-discovery', () => ({
@@ -35,6 +44,8 @@ beforeEach(() => {
   tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'hermes-config-route-'))
   setEnv('HERMES_HOME', tmpHome)
   setEnv('CLAUDE_HOME', undefined)
+  gateway.capabilities = { config: true }
+  gateway.forceReprobeGateway.mockReset()
   vi.resetModules()
 })
 
@@ -132,10 +143,8 @@ describe('canonical /api/hermes-config route', () => {
   })
 
   it('PATCH returns 503 when the gateway capability is unavailable', async () => {
-    vi.doMock('../../server/gateway-capabilities', () => ({
-      ensureGatewayProbed: vi.fn(),
-      getCapabilities: () => ({ config: false }),
-    }))
+    // 重探之后仍然 false —— 这才是真的不可用，该拒。
+    gateway.capabilities = { config: false }
     const handlers = await loadHandlers('./hermes-config')
     const res = await handlers.PATCH({
       request: new Request('http://localhost/api/hermes-config', {
@@ -144,7 +153,32 @@ describe('canonical /api/hermes-config route', () => {
       }),
     })
     expect(res.status).toBe(503)
-    vi.doUnmock('../../server/gateway-capabilities')
+    expect(gateway.forceReprobeGateway).toHaveBeenCalledTimes(1)
+  })
+
+  // 缓存里的 config=false 可能只是 dashboard 抖了一下留下的陈旧值（探测超时
+  // 仅 3s，失败结果却按 120s 缓存），不该让用户干等两分钟才能切模型。
+  it('PATCH re-probes once before giving up, so a stale false does not block the write', async () => {
+    gateway.capabilities = { config: false }
+    gateway.forceReprobeGateway.mockImplementation(async () => {
+      gateway.capabilities = { config: true }
+    })
+    const handlers = await loadHandlers('./hermes-config')
+    const res = await handlers.PATCH({
+      request: new Request('http://localhost/api/hermes-config', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          action: 'set-default-model',
+          providerId: 'custom',
+          modelId: 'deepseek-v4-flash',
+        }),
+      }),
+    })
+    expect(gateway.forceReprobeGateway).toHaveBeenCalledTimes(1)
+    expect(res.status).toBe(200)
+    expect(fs.readFileSync(path.join(tmpHome, 'config.yaml'), 'utf-8')).toMatch(
+      /deepseek-v4-flash/,
+    )
   })
 })
 

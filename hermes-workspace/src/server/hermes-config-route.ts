@@ -8,6 +8,7 @@ import { createCapabilityUnavailablePayload } from '@/lib/feature-gates'
 import { isAuthenticated } from './auth-middleware'
 import {
   ensureGatewayProbed,
+  forceReprobeGateway,
   getCapabilities,
 } from './gateway-capabilities'
 import { normalizeHermesConfigState } from './hermes-config-migration'
@@ -199,6 +200,14 @@ export async function handleHermesConfigPatch({
   const auth = await authorize(request)
   if (auth !== true) return auth
 
+  // 别拿缓存里的 false 直接拒写。config 能力 = dashboard.available，而
+  // probeDashboard 的超时只有 3 秒；dashboard 抖一下就判 false，又因为
+  // gateway 本身是好的，effectiveProbeTtl 走的是 120s 那档（不是 15s），
+  // 于是这个 false 会卡住写配置整整两分钟 —— 用户切模型就吃 503。
+  // 写配置是低频的用户主动动作，为它多付一次探测远比让人干等两分钟划算。
+  if (!getCapabilities().config) {
+    await forceReprobeGateway()
+  }
   if (!getCapabilities().config) {
     return new Response(
       JSON.stringify(

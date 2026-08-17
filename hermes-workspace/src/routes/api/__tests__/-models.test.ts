@@ -88,12 +88,16 @@ describe('models route', () => {
 
     const configYaml = 'model: jarvis-model\nprovider: nous\n'
     const modelsJson = '[{"model":"x","provider":"y"}]'
+    // 必须用 path.join 拼:被测代码也是 path.join,Windows 上出的是反斜杠,
+    // 硬写 `${envHome}/config.yaml` 永远匹配不上。
+    const configPath = path.join(envHome, 'config.yaml')
+    const modelsPath = path.join(envHome, 'models.json')
     existsSync.mockImplementation((p: string) => {
-      return p === `${envHome}/models.json` || p === `${envHome}/config.yaml`
+      return p === modelsPath || p === configPath
     })
     readFileSync.mockImplementation((p: string) => {
-      if (p === `${envHome}/config.yaml`) return configYaml
-      if (p === `${envHome}/models.json`) return modelsJson
+      if (p === configPath) return configYaml
+      if (p === modelsPath) return modelsJson
       return ''
     })
 
@@ -112,9 +116,10 @@ describe('models route', () => {
     process.env.CLAUDE_HOME = envHome
 
     const configYaml = 'model:\n  default: nest-model\n  provider: anthropic\n'
-    existsSync.mockImplementation((p: string) => p === `${envHome}/config.yaml`)
+    const configPath = path.join(envHome, 'config.yaml')
+    existsSync.mockImplementation((p: string) => p === configPath)
     readFileSync.mockImplementation((p: string) => {
-      if (p === `${envHome}/config.yaml`) return configYaml
+      if (p === configPath) return configYaml
       return ''
     })
 

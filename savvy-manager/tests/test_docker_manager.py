@@ -105,13 +105,16 @@ def test_start_container_old_start_with_mock_client():
 
     fake_container.reload.side_effect = fake_reload
     fake_container.start = MagicMock()
+    # 端口就绪探针一次即命中,否则 120s deadline 会真空转(sleep 被 mock 了,
+    # 但 time.monotonic 没有)。见 test_start_container_port_probe_polls_until_ready。
+    fake_container.exec_run.return_value = MagicMock(exit_code=0)
 
     fake_client = MagicMock()
     fake_client.containers.get.return_value = fake_container
 
     with patch("app.docker_manager._client_or_none", return_value=fake_client), \
          patch("app.docker_manager.settings") as fake_settings, \
-         patch("app.docker_manager.time.sleep") as fake_sleep:  # 不真睡,加快测
+         patch("app.docker_manager.time.sleep"):  # 不真睡,加快测
         fake_settings.mock_mode = False
         from app.docker_manager import start_container
         result = start_container("ws-test")
@@ -120,8 +123,10 @@ def test_start_container_old_start_with_mock_client():
     fake_container.start.assert_called_once()
     # reload 至少调到看见 running
     assert fake_container.reload.call_count >= 2
-    # 8s 固定缓冲被调用
-    assert 8 in [c.args[0] for c in fake_sleep.call_args_list if c.args]
+    # 状态 running 后还要等 workspace 真正 listen :3000 才算起来
+    # (端口 3000 = 0x0BB8, state 0A = LISTEN)
+    probe = fake_container.exec_run.call_args.args[0]
+    assert ":0BB8" in probe[-1] and "/proc/net/tcp" in probe[-1]
 
 
 def test_start_container_timeout_returns_true():
@@ -129,6 +134,7 @@ def test_start_container_timeout_returns_true():
     fake_container = MagicMock()
     fake_container.status = "pending"
     fake_container.start = MagicMock()
+    fake_container.exec_run.return_value = MagicMock(exit_code=0)
 
     fake_client = MagicMock()
     fake_client.containers.get.return_value = fake_container
@@ -142,6 +148,31 @@ def test_start_container_timeout_returns_true():
 
     assert result is True
     assert fake_container.reload.call_count == 5  # 最多 5 次
+
+
+def test_start_container_port_probe_polls_until_ready():
+    # 容器 status 已 running,但 workspace 还没 listen :3000 → 继续轮询,
+    # 直到探针 exit_code=0 才返回。这是 sleep(8) 固定缓冲被替换成的实际行为。
+    fake_container = MagicMock()
+    fake_container.status = "running"
+    fake_container.exec_run.side_effect = [
+        MagicMock(exit_code=1),
+        MagicMock(exit_code=1),
+        MagicMock(exit_code=0),
+    ]
+
+    fake_client = MagicMock()
+    fake_client.containers.get.return_value = fake_container
+
+    with patch("app.docker_manager._client_or_none", return_value=fake_client), \
+         patch("app.docker_manager.settings") as fake_settings, \
+         patch("app.docker_manager.time.sleep"):
+        fake_settings.mock_mode = False
+        from app.docker_manager import start_container
+        result = start_container("ws-test")
+
+    assert result is True
+    assert fake_container.exec_run.call_count == 3
 
 
 def test_start_container_mock_mode_short_circuits():
@@ -168,9 +199,10 @@ def test_update_container_resources_calls_docker_update(monkeypatch):
 
     ok = docker_manager.update_container_resources("c1", 200000, "2g", 512)
     assert ok is True
+    # pids_limit 故意不在里面:docker SDK 的 update() 不支持该 arg,
+    # pids 差异由 needs_rebuild 重建路径闭合(docker_manager.py 有 ponytail 注释)。
     assert captured["args"] == {
-        "cpu_quota": 200000, "mem_limit": "2g",
-        "memswap_limit": "2g", "pids_limit": 512,
+        "cpu_quota": 200000, "mem_limit": "2g", "memswap_limit": "2g",
     }
 
 

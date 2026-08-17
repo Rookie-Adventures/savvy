@@ -14,7 +14,7 @@ Do not position the first release as token resale, cheap API proxying, or model 
 
 - Public brand: Savvy Agent.
 - Product name: Hermes Cloud Workspace.
-- Company: 粟城科技网络工作室.
+- Company: 郑州市管城回族区栗橙网络科技工作室(个体工商户); 对外品牌简称 栗橙科技.
 - Support email: support@scheng.net.
 - ICP: add the final filing text after approval.
 - Do not use Hermes as the main brand name. Hermes only names the Workspace product.

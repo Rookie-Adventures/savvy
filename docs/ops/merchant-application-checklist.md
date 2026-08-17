@@ -6,7 +6,8 @@ Use this before applying for Alipay, WeChat Pay, or an EPay aggregator.
 
 - Brand: Savvy Agent.
 - Product: Hermes Cloud Workspace.
-- Company: 粟城科技网络工作室.
+- Company (工商执照登记全称，申请材料必须逐字照抄): 郑州市管城回族区栗橙网络科技工作室(个体工商户).
+- Company (对外品牌简称): 栗橙科技.
 - Support email: support@scheng.net.
 - First-release product: hosted AI Agent cloud workspace.
 - Do not position the first release as token resale, API resale, model arbitrage, or cheapest model access.
@@ -16,7 +17,7 @@ Use this before applying for Alipay, WeChat Pay, or an EPay aggregator.
 - Home page explains the product clearly.
 - Product page explains Hermes Cloud Workspace, free runtime, sleep, data retention, and paid always-on.
 - Pricing page shows:
-  - Free: 3-hour runtime per start, auto sleep, persistent storage.
+  - Free: 2-hour runtime per start, auto sleep, persistent storage.
   - Starter: 2C2G, 30GB storage, ¥99/month.
   - Pro: 4C8G, 80GB storage, coming soon.
   - Enterprise: custom agent development, private deployment, custom workspace, contact sales.
@@ -39,7 +40,7 @@ Use this before applying for Alipay, WeChat Pay, or an EPay aggregator.
 - Gmail login works.
 - GitHub login works.
 - Logged-in user can open Hermes Workspace console.
-- Free plan behavior is visible: 3-hour runtime, auto sleep, persistent storage.
+- Free plan behavior is visible: 2-hour runtime, auto sleep, persistent storage.
 - Support contact works.
 - Screenshots are ready for application materials.
 

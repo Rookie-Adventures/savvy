@@ -64,7 +64,7 @@ MVP includes:
 
 - Brand: Savvy Agent.
 - Product: Hermes Cloud Workspace.
-- Company: 粟城科技网络工作室.
+- Company: 郑州市管城回族区栗橙网络科技工作室(个体工商户); 对外品牌简称 栗橙科技.
 - Support: support@scheng.net.
 - Authentication: email verification, Gmail login, and GitHub login for MVP. Phone verification is not required for initial launch.
 - Reverse proxy: Nginx.

@@ -11,7 +11,7 @@ trigger: always_on
   - `QuantumNous`(组织/作者身份)
   - `new-api`(项目名)
 - 公开品牌:SaaS叫 **Savvy Agent**;容器产品叫 **Hermes Cloud Workspace**。
-- 公司=**粟城科技网络工作室**;客服邮箱 `support@scheng.net`。
+- 公司工商执照全称=**郑州市管城回族区栗橙网络科技工作室(个体工商户)**(凭证/链证/备案类权威表述唯一准字);对外品牌简称=**栗橙科技**;客服邮箱 `support@scheng.net`。
 
 ## 技术红线
 ### new-api 后端(Go)

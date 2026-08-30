@@ -29,7 +29,7 @@ import {
 import { Message, MessageContent } from '@/components/ai-elements/message'
 import { Loader } from '@/components/ai-elements/loader'
 import { PaymentCard } from './components/payment-card'
-import { extractPayLinks } from './lib/pay-links'
+import { extractPayLinks, stripPayLinks } from './lib/pay-links'
 import { sendAgentMessage } from './api'
 
 type ChatMessage = {
@@ -91,17 +91,26 @@ export function AgentChat() {
         <Conversation className='flex-1'>
           <ConversationContent className='p-0'>
             <div className='mx-auto w-full max-w-3xl px-4 py-6'>
-              {messages.map((m, i) => (
-                <Message key={i} from={m.role} className='group flex-row-reverse'>
-                  <MessageContent>
-                    {m.content}
-                    {m.role === 'assistant' &&
-                      extractPayLinks(m.content).map((link) => (
+              {messages.map((m, i) => {
+                const payLinks =
+                  m.role === 'assistant' ? extractPayLinks(m.content) : []
+                const displayText =
+                  payLinks.length > 0 ? stripPayLinks(m.content) : m.content
+                return (
+                  <Message
+                    key={i}
+                    from={m.role}
+                    className='group flex-row-reverse'
+                  >
+                    <MessageContent>
+                      {displayText}
+                      {payLinks.map((link) => (
                         <PaymentCard key={link} link={link} />
                       ))}
-                  </MessageContent>
-                </Message>
-              ))}
+                    </MessageContent>
+                  </Message>
+                )
+              })}
               {loading && (
                 <Message from='assistant'>
                   <MessageContent>

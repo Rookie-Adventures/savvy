@@ -27,3 +27,19 @@ export function extractPayLinks(text: string): string[] {
     .map((m) => m[0])
     .filter((u) => /alipay/i.test(u))
 }
+
+/**
+ * Strip payment links from text for display (card replaces the raw URL).
+ * 剥掉链接后残留的空行/孤零标点一并收敛,避免气泡里剩一坨空白
+ */
+export function stripPayLinks(text: string): string {
+  const stripped = text.replace(URL_RE, (u) =>
+    /alipay/i.test(u) ? '' : u
+  )
+  return stripped
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .join('\n')
+    .trim()
+}

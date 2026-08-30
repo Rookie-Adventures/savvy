@@ -108,6 +108,11 @@ func InitOptionMap() {
 	common.OptionMap["AlipayAlipayCertSN"] = operation_setting.AlipayAlipayCertSN
 	common.OptionMap["AlipayRootCertSN"] = operation_setting.AlipayRootCertSN
 	common.OptionMap["AlipayNotifyURL"] = operation_setting.AlipayNotifyURL
+
+	// 百炼智能体配置:对齐上方支付宝连续的注册范式,否则 admin 写入后重启即丢。
+	common.OptionMap["AgentBailianHost"] = operation_setting.AgentBailianHost
+	common.OptionMap["AgentBailianKey"] = operation_setting.AgentBailianKey
+	common.OptionMap["AgentBailianAppId"] = operation_setting.AgentBailianAppId
 	// 同上,微信直连配置注册(关闭 Task5 遗留缺口)。
 	common.OptionMap["WechatAppId"] = operation_setting.WechatAppId
 	common.OptionMap["WechatMchID"] = operation_setting.WechatMchID
@@ -510,6 +515,12 @@ func updateOptionMap(key string, value string) (err error) {
 		operation_setting.AlipayRootCertSN = value
 	case "AlipayNotifyURL":
 		operation_setting.AlipayNotifyURL = value
+	case "AgentBailianHost":
+		operation_setting.AgentBailianHost = value
+	case "AgentBailianKey":
+		operation_setting.AgentBailianKey = value
+	case "AgentBailianAppId":
+		operation_setting.AgentBailianAppId = value
 	case "WechatAppId":
 		operation_setting.WechatAppId = value
 	case "WechatMchID":

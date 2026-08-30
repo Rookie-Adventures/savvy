@@ -114,6 +114,8 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/waffo/pay", middleware.CriticalRateLimit(), controller.RequestWaffoPay)
 				selfRoute.POST("/waffo-pancake/amount", controller.RequestWaffoPancakeAmount)
 				selfRoute.POST("/waffo-pancake/pay", middleware.CriticalRateLimit(), controller.RequestWaffoPancakePay)
+				// ponytail: 对话下单智能体转发,对齐 /alipay/pay L105 范式(登录态+关键限流),无回调无订单落库
+				selfRoute.POST("/agent/chat", middleware.CriticalRateLimit(), controller.AgentChat)
 				selfRoute.POST("/aff_transfer", controller.TransferAffQuota)
 				selfRoute.PUT("/setting", controller.UpdateUserSetting)
 

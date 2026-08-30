@@ -88,6 +88,10 @@ export function SidebarModulesSection({
         title: t('Playground'),
         description: t('Experiment with prompts and models in real time.'),
       },
+      agent_chat: {
+        title: t('Agent Assistant'),
+        description: t('Chat with the AI agent to top up or subscribe.'),
+      },
       chat: {
         title: t('Chat'),
         description: t('Access previous conversations and start new ones.'),

@@ -84,38 +84,44 @@ export function AgentChat() {
     }
   }
 
+  // 布局对齐 playground:根容器锁高度,聊天区滚动,输入框固定在滚动区外
   return (
-    <Conversation className='h-full'>
-      <ConversationContent className='p-0'>
-        <div className='mx-auto w-full max-w-3xl px-4 py-4'>
-          {messages.map((m, i) => (
-            <Message key={i} from={m.role} className='group flex-row-reverse'>
-              <MessageContent>
-                {m.content}
-                {m.role === 'assistant' &&
-                  extractPayLinks(m.content).map((link) => (
-                    <PaymentCard key={link} link={link} />
-                  ))}
-              </MessageContent>
-            </Message>
-          ))}
-          {loading && (
-            <Message from='assistant'>
-              <MessageContent>
-                <div className='flex items-center gap-2 py-2'>
-                  <Loader />
-                  <span className='text-sm'>
-                    {t('AI assistant is thinking...')}
-                  </span>
-                </div>
-              </MessageContent>
-            </Message>
-          )}
-        </div>
-      </ConversationContent>
-      <ConversationScrollButton />
+    <div className='relative flex size-full flex-col overflow-hidden'>
+      <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
+        <Conversation className='flex-1'>
+          <ConversationContent className='p-0'>
+            <div className='mx-auto w-full max-w-3xl px-4 py-6'>
+              {messages.map((m, i) => (
+                <Message key={i} from={m.role} className='group flex-row-reverse'>
+                  <MessageContent>
+                    {m.content}
+                    {m.role === 'assistant' &&
+                      extractPayLinks(m.content).map((link) => (
+                        <PaymentCard key={link} link={link} />
+                      ))}
+                  </MessageContent>
+                </Message>
+              ))}
+              {loading && (
+                <Message from='assistant'>
+                  <MessageContent>
+                    <div className='flex items-center gap-2 py-2'>
+                      <Loader />
+                      <span className='text-muted-foreground text-sm'>
+                        {t('AI assistant is thinking...')}
+                      </span>
+                    </div>
+                  </MessageContent>
+                </Message>
+              )}
+            </div>
+          </ConversationContent>
+          <ConversationScrollButton />
+        </Conversation>
+      </div>
+
       <div className='mx-auto w-full max-w-3xl px-4 pb-4'>
-        <div className='flex items-end gap-2'>
+        <div className='bg-background flex items-end gap-2 rounded-xl border p-2 shadow-sm'>
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -128,13 +134,18 @@ export function AgentChat() {
             }}
             placeholder={t('Type a message...')}
             rows={2}
-            className='resize-none'
+            className='max-h-40 min-h-10 flex-1 resize-none border-0 shadow-none focus-visible:ring-0 dark:bg-transparent'
           />
-          <Button onClick={() => void send()} disabled={loading || !input.trim()}>
+          <Button
+            size='icon'
+            className='mb-0.5 shrink-0 rounded-lg'
+            onClick={() => void send()}
+            disabled={loading || !input.trim()}
+          >
             <SendHorizonal className='h-4 w-4' />
           </Button>
         </div>
       </div>
-    </Conversation>
+    </div>
   )
 }

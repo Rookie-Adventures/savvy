@@ -19,7 +19,12 @@ func agentQuotaAmountFromMoney(money float64, group string) int64 {
 	if ratio == 0 {
 		ratio = 1
 	}
-	usd := dMoney.Div(decimal.NewFromFloat(operation_setting.Price)).
+	// Price 被误配为 0 时 decimal.Div 会 panic,与 ratio 同款兜底
+	price := operation_setting.Price
+	if price == 0 {
+		price = 1
+	}
+	usd := dMoney.Div(decimal.NewFromFloat(price)).
 		Div(decimal.NewFromFloat(ratio))
 	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
 		return usd.Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart()

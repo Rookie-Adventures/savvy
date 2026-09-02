@@ -88,6 +88,10 @@ func GetTopUpByTradeNo(tradeNo string) *TopUp {
 }
 
 func GetTopUpByClaimToken(claimToken string) *TopUp {
+	// 非 agent 单的 claim_token 全为空串,空入参不拦截会误命中普通充值单(资金路径)
+	if claimToken == "" {
+		return nil
+	}
 	var topUp *TopUp
 	var err error
 	err = DB.Where("claim_token = ?", claimToken).First(&topUp).Error

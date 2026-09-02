@@ -26,6 +26,11 @@ func TestAgentQuotaAmountFromMoney(t *testing.T) {
 	if got := agentQuotaAmountFromMoney(38.5, "default"); got != 6 {
 		t.Fatalf("want 6, got %d", got)
 	}
+	// Price 误配为 0 → 兜底成 1,不 panic
+	operation_setting.Price = 0
+	if got := agentQuotaAmountFromMoney(70, "default"); got != 70 {
+		t.Fatalf("want 70 with price guard, got %d", got)
+	}
 }
 
 func TestNewClaimToken(t *testing.T) {

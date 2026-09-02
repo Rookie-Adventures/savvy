@@ -57,17 +57,24 @@ export function PaymentCard({ link }: PaymentCardProps) {
     const order = parseAgentOrder(link)
     if (!order) return
     let cancelled = false
-    void registerAgentTopUp(order.outTradeNo).then((res) => {
-      if (cancelled) return
-      if (res.message === 'success' && res.data?.claim_token) {
-        saveClaim({
-          outTradeNo: order.outTradeNo,
-          token: res.data.claim_token,
-          done: false,
-        })
-        setClaim({ outTradeNo: order.outTradeNo, token: res.data.claim_token })
-      }
-    })
+    void registerAgentTopUp(order.outTradeNo)
+      .then((res) => {
+        if (cancelled) return
+        if (res.message === 'success' && res.data?.claim_token) {
+          saveClaim({
+            outTradeNo: order.outTradeNo,
+            token: res.data.claim_token,
+            done: false,
+          })
+          setClaim({
+            outTradeNo: order.outTradeNo,
+            token: res.data.claim_token,
+          })
+        }
+      })
+      .catch(() => {
+        // 静默: HTTP 层失败也不弹错,认领走 widget 恢复逻辑或客服兜底
+      })
     return () => {
       cancelled = true
     }

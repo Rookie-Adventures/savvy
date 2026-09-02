@@ -55,21 +55,25 @@ export function ClaimCard({ outTradeNo, token }: ClaimCardProps) {
     let stopped = false
     let timer: ReturnType<typeof setTimeout> | undefined
     const tick = async () => {
-      const res = await getAgentTopUpStatus(token)
-      if (stopped) return
-      if (res.message === 'success' && res.data) {
-        if (res.data.claimed) {
-          markClaimDone(outTradeNo)
-          setPhase('credited')
-          return
+      try {
+        const res = await getAgentTopUpStatus(token)
+        if (stopped) return
+        if (res.message === 'success' && res.data) {
+          if (res.data.claimed) {
+            markClaimDone(outTradeNo)
+            setPhase('credited')
+            return
+          }
+          if (res.data.status === 'success') {
+            setPhase('paid')
+            if (useAuthStore.getState().auth.user) await tryClaim()
+            return
+          }
         }
-        if (res.data.status === 'success') {
-          setPhase('paid')
-          if (useAuthStore.getState().auth.user) await tryClaim()
-          return
-        }
+      } catch {
+        // 网络抖动静默,继续轮询——钱已付时断链会让卡片永久卡在 waiting
       }
-      timer = setTimeout(() => void tick(), POLL_INTERVAL_MS)
+      if (!stopped) timer = setTimeout(() => void tick(), POLL_INTERVAL_MS)
     }
     void tick()
     return () => {

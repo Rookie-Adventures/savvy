@@ -43,3 +43,34 @@ func TestNewClaimToken(t *testing.T) {
 		t.Fatal("tokens must be random")
 	}
 }
+
+func TestGuestChatLimiter(t *testing.T) {
+	oldH, oldD := operation_setting.AgentGuestChatHourLimit, operation_setting.AgentGuestChatDayLimit
+	t.Cleanup(func() {
+		operation_setting.AgentGuestChatHourLimit, operation_setting.AgentGuestChatDayLimit = oldH, oldD
+		resetGuestChatLimiter()
+	})
+	resetGuestChatLimiter()
+	operation_setting.AgentGuestChatHourLimit = 2
+	operation_setting.AgentGuestChatDayLimit = 3
+
+	if !allowGuestChat("1.2.3.4") {
+		t.Fatal("first should pass")
+	}
+	if !allowGuestChat("1.2.3.4") {
+		t.Fatal("second should pass")
+	}
+	if allowGuestChat("1.2.3.4") {
+		t.Fatal("third should hit hourly limit")
+	}
+	if !allowGuestChat("5.6.7.8") {
+		t.Fatal("other ip unaffected")
+	}
+	// 非法配置(<=0)回退默认值,不应把所有人锁死
+	operation_setting.AgentGuestChatHourLimit = 0
+	operation_setting.AgentGuestChatDayLimit = -1
+	resetGuestChatLimiter()
+	if !allowGuestChat("9.9.9.9") {
+		t.Fatal("default limits should allow first message")
+	}
+}

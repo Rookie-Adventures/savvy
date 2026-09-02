@@ -203,3 +203,40 @@ func AlipayNotify(c *gin.Context) {
 		c.ClientIP(), topUp.PaymentMethod, model.PaymentMethodAlipay)
 	_, _ = c.Writer.Write([]byte("success"))
 }
+
+// completeAgentTopUp 是 alipay_agent 订单的完成逻辑: 回填实付金额、标记 success;
+// 已绑用户的直接入账,游客单(user_id=0)只标记,等认领接口入账。
+// 调用方必须已 LockOrder。金额以支付宝侧为准(actualMoney 来自回调 total_amount 或查单)。
+func completeAgentTopUp(topUp *model.TopUp, actualMoney float64, clientIP string) error {
+	topUp.Money = actualMoney
+	topUp.Status = common.TopUpStatusSuccess
+	topUp.CompleteTime = common.GetTimestamp()
+	if topUp.UserId > 0 {
+		group, err := model.GetUserGroup(topUp.UserId, true)
+		if err != nil {
+			return err
+		}
+		topUp.Amount = agentQuotaAmountFromMoney(actualMoney, group)
+	}
+	if err := topUp.Update(); err != nil {
+		return err
+	}
+	if topUp.UserId == 0 || topUp.Amount <= 0 {
+		return nil // 游客单等认领;换算为 0 的极小额单不入账(认领接口会拒绝)
+	}
+	quotaToAdd := int(decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
+	if err := model.IncreaseUserQuota(topUp.UserId, quotaToAdd, true); err != nil {
+		return err
+	}
+	if model.SubmitOrderEvidenceFn != nil {
+		go func(in model.SubmitOrderEvidenceInput) {
+			if err := model.SubmitOrderEvidenceFn(in); err != nil {
+				common.SysError("antchain evidence submit failed: " + err.Error())
+			}
+		}(model.BuildTopupEvidence(topUp))
+	}
+	model.RecordTopupLog(topUp.UserId,
+		fmt.Sprintf("使用智能体支付宝充值成功，充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), topUp.Money),
+		clientIP, topUp.PaymentMethod, model.PaymentMethodAlipay)
+	return nil
+}

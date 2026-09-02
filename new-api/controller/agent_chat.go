@@ -25,6 +25,11 @@ func AgentChat(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
 		return
 	}
+	// 游客(无登录态)另走 IP 限额,防匿名烧 token;登录用户沿用 CriticalRateLimit 配额
+	if c.GetInt("id") == 0 && !allowGuestChat(c.ClientIP()) {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "请求过于频繁，请稍后再试"})
+		return
+	}
 	if !operation_setting.IsAgentBailianConfigured() {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "当前管理员未配置智能体信息"})
 		return

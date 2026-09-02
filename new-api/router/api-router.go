@@ -79,6 +79,10 @@ func SetApiRouter(router *gin.Engine) {
 			// ponytail: 充值回调走 userRoute 组, 对齐 epay L77 范式, 路径成 /user/alipay/notify
 			userRoute.POST("/alipay/notify", anonymousRequestBodyLimit, controller.AlipayNotify)
 			userRoute.POST("/wechat/notify", anonymousRequestBodyLimit, controller.WechatNotify)
+			// ponytail: 智能体聊天/登记对游客开放(TryUserAuth 有登录态则绑 id),配额与限额在 controller 内区分
+			userRoute.POST("/agent/chat", middleware.TryUserAuth(), middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.AgentChat)
+			userRoute.POST("/agent/topup/register", middleware.TryUserAuth(), middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.RegisterAgentTopUp)
+			userRoute.GET("/agent/topup/status", middleware.CriticalRateLimit(), controller.AgentTopUpStatus)
 			userRoute.GET("/groups", controller.GetUserGroups)
 
 			selfRoute := userRoute.Group("/")
@@ -114,8 +118,6 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/waffo/pay", middleware.CriticalRateLimit(), controller.RequestWaffoPay)
 				selfRoute.POST("/waffo-pancake/amount", controller.RequestWaffoPancakeAmount)
 				selfRoute.POST("/waffo-pancake/pay", middleware.CriticalRateLimit(), controller.RequestWaffoPancakePay)
-				// ponytail: 对话下单智能体转发,对齐 /alipay/pay L105 范式(登录态+关键限流),无回调无订单落库
-				selfRoute.POST("/agent/chat", middleware.CriticalRateLimit(), controller.AgentChat)
 				selfRoute.POST("/aff_transfer", controller.TransferAffQuota)
 				selfRoute.PUT("/setting", controller.UpdateUserSetting)
 

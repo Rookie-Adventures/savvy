@@ -8,6 +8,12 @@ var (
 	AgentBailianAppId = ""
 )
 
+// 游客(未登录)聊天限额,防匿名烧 token。0 或负值视为默认值。
+var (
+	AgentGuestChatHourLimit = 10
+	AgentGuestChatDayLimit  = 50
+)
+
 // IsAgentBailianConfigured reports whether admin has filled Bailian agent creds to serve.
 func IsAgentBailianConfigured() bool {
 	return AgentBailianHost != "" && AgentBailianKey != "" && AgentBailianAppId != ""

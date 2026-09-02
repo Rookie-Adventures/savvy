@@ -1,12 +1,21 @@
 package controller
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"net/http"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
+	"github.com/smartwalle/alipay/v3"
 )
 
 // agentQuotaAmountFromMoney 是 getPayMoney 的逆运算: 实付 RMB → 额度单位数量。
@@ -40,4 +49,145 @@ func newClaimToken() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(buf), nil
+}
+
+// 游客聊天 IP 限额。单实例内存计数即可(重启清零可接受,限流是防刷不是记账)。
+type guestChatWindow struct {
+	hourCount int
+	hourStart int64
+	dayCount  int
+	dayStart  int64
+}
+
+var (
+	guestChatMu sync.Mutex
+	guestChatM  = make(map[string]*guestChatWindow)
+)
+
+func resetGuestChatLimiter() {
+	guestChatMu.Lock()
+	defer guestChatMu.Unlock()
+	guestChatM = make(map[string]*guestChatWindow)
+}
+
+func allowGuestChat(ip string) bool {
+	hourLimit, dayLimit := operation_setting.AgentGuestChatHourLimit, operation_setting.AgentGuestChatDayLimit
+	if hourLimit <= 0 {
+		hourLimit = 10
+	}
+	if dayLimit <= 0 {
+		dayLimit = 50
+	}
+	now := time.Now().Unix()
+	guestChatMu.Lock()
+	defer guestChatMu.Unlock()
+	w := guestChatM[ip]
+	if w == nil {
+		w = &guestChatWindow{hourStart: now, dayStart: now}
+		guestChatM[ip] = w
+	}
+	if now-w.hourStart >= 3600 {
+		w.hourStart, w.hourCount = now, 0
+	}
+	if now-w.dayStart >= 86400 {
+		w.dayStart, w.dayCount = now, 0
+	}
+	if w.hourCount >= hourLimit || w.dayCount >= dayLimit {
+		return false
+	}
+	w.hourCount++
+	w.dayCount++
+	return true
+}
+
+// RegisterAgentTopUp 游客/用户下单后登记 MCP 订单,发放认领凭据。
+// 金额此时只是"申报值"(来自支付链接),入账以 completeAgentTopUp 的支付宝侧金额为准。
+func RegisterAgentTopUp(c *gin.Context) {
+	var req struct {
+		OutTradeNo string `json:"out_trade_no"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil ||
+		strings.TrimSpace(req.OutTradeNo) == "" || len(req.OutTradeNo) > 64 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
+		return
+	}
+	outTradeNo := strings.TrimSpace(req.OutTradeNo)
+	if model.GetTopUpByTradeNo(outTradeNo) != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单已登记"})
+		return
+	}
+	token, err := newClaimToken()
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "登记失败"})
+		return
+	}
+	topUp := &model.TopUp{
+		UserId:          c.GetInt("id"), // 游客为 0,认领时再绑
+		TradeNo:         outTradeNo,
+		ClaimToken:      token,
+		PaymentMethod:   model.PaymentMethodAlipay,
+		PaymentProvider: model.PaymentProviderAlipayAgent,
+		CreateTime:      time.Now().Unix(),
+		Status:          common.TopUpStatusPending,
+	}
+	if err := topUp.Insert(); err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "登记失败"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"claim_token": token}})
+}
+
+// AgentTopUpStatus 凭 claim_token 查订单状态;pending 超过 10 秒时顺手向支付宝查单
+// (兜底通道: 百炼 MCP 若配不了 AP_NOTIFY_URL,到账感知全靠这里)。token 即凭据,无需登录。
+func AgentTopUpStatus(c *gin.Context) {
+	token := strings.TrimSpace(c.Query("claim_token"))
+	if len(token) != 32 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
+		return
+	}
+	topUp := model.GetTopUpByClaimToken(token)
+	if topUp == nil || topUp.PaymentProvider != model.PaymentProviderAlipayAgent {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单不存在"})
+		return
+	}
+	if topUp.Status == common.TopUpStatusPending && time.Now().Unix()-topUp.CreateTime > 10 {
+		tryCompleteAgentTopUpByQuery(topUp)
+		topUp = model.GetTopUpByClaimToken(token)
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{
+		"status":  topUp.Status,
+		"money":   topUp.Money,
+		"claimed": topUp.UserId != 0,
+	}})
+}
+
+// tryCompleteAgentTopUpByQuery 用站点现有支付宝 client 按 out_trade_no 查单。
+// 前提(验证项 V0): MCP 订单与站点支付配置同 APPID。查不到/出错静默返回,下次轮询再试。
+func tryCompleteAgentTopUpByQuery(topUp *model.TopUp) {
+	cli := GetAlipayClient()
+	if cli == nil {
+		return
+	}
+	var q = alipay.TradeQuery{}
+	q.OutTradeNo = topUp.TradeNo
+	rsp, err := cli.TradeQuery(context.Background(), q)
+	if err != nil || rsp == nil || rsp.Code != alipay.CodeSuccess {
+		return
+	}
+	if rsp.TradeStatus != "TRADE_SUCCESS" && rsp.TradeStatus != "TRADE_FINISHED" {
+		return
+	}
+	money, perr := strconv.ParseFloat(string(rsp.TotalAmount), 64)
+	if perr != nil || money <= 0 {
+		return
+	}
+	LockOrder(topUp.TradeNo)
+	defer UnlockOrder(topUp.TradeNo)
+	fresh := model.GetTopUpByTradeNo(topUp.TradeNo)
+	if fresh == nil || fresh.Status != common.TopUpStatusPending {
+		return
+	}
+	if cerr := completeAgentTopUp(fresh, money, ""); cerr != nil {
+		common.SysError("agent topup query-complete failed: " + cerr.Error())
+	}
 }

@@ -113,6 +113,8 @@ func InitOptionMap() {
 	common.OptionMap["AgentBailianHost"] = operation_setting.AgentBailianHost
 	common.OptionMap["AgentBailianKey"] = operation_setting.AgentBailianKey
 	common.OptionMap["AgentBailianAppId"] = operation_setting.AgentBailianAppId
+	common.OptionMap["AgentGuestChatHourLimit"] = strconv.Itoa(operation_setting.AgentGuestChatHourLimit)
+	common.OptionMap["AgentGuestChatDayLimit"] = strconv.Itoa(operation_setting.AgentGuestChatDayLimit)
 	// 同上,微信直连配置注册(关闭 Task5 遗留缺口)。
 	common.OptionMap["WechatAppId"] = operation_setting.WechatAppId
 	common.OptionMap["WechatMchID"] = operation_setting.WechatMchID
@@ -521,6 +523,10 @@ func updateOptionMap(key string, value string) (err error) {
 		operation_setting.AgentBailianKey = value
 	case "AgentBailianAppId":
 		operation_setting.AgentBailianAppId = value
+	case "AgentGuestChatHourLimit":
+		operation_setting.AgentGuestChatHourLimit, _ = strconv.Atoi(value)
+	case "AgentGuestChatDayLimit":
+		operation_setting.AgentGuestChatDayLimit, _ = strconv.Atoi(value)
 	case "WechatAppId":
 		operation_setting.WechatAppId = value
 	case "WechatMchID":

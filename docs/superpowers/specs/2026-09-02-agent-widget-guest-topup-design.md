@@ -25,21 +25,24 @@
 
 ```
 游客/用户 → 全站悬浮 widget（聊天浮窗）
-   → POST /api/user/agent/chat（游客通道，IP 限流）
+   → POST /api/user/agent/chat（TryUserAuth 游客可用，IP 限流）
    → 百炼智能体（仅挂 AI 支付 MCP，内置工具/自定义工具全关）
    → 回复含 alipay 链接 → 前端剥离原文、渲染支付卡片（协议勾选门禁）
-   → 前端解析 out_trade_no → POST 登记接口 → 得 claim_token（sessionStorage）
-   → 用户支付 → 支付宝确认到账（回调优先/查询兜底）→ pending_topup 标记已支付
-   → 游客：聊天窗弹认领卡片 [登录][注册]（复用站点现成弹窗）
-        → 成功 → POST 认领接口（登录态 + claim_token）→ 额度入账 → 卡片变"已到账"
-   → 登录用户：登记时已绑 user_id，到账后自动入账，无需认领
+   → 前端解析 out_trade_no → POST 登记接口 → 得 claim_token（sessionStorage），
+     后端落现有 topups 表（provider=alipay_agent，游客 user_id=0）
+   → 用户支付 → 到账确认（复用 /api/user/alipay/notify 回调 + 按需 TradeQuery 兜底）
+     → topups 记录标记 success，金额以支付宝侧 total_amount 为准
+   → 游客：聊天窗弹认领卡片 [登录][注册] → 跳转 sign-in/register 页（带 redirect 回跳）
+     → 回跳后 widget 从 sessionStorage 恢复认领态 → POST 认领接口（登录态 + claim_token）
+     → 额度入账 → 卡片变"已到账"
+   → 登录用户：登记时已绑 user_id，到账确认后自动入账，无需认领
 ```
 
 ## 4. 前端改动
 
 1. **悬浮 widget 组件**：右下角圆形图标 + 聊天浮窗；复用 `features/agent-chat` 的聊天组件、`pay-links.ts` 链接剥离、PaymentCard 协议勾选（游客同样必须勾选《用户协议》《隐私政策》，每笔独立重置）。
 2. **删除**：`/agent-chat` 路由（`routes/_authenticated/agent-chat`）、侧边栏入口及 `use-sidebar-config` 注册；原模块开关语义改为"控制 widget 显隐"。
-3. **认领卡片组件**：支付确认前隐藏；确认后出现在聊天流中，含 [登录][注册] 按钮（复用现有 auth 弹窗）与"已到账"终态；claim_token 存 sessionStorage，不进 URL。
+3. **认领卡片组件**：支付确认前隐藏；确认后出现在聊天流中。站点的登录/注册是**整页路由**（`(auth)/sign-in`、register，支持 `?redirect=` 回跳），不是弹窗——认领卡片按钮跳转登录/注册页并带 redirect 回当前页；claim_token + outTradeNo 存 sessionStorage，回跳后 widget 挂载时扫描恢复，已登录则自动认领；未登录展示 [登录][注册] 按钮与"已到账"终态。
 4. **登记调用**：从支付链接 `biz_content` 解析 `out_trade_no` 后调登记接口拿 claim_token；解析失败则不显示认领卡片（仅普通支付卡片），走客服兜底。
 5. i18n 六语言（en/ja/fr/ru/vi/zh）同步全部新文案。
 
@@ -47,11 +50,11 @@
 
 分层照项目规矩：`router/ → controller/ → service/ → model/`；JSON 一律走 `common/json.go`；DB 三库兼容（SQLite/MySQL/PG）。
 
-1. **聊天接口游客通道**：`/api/user/agent/chat` 允许无登录态调用；游客按 IP 限流（默认 10 条/小时、50 条/日，经 OptionMap 可调）；登录用户沿用现有配额。
-2. **登记接口**（游客可用，限流）：入参 outTradeNo；登录用户绑定 user_id；生成 claim_token（crypto/rand 128-bit）；落 `pending_topups`。同一 outTradeNo 重复登记幂等返回原 token（仅同一会话场景）。
-3. **认领接口**（需登录态，限流）：入参 claim_token；校验记录存在、已支付、未认领、token 匹配；幂等（重复认领返回原结果）；入账走现有钱包加额逻辑（金额以支付宝侧为准）。
-4. **到账确认服务**：双通道——①回调：`AP_NOTIFY_URL` 指向的通知端点（验签、金额校验、标记已支付）；②轮询兜底：后端定时对未确认的 pending 记录查单。通道可用性见 §7 验证项。
-5. **新表 `pending_topups`**（GORM）：outTradeNo（索引，唯一）、claim_token、user_id（可空）、amount（可空，到账时回填）、status（pending/paid/claimed/expired）、时间戳。过期策略：30 天未认领转 expired（仍支持客服人工处理，不删数据）。
+1. **聊天接口游客通道**：`/api/user/agent/chat` 从 selfRoute 改为 `middleware.TryUserAuth()`（已存在的可选鉴权中间件，middleware/auth.go:169），无登录态可调；游客按 IP 限流（默认 10 条/小时、50 条/日，经 OptionMap 可调）；登录用户沿用现有配额。
+2. **登记接口**（TryUserAuth + 限流）：入参 outTradeNo；登录用户绑定 user_id，游客 user_id=0；生成 claim_token（crypto/rand 128-bit）；**落现有 `topups` 表**（provider=`alipay_agent`，status=pending）。同一 outTradeNo 重复登记返回错误，前端以 sessionStorage 里首次登记拿到的 token 为准。
+3. **认领接口**（需登录态，限流）：入参 claim_token；校验记录存在、provider=alipay_agent、已支付、未认领（user_id=0）；绑定当前用户，额度换算用 getPayMoney 的逆运算（实付 RMB ÷ Price ÷ 分组倍率），入账走现有 `IncreaseUserQuota` + `RecordTopupLog` + 蚂蚁链存证；幂等（本人重复认领返回成功，他人拒绝）。
+4. **到账确认（全复用现有栈，不建新通道）**：①回调——MCP 订单与站点直连订单同 APPID，`AP_NOTIFY_URL` 指向现有 `/api/user/alipay/notify`，在 `AlipayNotify` 内按 provider=alipay_agent 分支：金额以回调 `total_amount` 为准回填 Money，user_id>0 直接入账，user_id=0 只标记已支付等认领；②兜底——前端状态查询接口触发按需 `cli.TradeQuery(out_trade_no)`（现有 GetAlipayClient），查到已付即走同一完成逻辑，无需 cron。回调不可用时（百炼未开放 AP_NOTIFY_URL）兜底通道独立成立。
+5. **不建新表**：复用 `model.TopUp`（topups 表，GORM 自动迁移），新增 `ClaimToken` 列（varchar(64)，索引）与新 provider 常量 `alipay_agent`；游客单 user_id=0、Amount=0（认领/入账时按实付回填）。过期策略：30 天未认领由现有清理逻辑标 expired（不删数据，支持客服人工处理）。
 6. **客服兜底**：不做后台页面（YAGNI）；人工凭支付宝账单订单号在 DB 侧核对后手工认领，流程写入 `docs/records/`。
 
 ## 6. 智能体侧（百炼）
@@ -64,9 +67,9 @@
 
 ## 7. 动工前验证项（阻塞项）
 
-1. 百炼正式版"支付宝"MCP 配置是否支持 `AP_NOTIFY_URL`（决定回调通道成立与否）。
-2. 受限密钥能否由后端直调 `alipay.trade.query`（决定轮询兜底通道）。
-3. 两者皆不通 → 降级为"用户点『我已支付』触发智能体查询工具 + 前端轮询登记状态"，需回炉重评 §5.4。
+0. **同应用验证**：站点现有支付宝配置的 AlipayAppId 必须与 MCP 受限密钥应用（栗橙网络科技 2021006170668597）为同一 APPID——这是回调验签复用和 TradeQuery 兜底成立的前提；若不同，需管理员将站点支付配置切到同一应用，否则 §5.4 两通道全部失效需回炉。
+1. 百炼正式版"支付宝"MCP 配置是否支持 `AP_NOTIFY_URL`（决定回调通道成立与否；不成立则仅靠 §5.4② 按需查单，功能不受损、到账感知变懒）。
+2. 受限密钥工具勾选状态（已勾全部 5 个）+ 产品生效状态（昨日 invalid-open-scene-api-permission 排障结论）。
 
 ## 8. 安全与风控
 

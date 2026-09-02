@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Bot, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { isSidebarModuleEnabled } from '@/lib/nav-modules'
@@ -25,6 +26,7 @@ import { AgentChat } from './index'
 // 全站右下角悬浮智能体入口。显隐复用原 /agent-chat 的模块开关(chat.agent_chat),
 // 语义从"侧边栏模块"变为"widget 显隐",配置键不动,免迁移。
 export function AgentWidget() {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   if (!isSidebarModuleEnabled('chat', 'agent_chat')) return null
 
@@ -34,7 +36,7 @@ export function AgentWidget() {
         size='icon'
         className='fixed right-4 bottom-4 z-50 h-12 w-12 rounded-full shadow-lg'
         onClick={() => setOpen((v) => !v)}
-        aria-label='AI assistant'
+        aria-label={t('AI assistant')}
       >
         {open ? <X className='h-5 w-5' /> : <Bot className='h-5 w-5' />}
       </Button>

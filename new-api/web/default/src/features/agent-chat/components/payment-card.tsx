@@ -21,6 +21,10 @@ import { useTranslation } from 'react-i18next'
 import { ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { registerAgentTopUp } from '../api'
+import { parseAgentOrder } from '../lib/agent-order'
+import { readClaims, saveClaim } from '../lib/claim-storage'
+import { ClaimCard } from './claim-card'
 
 type PaymentCardProps = {
   link: string
@@ -30,9 +34,44 @@ type PaymentCardProps = {
 export function PaymentCard({ link }: PaymentCardProps) {
   const { t } = useTranslation()
   const [agreed, setAgreed] = useState(false)
+  // 认领凭据: 同会话重渲染时从 sessionStorage 恢复,不重复登记
+  const [claim, setClaim] = useState<{ outTradeNo: string; token: string } | null>(
+    () => {
+      const order = parseAgentOrder(link)
+      if (!order) return null
+      const rec = readClaims().find(
+        (r) => r.outTradeNo === order.outTradeNo && !r.done
+      )
+      return rec ? { outTradeNo: rec.outTradeNo, token: rec.token } : null
+    }
+  )
 
   useEffect(() => {
     setAgreed(false)
+  }, [link])
+
+  // 挂载即登记订单换 claim_token;登记失败(如"订单已登记")静默,
+  // 认领走 widget 恢复逻辑或客服兜底
+  useEffect(() => {
+    if (claim) return
+    const order = parseAgentOrder(link)
+    if (!order) return
+    let cancelled = false
+    void registerAgentTopUp(order.outTradeNo).then((res) => {
+      if (cancelled) return
+      if (res.message === 'success' && res.data?.claim_token) {
+        saveClaim({
+          outTradeNo: order.outTradeNo,
+          token: res.data.claim_token,
+          done: false,
+        })
+        setClaim({ outTradeNo: order.outTradeNo, token: res.data.claim_token })
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [link])
 
   return (
@@ -75,6 +114,7 @@ export function PaymentCard({ link }: PaymentCardProps) {
         <ExternalLink className='mr-2 h-4 w-4' />
         {t('Go to Pay')}
       </Button>
+      {claim && <ClaimCard outTradeNo={claim.outTradeNo} token={claim.token} />}
     </div>
   )
 }

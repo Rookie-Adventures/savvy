@@ -16,18 +16,25 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Bot, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { isSidebarModuleEnabled } from '@/lib/nav-modules'
 import { AgentChat } from './index'
+import { ClaimCard } from './components/claim-card'
+import { readClaims, type ClaimRecord } from './lib/claim-storage'
 
 // 全站右下角悬浮智能体入口。显隐复用原 /agent-chat 的模块开关(chat.agent_chat),
 // 语义从"侧边栏模块"变为"widget 显隐",配置键不动,免迁移。
 export function AgentWidget() {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  // 登录/注册回跳后聊天消息态已丢,未认领单由这里的横幅接力(sessionStorage 恢复)
+  const [pendingClaims, setPendingClaims] = useState<ClaimRecord[]>([])
+  useEffect(() => {
+    if (open) setPendingClaims(readClaims().filter((r) => !r.done))
+  }, [open])
   if (!isSidebarModuleEnabled('chat', 'agent_chat')) return null
 
   return (
@@ -42,6 +49,13 @@ export function AgentWidget() {
       </Button>
       {open && (
         <div className='bg-background fixed right-4 bottom-20 z-50 flex h-[min(640px,80vh)] w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border shadow-xl'>
+          {pendingClaims.length > 0 && (
+            <div className='border-b px-3 py-1'>
+              {pendingClaims.map((r) => (
+                <ClaimCard key={r.outTradeNo} outTradeNo={r.outTradeNo} token={r.token} />
+              ))}
+            </div>
+          )}
           <AgentChat />
         </div>
       )}

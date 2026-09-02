@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/gin-gonic/gin"
@@ -176,4 +178,98 @@ func tryCompleteAgentTopUpByQuery(topUp *model.TopUp, clientIP string) {
 	if cerr := completeAgentTopUp(fresh, money, clientIP); cerr != nil {
 		common.SysError("agent topup query-complete failed: " + cerr.Error())
 	}
+}
+
+type agentClaimCode int
+
+const (
+	agentClaimOK agentClaimCode = iota
+	agentClaimAlreadyMine
+	agentClaimTaken
+	agentClaimNotPaid
+	agentClaimNotAgentOrder
+)
+
+// agentClaimDecision 纯函数判定可否认领(不碰 DB);分组/零金额检查在 handler 内做。
+func agentClaimDecision(topUp *model.TopUp, userId int) agentClaimCode {
+	if topUp.PaymentProvider != model.PaymentProviderAlipayAgent {
+		return agentClaimNotAgentOrder
+	}
+	if topUp.Status != common.TopUpStatusSuccess {
+		return agentClaimNotPaid
+	}
+	if topUp.UserId == userId {
+		return agentClaimAlreadyMine
+	}
+	if topUp.UserId != 0 {
+		return agentClaimTaken
+	}
+	return agentClaimOK
+}
+
+// ClaimAgentTopUp 游客支付后登录/注册,凭 claim_token 把已支付订单绑到自己名下并入账。
+func ClaimAgentTopUp(c *gin.Context) {
+	var req struct {
+		ClaimToken string `json:"claim_token"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || len(strings.TrimSpace(req.ClaimToken)) != 32 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
+		return
+	}
+	topUp := model.GetTopUpByClaimToken(strings.TrimSpace(req.ClaimToken))
+	if topUp == nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单不存在"})
+		return
+	}
+	userId := c.GetInt("id")
+	LockOrder(topUp.TradeNo)
+	defer UnlockOrder(topUp.TradeNo)
+	fresh := model.GetTopUpByTradeNo(topUp.TradeNo)
+	if fresh == nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单不存在"})
+		return
+	}
+	switch agentClaimDecision(fresh, userId) {
+	case agentClaimAlreadyMine:
+		c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"amount": fresh.Amount}})
+		return
+	case agentClaimOK:
+	default:
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单当前不可认领"})
+		return
+	}
+	group, err := model.GetUserGroup(userId, true)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
+		return
+	}
+	amount := agentQuotaAmountFromMoney(fresh.Money, group)
+	if amount <= 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单当前不可认领"})
+		return
+	}
+	fresh.UserId = userId
+	fresh.Amount = amount
+	quotaToAdd := int(decimal.NewFromInt(fresh.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
+	if err := fresh.Update(); err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "认领失败"})
+		return
+	}
+	if err := model.IncreaseUserQuota(userId, quotaToAdd, true); err != nil {
+		// ponytail: 与 AlipayNotify 同款 latent money leak(Update 已绑用户,加额失败钱在单上不在账上)。
+		//   人工兜底: topups 表 status=success 且 user_id>0 但无入账日志的,客服按 Money 补。
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "入账失败，请联系客服"})
+		return
+	}
+	if model.SubmitOrderEvidenceFn != nil {
+		go func(in model.SubmitOrderEvidenceInput) {
+			if err := model.SubmitOrderEvidenceFn(in); err != nil {
+				common.SysError("antchain evidence submit failed: " + err.Error())
+			}
+		}(model.BuildTopupEvidence(fresh))
+	}
+	model.RecordTopupLog(userId,
+		fmt.Sprintf("使用智能体支付宝充值成功（认领），充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), fresh.Money),
+		c.ClientIP(), fresh.PaymentMethod, model.PaymentMethodAlipay)
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"amount": fresh.Amount}})
 }

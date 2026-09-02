@@ -104,6 +104,8 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.GET("/topup/info", controller.GetTopUpInfo)
 				selfRoute.GET("/topup/self", controller.GetUserTopUps)
 				selfRoute.POST("/topup", middleware.CriticalRateLimit(), controller.TopUp)
+				// ponytail: 智能体游客单认领(登录态+claim_token),入账逻辑在 controller.ClaimAgentTopUp
+				selfRoute.POST("/agent/topup/claim", middleware.CriticalRateLimit(), controller.ClaimAgentTopUp)
 				selfRoute.POST("/pay", middleware.CriticalRateLimit(), controller.RequestEpay)
 				// ponytail: 充值 alipay/wechat 直连, 对齐 selfRoute /pay L100 范式
 				selfRoute.POST("/alipay/pay", middleware.CriticalRateLimit(), controller.RequestAlipayPay)

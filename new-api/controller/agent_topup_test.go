@@ -3,6 +3,8 @@ package controller
 import (
 	"testing"
 
+	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 )
 
@@ -72,5 +74,28 @@ func TestGuestChatLimiter(t *testing.T) {
 	resetGuestChatLimiter()
 	if !allowGuestChat("9.9.9.9") {
 		t.Fatal("default limits should allow first message")
+	}
+}
+
+// agentClaimDecision 是纯函数(不碰 DB),分组/零金额检查在 handler 内做。
+func TestAgentClaimDecision(t *testing.T) {
+	agentOrder := func(status string, userId int) *model.TopUp {
+		return &model.TopUp{PaymentProvider: model.PaymentProviderAlipayAgent, Status: status, UserId: userId}
+	}
+	if code := agentClaimDecision(agentOrder(common.TopUpStatusSuccess, 0), 7); code != agentClaimOK {
+		t.Fatalf("paid guest order should be claimable, got %d", code)
+	}
+	if code := agentClaimDecision(agentOrder(common.TopUpStatusSuccess, 7), 7); code != agentClaimAlreadyMine {
+		t.Fatal("idempotent re-claim should report already-mine")
+	}
+	if code := agentClaimDecision(agentOrder(common.TopUpStatusSuccess, 8), 7); code != agentClaimTaken {
+		t.Fatal("other user's claim must be rejected")
+	}
+	if code := agentClaimDecision(agentOrder(common.TopUpStatusPending, 0), 7); code != agentClaimNotPaid {
+		t.Fatal("unpaid order must not be claimable")
+	}
+	notAgent := &model.TopUp{PaymentProvider: model.PaymentProviderAlipay, Status: common.TopUpStatusSuccess, UserId: 0}
+	if code := agentClaimDecision(notAgent, 7); code != agentClaimNotAgentOrder {
+		t.Fatal("non-agent provider must be rejected")
 	}
 }

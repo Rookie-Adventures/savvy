@@ -166,6 +166,25 @@ func AlipayNotify(c *gin.Context) {
 		_, _ = c.Writer.Write([]byte("fail"))
 		return
 	}
+	if topUp.PaymentProvider == model.PaymentProviderAlipayAgent {
+		// 智能体订单: 金额以回调为准回填,游客单只标记等认领,已绑用户直接入账
+		if topUp.Status != common.TopUpStatusPending {
+			_, _ = c.Writer.Write([]byte("success")) // 幂等止重试
+			return
+		}
+		money, perr := strconv.ParseFloat(c.Request.Form.Get("total_amount"), 64)
+		if perr != nil || money <= 0 {
+			_, _ = c.Writer.Write([]byte("fail"))
+			return
+		}
+		if cerr := completeAgentTopUp(topUp, money, c.ClientIP()); cerr != nil {
+			common.SysError("agent topup notify-complete failed: " + cerr.Error())
+			_, _ = c.Writer.Write([]byte("fail"))
+			return
+		}
+		_, _ = c.Writer.Write([]byte("success"))
+		return
+	}
 	if topUp.PaymentProvider != model.PaymentProviderAlipay {
 		_, _ = c.Writer.Write([]byte("fail"))
 		return

@@ -67,7 +67,7 @@ export function SidebarModulesCard() {
         {
           key: 'agent_chat',
           title: t('Agent Assistant'),
-          description: t('Chat with the AI agent to top up or subscribe.'),
+          description: t('Floating AI assistant for top-up and subscription.'),
         },
         {
           key: 'chat',

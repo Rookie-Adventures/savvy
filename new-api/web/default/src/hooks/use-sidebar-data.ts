@@ -58,11 +58,6 @@ export function useSidebarData(): SidebarData {
             icon: FlaskConical,
           },
           {
-            title: t('Agent Assistant'),
-            url: '/agent-chat',
-            icon: Bot,
-          },
-          {
             title: t('Chat'),
             icon: MessageSquare,
             type: 'chat-presets',

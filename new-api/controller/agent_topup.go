@@ -143,9 +143,11 @@ func AgentTopUpStatus(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{
-		"status":  topUp.Status,
-		"money":   topUp.Money,
-		"claimed": topUp.UserId != 0,
+		"status": topUp.Status,
+		"money":  topUp.Money,
+		// claimed 语义 = "已入账"而非"已绑用户": 登录单登记即绑 user_id,
+		// 不加支付门槛会让前端在未付款时误显"已到账"(终审 I-1)
+		"claimed": topUp.UserId != 0 && topUp.Status == common.TopUpStatusSuccess,
 	}})
 }
 

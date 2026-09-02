@@ -24,12 +24,13 @@
 - `lib/claim-storage.ts`（新）：sessionStorage 认领凭据（agent_topup_claims）
 - `components/claim-card.tsx`（新）：waiting/paid/credited 三态，5s 容错轮询，已登录自动认领，未登录跳 /sign-in?redirect= 或 /sign-up
 - `components/payment-card.tsx`：挂载即登记换 token，Go to Pay 后渲染 ClaimCard，协议勾选门禁零改动
-- i18n：4 新键 + 2 键改文案 × en/zh/ja/fr/ru/vi（手改，**勿跑 npm run i18n:sync——会把历史待翻队列的无关改动注入 locale**）
+- i18n：5 新键 + 1 键改文案 × en/zh/ja/fr/ru/vi（手改，**勿跑 npm run i18n:sync——会把历史待翻队列的无关改动注入 locale**）
 
 ## 验证
 - go build ./... 成功；go test ./controller/... ./model/... ./setting/... 全 ok（本特性新增 TestAgentQuotaAmountFromMoney/TestNewClaimToken/TestGuestChatLimiter/TestAgentClaimDecision 全 PASS，Phase 1 存量 5 项 PASS）
 - npm run typecheck 0 error；npm run build 成功；locale 键完整性脚本 6/6 OK
 - 每 Task 经 CodeReview 子代理审查：T1 Approved-with-fixes（已修 I-1 空 token/M-1 除零）、T2 Approved（已修 I-1 限流器换 InMemoryRateLimiter/M-1 nil 兜底/M-4 clientIP）、T3 Approved clean（资金安全专项：notify/claim/查单三方竞态在 LockOrder 下闭环，无双重加额路径）、T4 Needs-fixes→已修（6 语言键同步+aria-label i18n）、T5 Needs-fixes→已修（轮询容错+登记静默）
+- 全分支终审：Needs-fixes→已修 I-1（status 接口 claimed 语义加支付门槛，登录单未付款不再误显"已到账"）；遗留 Minor 分诊均可留（M-2 float 往返 2 位小数无损/M-3 TOCTOU 唯一索引兜底/dev 模式 devtools 重叠仅开发期）；其余端到端链路/前后端契约/越权面/回归面全部 ✅
 
 ## 限制
 - 游客限额内存计数，重启清零（防刷定位，可接受）

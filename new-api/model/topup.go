@@ -17,6 +17,8 @@ type TopUp struct {
 	Amount          int64   `json:"amount"`
 	Money           float64 `json:"money"`
 	TradeNo         string  `json:"trade_no" gorm:"unique;type:varchar(255);index"`
+	// 智能体免登录充值的认领凭据(crypto/rand hex32),仅 provider=alipay_agent 的单使用;游客单 user_id=0,认领时绑定
+	ClaimToken      string  `json:"claim_token" gorm:"type:varchar(64);index"`
 	PaymentMethod   string  `json:"payment_method" gorm:"type:varchar(50)"`
 	PaymentProvider string  `json:"payment_provider" gorm:"type:varchar(50);default:''"`
 	CreateTime      int64   `json:"create_time"`
@@ -43,6 +45,8 @@ const (
 	PaymentProviderBalance      = "balance"
 	PaymentProviderAlipay       = "alipay"
 	PaymentProviderWechat       = "wechat"
+	// 智能体(百炼 MCP)对话下单的充值单,认领/入账走 agent_topup 链路
+	PaymentProviderAlipayAgent = "alipay_agent"
 )
 
 var (
@@ -77,6 +81,16 @@ func GetTopUpByTradeNo(tradeNo string) *TopUp {
 	var topUp *TopUp
 	var err error
 	err = DB.Where("trade_no = ?", tradeNo).First(&topUp).Error
+	if err != nil {
+		return nil
+	}
+	return topUp
+}
+
+func GetTopUpByClaimToken(claimToken string) *TopUp {
+	var topUp *TopUp
+	var err error
+	err = DB.Where("claim_token = ?", claimToken).First(&topUp).Error
 	if err != nil {
 		return nil
 	}

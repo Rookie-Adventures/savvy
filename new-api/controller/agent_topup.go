@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -51,23 +50,22 @@ func newClaimToken() (string, error) {
 	return hex.EncodeToString(buf), nil
 }
 
-// 游客聊天 IP 限额。单实例内存计数即可(重启清零可接受,限流是防刷不是记账)。
-type guestChatWindow struct {
-	hourCount int
-	hourStart int64
-	dayCount  int
-	dayStart  int64
-}
-
+// 游客聊天 IP 限额。复用 common.InMemoryRateLimiter(滑动窗口+定时淘汰),hour/day 各一实例;
+// 匿名公网端点,自研 map 无淘汰会无界增长(review I-1)。
 var (
-	guestChatMu sync.Mutex
-	guestChatM  = make(map[string]*guestChatWindow)
+	guestChatHourLimiter common.InMemoryRateLimiter
+	guestChatDayLimiter  common.InMemoryRateLimiter
 )
 
+func init() {
+	resetGuestChatLimiter()
+}
+
 func resetGuestChatLimiter() {
-	guestChatMu.Lock()
-	defer guestChatMu.Unlock()
-	guestChatM = make(map[string]*guestChatWindow)
+	guestChatHourLimiter = common.InMemoryRateLimiter{}
+	guestChatHourLimiter.Init(time.Hour)
+	guestChatDayLimiter = common.InMemoryRateLimiter{}
+	guestChatDayLimiter.Init(24 * time.Hour)
 }
 
 func allowGuestChat(ip string) bool {
@@ -78,26 +76,10 @@ func allowGuestChat(ip string) bool {
 	if dayLimit <= 0 {
 		dayLimit = 50
 	}
-	now := time.Now().Unix()
-	guestChatMu.Lock()
-	defer guestChatMu.Unlock()
-	w := guestChatM[ip]
-	if w == nil {
-		w = &guestChatWindow{hourStart: now, dayStart: now}
-		guestChatM[ip] = w
-	}
-	if now-w.hourStart >= 3600 {
-		w.hourStart, w.hourCount = now, 0
-	}
-	if now-w.dayStart >= 86400 {
-		w.dayStart, w.dayCount = now, 0
-	}
-	if w.hourCount >= hourLimit || w.dayCount >= dayLimit {
+	if !guestChatHourLimiter.Request(ip, hourLimit, 3600) {
 		return false
 	}
-	w.hourCount++
-	w.dayCount++
-	return true
+	return guestChatDayLimiter.Request(ip, dayLimit, 86400)
 }
 
 // RegisterAgentTopUp 游客/用户下单后登记 MCP 订单,发放认领凭据。
@@ -151,8 +133,12 @@ func AgentTopUpStatus(c *gin.Context) {
 		return
 	}
 	if topUp.Status == common.TopUpStatusPending && time.Now().Unix()-topUp.CreateTime > 10 {
-		tryCompleteAgentTopUpByQuery(topUp)
+		tryCompleteAgentTopUpByQuery(topUp, c.ClientIP())
 		topUp = model.GetTopUpByClaimToken(token)
+		if topUp == nil {
+			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单不存在"})
+			return
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{
 		"status":  topUp.Status,
@@ -163,7 +149,7 @@ func AgentTopUpStatus(c *gin.Context) {
 
 // tryCompleteAgentTopUpByQuery 用站点现有支付宝 client 按 out_trade_no 查单。
 // 前提(验证项 V0): MCP 订单与站点支付配置同 APPID。查不到/出错静默返回,下次轮询再试。
-func tryCompleteAgentTopUpByQuery(topUp *model.TopUp) {
+func tryCompleteAgentTopUpByQuery(topUp *model.TopUp, clientIP string) {
 	cli := GetAlipayClient()
 	if cli == nil {
 		return
@@ -187,7 +173,7 @@ func tryCompleteAgentTopUpByQuery(topUp *model.TopUp) {
 	if fresh == nil || fresh.Status != common.TopUpStatusPending {
 		return
 	}
-	if cerr := completeAgentTopUp(fresh, money, ""); cerr != nil {
+	if cerr := completeAgentTopUp(fresh, money, clientIP); cerr != nil {
 		common.SysError("agent topup query-complete failed: " + cerr.Error())
 	}
 }

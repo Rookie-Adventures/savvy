@@ -29,6 +29,9 @@ services:
       - REDIS_CONN_STRING=redis://:123456@redis:6379
       - SAVVY_HMAC_SECRET=${SAVVY_HMAC_SECRET:-dev-hmac-secret-change-me}
       - HERMES_MANAGER_URL=http://savvy-manager:8000
+      # 本地验收放宽 Critical 档限流(默认 20次/20min/IP 且所有 CT 接口共享计数,Redis 持久化重启不清);
+      # 生产走 prod compose 自己的默认值,不受此处影响
+      - CRITICAL_RATE_LIMIT=${CRITICAL_RATE_LIMIT:-200}
       # 蚂蚁链链证(段2b) — 真值在根 .env (gitignored); 空默认 = 链证禁用(fail-closed)
       - ANTCHAIN_ENABLED=${ANTCHAIN_ENABLED:-false}
       - ANTCHAIN_ACCESS_ID=${ANTCHAIN_ACCESS_ID:-}

@@ -42,6 +42,9 @@
 - 极小额订单换算额度为 0 时不入账、认领被拒（客服按 Money 处理）
 
 ## 尾巴
+- **体验版 MCP 无法验证到账闭环**（本地验收实锤）：体验版订单挂百炼测试商户 APPID，与本站支付宝配置不同户，notify 无、TradeQuery 查不到 → 认领卡片永远 waiting。后半段验收需正式版 MCP（同 APPID，即 V0）；本地用 SQL 模拟已支付（status=success+money）可验认领链路
+- **智能体提示词需限最低充值金额**：0.1 元单换算额度四舍五入为 0，认领会被拒；建议提示词限定最低 1 元（或对齐 MinTopUp 设置）
+- 本地 dev 栈 CRITICAL_RATE_LIMIT 已放宽到 200（CT 档所有接口共享 20次/20min/IP 且 Redis 持久化重启不清，反复测试必撞 429）；生产 compose 不受影响
 - 部署（管理员）：option API 写 AgentBailianHost/AppId/Key（**轮换泄露过的旧 Key**）+ 重启容器；百炼智能体提示词更新（支付后引导"在下方卡片登录或注册领取充值"、禁问手机/电脑）并重新发布
 - 动工前置验证项：V0 站点 AlipayAppId==MCP 应用 APPID（回调验签/查单兜底前提）；V2 百炼正式版 MCP 可否配 AP_NOTIFY_URL=https://<域名>/api/user/alipay/notify（可配则回调直推，状态接口查单兜底仍在）
 - 智易收签约通过后：切 create-alipay-payment-agent（收款单），支付卡片扩展链接+二维码双渲染（复用 wallet QRCodeSVG）

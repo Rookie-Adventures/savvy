@@ -7,7 +7,7 @@
 - 设计：`docs/superpowers/specs/2026-09-02-agent-widget-guest-topup-design.md`
 - 计划：`docs/superpowers/plans/2026-09-02-agent-widget-guest-topup.md`
 - 分支：`feature/agent-widget-guest-topup`（基于 feature/agent-chat-payment）
-- 核心决策：先付后认领（否决"智能体代注册+随机密码"——密码进百炼对话历史、LLM 持注册接口=injection 面、对话报账户名充错账无法抗辩）；复用 topups 表+现有 /api/user/alipay/notify 回调栈（否决新建 pending_topups 表）；认领凭据用 crypto/rand claim_token（outTradeNo 由 LLM 生成可枚举，不能当凭据）。
+- 核心决策：先付后认领（否决"智能体代注册+随机密码"——密码进百炼对话历史、LLM 持注册接口=injection 面、对话报账户名充错账无法抗辩）；复用 top_ups 表+现有 /api/user/alipay/notify 回调栈（否决新建 pending_top_ups 表）；认领凭据用 crypto/rand claim_token（outTradeNo 由 LLM 生成可枚举，不能当凭据）。
 
 ## 改动清单
 后端（Task 1-3，commits af0168e64e..9224a5af09）：
@@ -34,7 +34,7 @@
 
 ## 限制
 - 游客限额内存计数，重启清零（防刷定位，可接受）
-- Update 成功后 IncreaseUserQuota 失败的 latent money leak 与现有 AlipayNotify 同构保留；客服兜底口径：topups 表 status=success 且 user_id>0 但无入账日志的按 Money 人工补
+- Update 成功后 IncreaseUserQuota 失败的 latent money leak 与现有 AlipayNotify 同构保留；客服兜底口径：top_ups 表 status=success 且 user_id>0 但无入账日志的按 Money 人工补
 - 金额换算不套 AmountDiscount（预设档位促销与任意金额订单不适用）
 - TOKENS 展示类型的换算分支无单测（无公开 setter），集成验收时覆盖
 - claim_token 丢失（付完关浏览器）→ 钱留 pending，凭支付宝账单订单号客服人工认领

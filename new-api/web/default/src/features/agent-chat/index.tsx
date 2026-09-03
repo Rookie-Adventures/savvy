@@ -29,6 +29,7 @@ import {
 import { Message, MessageContent } from '@/components/ai-elements/message'
 import { Loader } from '@/components/ai-elements/loader'
 import { PaymentCard } from './components/payment-card'
+import { ChatHeader } from './components/chat-header'
 import { extractPayLinks, stripPayLinks } from './lib/pay-links'
 import { sendAgentMessage } from './api'
 
@@ -37,10 +38,15 @@ type ChatMessage = {
   content: string
 }
 
+type AgentChatProps = {
+  // 仅 widget 传入:头部栏渲染关闭按钮;独立页不传
+  onClose?: () => void
+}
+
 // 百炼云端会话 id,存 localStorage 续多轮(对齐 playground storage 范式)
 const SESSION_KEY = 'agent_chat_session_id'
 
-export function AgentChat() {
+export function AgentChat({ onClose }: AgentChatProps = {}) {
   const { t } = useTranslation()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -84,9 +90,18 @@ export function AgentChat() {
     }
   }
 
+  // 清空本地消息 + 丢弃百炼云端会话(下次发消息开新 session)。
+  // 注意: 不碰 agent_topup_claims 认领凭据——那是钱,不跟聊天记录一起扫。
+  const clearConversation = () => {
+    setMessages([])
+    sessionIdRef.current = ''
+    window.localStorage.removeItem(SESSION_KEY)
+  }
+
   // 布局对齐 playground:根容器锁高度,聊天区滚动,输入框固定在滚动区外
   return (
     <div className='relative flex size-full flex-col overflow-hidden'>
+      <ChatHeader onClear={clearConversation} onClose={onClose} />
       <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
         <Conversation className='flex-1'>
           <ConversationContent className='p-0'>

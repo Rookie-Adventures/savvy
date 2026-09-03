@@ -26,6 +26,12 @@
 - `components/payment-card.tsx`：挂载即登记换 token，Go to Pay 后渲染 ClaimCard，协议勾选门禁零改动
 - i18n：5 新键 + 1 键改文案 × en/zh/ja/fr/ru/vi（手改，**勿跑 npm run i18n:sync——会把历史待翻队列的无关改动注入 locale**）
 
+追加（commits 650d3fb1ba..c2207cb196）：
+- `routes/agent.tsx`（新）：公开独立页 /agent（无登录墙，PublicLayout，模块开关不启用则 redirect /）——智易收签约"智能体访问地址"填 https://域名/agent，截图用此页
+- `components/chat-header.tsx`（新）：标题 + 清空对话 + 关闭（仅 widget）；清空只动 messages/session_id，**不碰 agent_topup_claims 认领凭据**
+- `components/claim-banner.tsx`（新）：认领横幅抽共享，widget 与 /agent 页共用
+- i18n 新键 'Clear conversation' ×6；修复：/agent 页顶部偏移（fixed PublicHeader 遮挡，mt-16/sm:mt-20）
+
 ## 验证
 - go build ./... 成功；go test ./controller/... ./model/... ./setting/... 全 ok（本特性新增 TestAgentQuotaAmountFromMoney/TestNewClaimToken/TestGuestChatLimiter/TestAgentClaimDecision 全 PASS，Phase 1 存量 5 项 PASS）
 - npm run typecheck 0 error；npm run build 成功；locale 键完整性脚本 6/6 OK

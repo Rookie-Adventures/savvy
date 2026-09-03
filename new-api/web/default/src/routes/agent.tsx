@@ -36,7 +36,8 @@ export const Route = createFileRoute('/agent')({
 function AgentPage() {
   return (
     <PublicLayout showMainContainer={false}>
-      <div className='mx-auto flex h-[calc(100dvh-10rem)] w-full max-w-3xl flex-col gap-2 px-4 pb-8'>
+      {/* PublicHeader 是 fixed h-16(sm:h-20),用 mt 顶开而非 pt,高度相应扣减,底部留 2rem */}
+      <div className='mx-auto mt-16 flex h-[calc(100dvh-6rem)] w-full max-w-3xl flex-col gap-2 px-4 pb-4 sm:mt-20 sm:h-[calc(100dvh-7rem)]'>
         <ClaimBanner />
         <div className='bg-background min-h-0 flex-1 overflow-hidden rounded-xl border shadow-sm'>
           <AgentChat />

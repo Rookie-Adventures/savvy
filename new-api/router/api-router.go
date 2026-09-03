@@ -82,7 +82,8 @@ func SetApiRouter(router *gin.Engine) {
 			// ponytail: 智能体聊天/登记对游客开放(TryUserAuth 有登录态则绑 id),配额与限额在 controller 内区分
 			userRoute.POST("/agent/chat", middleware.TryUserAuth(), middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.AgentChat)
 			userRoute.POST("/agent/topup/register", middleware.TryUserAuth(), middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.RegisterAgentTopUp)
-			userRoute.GET("/agent/topup/status", middleware.CriticalRateLimit(), controller.AgentTopUpStatus)
+			// ponytail: status 是认领卡片 8s 轮询的只读接口(token 即凭据),Critical 档 20次/20min 会被轮询打爆(429),用 Global 档
+			userRoute.GET("/agent/topup/status", middleware.GlobalAPIRateLimit(), controller.AgentTopUpStatus)
 			userRoute.GET("/groups", controller.GetUserGroups)
 
 			selfRoute := userRoute.Group("/")

@@ -32,7 +32,8 @@ type ClaimCardProps = {
 
 type Phase = 'waiting' | 'paid' | 'credited'
 
-const POLL_INTERVAL_MS = 5000
+// 8s 而非 5s: status 接口挂 GlobalAPIRateLimit(360次/3min/IP),多卡片同时轮询也留足余量
+const POLL_INTERVAL_MS = 8000
 
 // 认领卡片: 轮询订单状态 → 已支付且未登录给 [登录][注册] 跳转(sign-in 带 redirect 回跳,
 // sign-up 无 redirect 参数,回跳由 widget 挂载时的 sessionStorage 恢复逻辑接力)

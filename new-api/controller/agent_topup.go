@@ -134,7 +134,10 @@ func AgentTopUpStatus(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单不存在"})
 		return
 	}
-	if topUp.Status == common.TopUpStatusPending && time.Now().Unix()-topUp.CreateTime > 10 {
+	// 查单兜底限 2 小时窗口: 支付宝订单本身有有效期,避免长期挂着 widget 的 pending 单被无限轮询查单
+	if topUp.Status == common.TopUpStatusPending &&
+		time.Now().Unix()-topUp.CreateTime > 10 &&
+		time.Now().Unix()-topUp.CreateTime < 7200 {
 		tryCompleteAgentTopUpByQuery(topUp, c.ClientIP())
 		topUp = model.GetTopUpByClaimToken(token)
 		if topUp == nil {

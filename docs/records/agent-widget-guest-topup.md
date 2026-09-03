@@ -34,6 +34,7 @@
 
 ## 限制
 - 游客限额内存计数，重启清零（防刷定位，可接受）
+- 429 事故修复（本地验收发现）：status 轮询接口误挂 CriticalRateLimit（20次/20min/IP），认领卡片 5s 轮询不到 2 分钟打爆。修：status 换 GlobalAPIRateLimit（360次/3min）+ 轮询 5s→8s + 查单兜底限下单后 2h 窗口
 - Update 成功后 IncreaseUserQuota 失败的 latent money leak 与现有 AlipayNotify 同构保留；客服兜底口径：top_ups 表 status=success 且 user_id>0 但无入账日志的按 Money 人工补
 - 金额换算不套 AmountDiscount（预设档位促销与任意金额订单不适用）
 - TOKENS 展示类型的换算分支无单测（无公开 setter），集成验收时覆盖

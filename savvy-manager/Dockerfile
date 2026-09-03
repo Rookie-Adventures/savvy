@@ -3,7 +3,8 @@ FROM python:3.12-slim
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# 国内服务器走阿里云 PyPI 镜像(默认源实测 ~20kB/s,缓存失效时全量重下 40min+);版本锁定仍由 requirements.txt 保证
+RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ -r requirements.txt
 
 COPY app/ ./app/
 # Alembic migrations — entrypoint runs `alembic upgrade head` before uvicorn

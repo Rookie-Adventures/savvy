@@ -169,6 +169,12 @@ export function AgentChat({ onClose }: AgentChatProps = {}) {
             <SendHorizonal className='h-4 w-4' />
           </Button>
         </div>
+        {/* 品牌归属 + AI 免责声明,品牌名不译 */}
+        <p className='text-muted-foreground pt-2 text-center text-[11px] leading-relaxed'>
+          {t('Savvy Agent is developed by Licheng Technology')}
+          {' · '}
+          {t('AI output may be inaccurate. Please verify important information.')}
+        </p>
       </div>
     </div>
   )

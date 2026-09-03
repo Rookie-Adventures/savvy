@@ -32,7 +32,8 @@ export function ChatHeader({ onClear, onClose }: ChatHeaderProps) {
     <div className='flex items-center justify-between border-b px-3 py-2'>
       <div className='flex items-center gap-2'>
         <Bot className='text-primary h-4 w-4' />
-        <span className='text-sm font-medium'>{t('AI assistant')}</span>
+        {/* 品牌名不译,六语言统一 Savvy Agent(项目品牌规范) */}
+        <span className='text-sm font-medium'>Savvy Agent</span>
       </div>
       <div className='flex items-center gap-1'>
         <Button

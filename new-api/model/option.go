@@ -122,6 +122,8 @@ func InitOptionMap() {
 	common.OptionMap["WechatAPIv3Key"] = operation_setting.WechatAPIv3Key
 	common.OptionMap["WechatPrivateKeyPEM"] = operation_setting.WechatPrivateKeyPEM
 	common.OptionMap["WechatPlatformCertPath"] = operation_setting.WechatPlatformCertPath
+	common.OptionMap["WechatPayPublicKeyId"] = operation_setting.WechatPayPublicKeyId
+	common.OptionMap["WechatPayPublicKey"] = operation_setting.WechatPayPublicKey
 	common.OptionMap["CreemApiKey"] = setting.CreemApiKey
 	common.OptionMap["CreemProducts"] = setting.CreemProducts
 	common.OptionMap["CreemTestMode"] = strconv.FormatBool(setting.CreemTestMode)
@@ -539,6 +541,10 @@ func updateOptionMap(key string, value string) (err error) {
 		operation_setting.WechatPrivateKeyPEM = value
 	case "WechatPlatformCertPath":
 		operation_setting.WechatPlatformCertPath = value
+	case "WechatPayPublicKeyId":
+		operation_setting.WechatPayPublicKeyId = value
+	case "WechatPayPublicKey":
+		operation_setting.WechatPayPublicKey = value
 	case "TopupGroupRatio":
 		err = common.UpdateTopupGroupRatioByJSONString(value)
 	case "GitHubClientId":

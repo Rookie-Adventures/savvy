@@ -326,6 +326,8 @@ export type BillingSettings = {
   AlipayRootCertSN: string
   AlipayNotifyURL: string
   WechatAppId: string
+  WechatPayPublicKeyId: string
+  WechatPayPublicKey: string
   WechatMchID: string
   WechatMchSerial: string
   WechatAPIv3Key: string

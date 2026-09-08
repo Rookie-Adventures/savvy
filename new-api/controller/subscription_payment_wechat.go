@@ -36,6 +36,28 @@ func GetWechatClient() *native.NativeApiService {
 	if err != nil {
 		return nil
 	}
+	// 公钥模式:2024-10 起新商户号只发微信支付公钥、不再下发平台证书,自动下载会失败。
+	if operation_setting.WechatPayPublicKeyId != "" && operation_setting.WechatPayPublicKey != "" {
+		pub, pubErr := utils.LoadPublicKey(operation_setting.WechatPayPublicKey)
+		if pubErr != nil {
+			return nil
+		}
+		pkClient, pkErr := core.NewClient(
+			context.Background(),
+			option.WithWechatPayPublicKeyAuthCipher(
+				operation_setting.WechatMchID,
+				operation_setting.WechatMchSerial,
+				privKey,
+				operation_setting.WechatPayPublicKeyId,
+				pub,
+			),
+		)
+		if pkErr != nil {
+			return nil
+		}
+		wechatNativeSvc = &native.NativeApiService{Client: pkClient}
+		return wechatNativeSvc
+	}
 	// ponytail: WithWechatPayAutoAuthCipher 内部走 downloader.MgrInstance().RegisterDownloaderWithPrivateKey
 	// 首次调用同步下载平台证书(网络),HasDownloader 二次幂等。verifier 源 = 同 mgr.GetCertificateVisitor(mchID)。
 	client, err := core.NewClient(

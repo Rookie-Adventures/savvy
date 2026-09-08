@@ -172,6 +172,8 @@ const paymentSchema = z.object({
   WechatAPIv3Key: z.string(),
   WechatPrivateKeyPEM: z.string(),
   WechatPlatformCertPath: z.string(),
+  WechatPayPublicKeyId: z.string(),
+  WechatPayPublicKey: z.string(),
   WaffoEnabled: z.boolean(),
   WaffoApiKey: z.string(),
   WaffoPrivateKey: z.string(),
@@ -465,6 +467,8 @@ export function PaymentSettingsSection({
       WechatAPIv3Key: values.WechatAPIv3Key.trim(),
       WechatPrivateKeyPEM: values.WechatPrivateKeyPEM.trim(),
       WechatPlatformCertPath: values.WechatPlatformCertPath.trim(),
+      WechatPayPublicKeyId: values.WechatPayPublicKeyId.trim(),
+      WechatPayPublicKey: values.WechatPayPublicKey.trim(),
       WaffoEnabled: values.WaffoEnabled,
       WaffoSandbox: values.WaffoSandbox,
       WaffoMerchantId: values.WaffoMerchantId.trim(),
@@ -527,6 +531,8 @@ export function PaymentSettingsSection({
       WechatAPIv3Key: initialRef.current.WechatAPIv3Key.trim(),
       WechatPrivateKeyPEM: initialRef.current.WechatPrivateKeyPEM.trim(),
       WechatPlatformCertPath: initialRef.current.WechatPlatformCertPath.trim(),
+      WechatPayPublicKeyId: initialRef.current.WechatPayPublicKeyId.trim(),
+      WechatPayPublicKey: initialRef.current.WechatPayPublicKey.trim(),
       WaffoEnabled: initialRef.current.WaffoEnabled,
       WaffoSandbox: initialRef.current.WaffoSandbox,
       WaffoMerchantId: initialRef.current.WaffoMerchantId.trim(),
@@ -762,6 +768,18 @@ export function PaymentSettingsSection({
       updates.push({
         key: 'WechatPlatformCertPath',
         value: sanitized.WechatPlatformCertPath,
+      })
+    }
+    if (sanitized.WechatPayPublicKeyId !== initial.WechatPayPublicKeyId) {
+      updates.push({
+        key: 'WechatPayPublicKeyId',
+        value: sanitized.WechatPayPublicKeyId,
+      })
+    }
+    if (sanitized.WechatPayPublicKey !== initial.WechatPayPublicKey) {
+      updates.push({
+        key: 'WechatPayPublicKey',
+        value: sanitized.WechatPayPublicKey,
       })
     }
 
@@ -2101,6 +2119,55 @@ export function PaymentSettingsSection({
                             'Optional path to pin the WeChat platform certificate. Auto-downloaded if blank.'
                           )}
                         </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='WechatPayPublicKeyId'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {t('WeChat Pay public key ID')}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={t('PUB_KEY_ID_xxxxxxxx')}
+                            {...field}
+                            onChange={(event) =>
+                              field.onChange(event.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          {t(
+                            'Required for new merchants using the WeChat Pay public key instead of platform certificates.'
+                          )}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='WechatPayPublicKey'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {t('WeChat Pay public key')}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={t('WeChat Pay public key content (PEM)')}
+                            {...field}
+                            onChange={(event) =>
+                              field.onChange(event.target.value)
+                            }
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}

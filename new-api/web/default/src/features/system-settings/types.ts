@@ -104,6 +104,8 @@ export type SiteSettings = {
   'theme.frontend': string
   Notice: string
   SystemName: string
+ WeComCorpId: string
+ WeComKfUrl: string
   Logo: string
   Footer: string
   About: string

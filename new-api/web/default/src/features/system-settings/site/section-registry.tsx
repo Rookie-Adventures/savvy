@@ -41,6 +41,8 @@ const SITE_SECTIONS = [
             frontend: settings['theme.frontend'] as 'default' | 'classic',
           },
           SystemName: settings.SystemName,
+          WeComCorpId: settings.WeComCorpId,
+          WeComKfUrl: settings.WeComKfUrl,
           Logo: settings.Logo,
           Footer: settings.Footer,
           About: settings.About,

@@ -28,6 +28,8 @@ const defaultSiteSettings: SiteSettings = {
   'theme.frontend': 'default',
   Notice: '',
   SystemName: 'New API',
+  WeComCorpId: '',
+  WeComKfUrl: '',
   Logo: '',
   Footer: '',
   About: '',

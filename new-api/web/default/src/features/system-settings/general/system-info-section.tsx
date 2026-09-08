@@ -57,6 +57,8 @@ const _systemInfoSchema = z.object({
   }),
   SystemName: z.string().min(1),
   ServerAddress: z.string().optional(),
+  WeComCorpId: z.string().optional(),
+  WeComKfUrl: z.string().optional(),
   Logo: z.string().url().optional().or(z.literal('')),
   Footer: z.string().optional(),
   About: z.string().optional(),
@@ -89,6 +91,8 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
     },
     SystemName: normalizeValue(defaultValues.SystemName),
     ServerAddress: normalizeValue(defaultValues.ServerAddress),
+    WeComCorpId: normalizeValue(defaultValues.WeComCorpId),
+    WeComKfUrl: normalizeValue(defaultValues.WeComKfUrl),
     Logo: normalizeValue(defaultValues.Logo),
     Footer: normalizeValue(defaultValues.Footer),
     About: normalizeValue(defaultValues.About),
@@ -107,6 +111,8 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
       error: () => t('System name is required'),
     }),
     ServerAddress: z.string().optional(),
+    WeComCorpId: z.string().optional(),
+    WeComKfUrl: z.string().optional(),
     Logo: z.string().url().optional().or(z.literal('')),
     Footer: z.string().optional(),
     About: z.string().optional(),
@@ -229,6 +235,47 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
                     <FormDescription>
                       {t(
                         'The public URL of your server, used for OAuth callbacks, webhooks, and other external integrations'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='WeComCorpId'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('WeCom Corp ID')}</FormLabel>
+                    <FormControl>
+                      <Input placeholder='wwxxxxxxxxxxxxxxxx' {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'Enterprise WeChat corp ID used to open the WeChat customer service chat'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='WeComKfUrl'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('WeCom customer service URL')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder='https://work.weixin.qq.com/kfid/kfxxxx'
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'WeChat customer service link. Shown on the site and used by the mini program to open the chat.'
                       )}
                     </FormDescription>
                     <FormMessage />

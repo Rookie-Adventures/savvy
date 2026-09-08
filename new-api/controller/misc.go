@@ -122,6 +122,8 @@ func GetStatus(c *gin.Context) {
 		"user_agreement_enabled":      legalSetting.UserAgreement != "",
 		"privacy_policy_enabled":      legalSetting.PrivacyPolicy != "",
 		"checkin_enabled":             operation_setting.GetCheckinSetting().Enabled,
+		"wecom_corp_id":               operation_setting.WeComCorpId,
+		"wecom_kf_url":                operation_setting.WeComKfUrl,
 
 		// 自定义页面启用状态
 		"CustomPage.Product.Enabled":   common.OptionMap["CustomPage.Product.Enabled"],

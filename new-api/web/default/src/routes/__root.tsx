@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { type QueryClient } from '@tanstack/react-query'
 import {
   createRootRouteWithContext,
@@ -31,6 +31,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { NavigationProgress } from '@/components/navigation-progress'
 import { saveAffiliateCode } from '@/features/auth/lib/storage'
 import { AgentWidget } from '@/features/agent-chat/widget'
+import { WeComContactFab } from '@/components/wecom-contact-fab'
 import { GeneralError } from '@/features/errors/general-error'
 import { NotFoundError } from '@/features/errors/not-found-error'
 import { getSetupStatus } from '@/features/setup/api'
@@ -38,6 +39,9 @@ import { getSetupStatus } from '@/features/setup/api'
 function RootComponent() {
   // Load system configuration (logo, system name, etc.) from backend
   useSystemConfig({ autoLoad: true })
+  // 智能体聊天面板是否展开:客服悬浮球的二维码卡据此决定展开在面板左侧
+  // 还是悬浮球旁,避免压在面板上。瞬态 UI 状态,走普通 props 不上全局 store。
+  const [agentPanelOpen, setAgentPanelOpen] = useState(false)
 
   useEffect(() => {
     const aff = new URLSearchParams(window.location.search).get('aff')?.trim()
@@ -50,7 +54,8 @@ function RootComponent() {
     <ThemeCustomizationProvider>
       <NavigationProgress />
       <Outlet />
-      <AgentWidget />
+      <AgentWidget onOpenChange={setAgentPanelOpen} />
+      <WeComContactFab agentPanelOpen={agentPanelOpen} />
       <Toaster closeButton duration={5000} position='top-center' richColors />
       {import.meta.env.MODE === 'development' && (
         <>

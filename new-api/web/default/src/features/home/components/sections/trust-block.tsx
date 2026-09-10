@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { AnimateInView } from '@/components/animate-in-view'
-import { ProjectAttribution } from '@/components/layout/components/footer'
+import { LegalLinks, ProjectAttribution } from '@/components/layout/components/footer'
 
 interface TrustBlockProps {
   className?: string
@@ -32,7 +32,11 @@ interface TrustBlockProps {
 // one quiet colophon, not a labelled block (the kind of stacking that looked
 // disconnected last pass). Filing numbers are invariant Chinese identifiers
 // shown in zh regardless of UI language. Contact + payment copy deliberately
-// omitted (no-contact, no-payment-pitch; the free trial IS the trust signal).
+// omitted (no-contact, no-payment-pitch; the free trial IS the trust signal;
+// 在线客服 lives in the floating WeComContactFab, not the footer). Legal docs
+// come from the shared <LegalLinks/>, which self-hides per item when the
+// operator hasn't configured it — composing it here (rather than rendering
+// <Footer/>) is what keeps the home page at a single footer line.
 // ponytail: badges kept at brand color (no tint) — regulatory seal; muting it
 // weakens the only verifiable trust signal. Files in public/ → served as-is,
 // out of the bundle.
@@ -83,7 +87,7 @@ export function TrustBlock(_props: TrustBlockProps) {
               <span>{OFFICE}</span>
             </address>
 
-            {/* Right: ICP / public-security filings + protected project attribution */}
+            {/* Right: ICP / public-security filings + legal links + attribution */}
             <div className='text-muted-foreground-soft flex flex-col items-start gap-1.5 text-xs'>
               <LeadLabel>合规</LeadLabel>
               <div className='flex flex-wrap items-center gap-x-1.5 gap-y-1'>
@@ -91,7 +95,10 @@ export function TrustBlock(_props: TrustBlockProps) {
                 <span aria-hidden='true' className='text-muted-foreground-faint'>·</span>
                 <FilingLink no={PSB.no} href={PSB.href} badge={PSB.badge} />
               </div>
-              <ProjectAttribution currentYear={currentYear} inline />
+              <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
+                <LegalLinks />
+                <ProjectAttribution currentYear={currentYear} inline />
+              </div>
             </div>
           </div>
         </AnimateInView>

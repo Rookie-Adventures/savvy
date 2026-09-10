@@ -84,7 +84,7 @@ function FooterLinkItem(props: { link: FooterLink }) {
 export function LegalLinks(props: { leadingSeparator?: boolean }) {
   const { t } = useTranslation()
   const { status } = useStatus()
-  const items: { key: string; label: string; href: string; external?: boolean }[] = []
+  const items: { key: string; label: string; href: string }[] = []
   if (status?.user_agreement_enabled) {
     items.push({
       key: 'user-agreement',
@@ -99,18 +99,7 @@ export function LegalLinks(props: { leadingSeparator?: boolean }) {
       href: '/privacy-policy',
     })
   }
-  // 在线客服(企业微信「微信客服」):运营配置了 kf url 才显示。
-  // 桌面端打开是扫码页,手机端直接进会话,一个链接通吃两端,无需单独放二维码图。
-  const wecomKfUrl = (status as Record<string, unknown> | null)?.wecom_kf_url as
-    | string
-    | undefined
-  if (wecomKfUrl) {
-    items.push({
-      key: 'customer-service',
-      label: t('Customer Service'),
-      href: wecomKfUrl,
-    })
-  }
+  // 在线客服不在此处:它是右下角悬浮球(WeComContactFab),页脚只做法务链接。
   if (items.length === 0) {
     return null
   }
@@ -123,23 +112,12 @@ export function LegalLinks(props: { leadingSeparator?: boolean }) {
               ·
             </span>
           )}
-          {item.external ? (
-            <a
-              href={item.href}
-              target='_blank'
-              rel='noopener noreferrer'
-              className='hover:text-foreground transition-colors duration-200'
-            >
-              {item.label}
-            </a>
-          ) : (
-            <Link
-              to={item.href}
-              className='hover:text-foreground transition-colors duration-200'
-            >
-              {item.label}
-            </Link>
-          )}
+          <Link
+            to={item.href}
+            className='hover:text-foreground transition-colors duration-200'
+          >
+            {item.label}
+          </Link>
         </Fragment>
       ))}
     </>

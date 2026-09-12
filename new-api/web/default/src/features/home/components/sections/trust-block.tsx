@@ -33,10 +33,9 @@ interface TrustBlockProps {
 // disconnected last pass). Filing numbers are invariant Chinese identifiers
 // shown in zh regardless of UI language. Contact + payment copy deliberately
 // omitted (no-contact, no-payment-pitch; the free trial IS the trust signal;
-// 在线客服 lives in the floating WeComContactFab, not the footer). Legal docs
-// come from the shared <LegalLinks/>, which self-hides per item when the
-// operator hasn't configured it — composing it here (rather than rendering
-// <Footer/>) is what keeps the home page at a single footer line.
+// 在线客服 lives in the floating WeComContactFab, not the footer). 用户协议 /
+// 隐私政策由共享 <LegalLinks/> 按配置自隐地并进合规列(用户 2026-09-10 看过
+// 实际效果后认定保留更正规)。
 // ponytail: badges kept at brand color (no tint) — regulatory seal; muting it
 // weakens the only verifiable trust signal. Files in public/ → served as-is,
 // out of the bundle.

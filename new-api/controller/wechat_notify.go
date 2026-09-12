@@ -8,11 +8,14 @@ import (
 	"net/http"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/gin-gonic/gin"
+	"github.com/wechatpay-apiv3/wechatpay-go/core/auth"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/auth/verifiers"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/downloader"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/notify"
+	"github.com/wechatpay-apiv3/wechatpay-go/utils"
 )
 
 // handleWxNotify 封装微信 APIv3 通知:解密+验签用 SDK,拿 OutTradeNo 后调 finalize。
@@ -26,6 +29,7 @@ func handleWxNotify(c *gin.Context, finalize func(c *gin.Context, tradeNo, paylo
 	// SDK 解密+验签拿明文(含 OutTradeNo):
 	tradeNo, plaintext, err := decryptWxNativeNotify(body, c.Request.Header)
 	if err != nil || tradeNo == "" {
+		logger.LogError(c, fmt.Sprintf("wechat notify rejected: trade_no=%q err=%v", tradeNo, err))
 		c.JSON(http.StatusBadRequest, gin.H{"code": "FAIL", "message": "verify/decrypt failed"})
 		return
 	}
@@ -72,9 +76,19 @@ func decryptWxNativeNotify(body []byte, header http.Header) (tradeNo, plaintext 
 	}
 	req.Header = header
 	req.Body = io.NopCloser(bytes.NewReader(body))
-	// verifier 源 = GetWechatClient 同一 mgr 单例(平台证书自动下载器)。与请求端验签同证书池。
-	certVisitor := downloader.MgrInstance().GetCertificateVisitor(operation_setting.WechatMchID)
-	verifier := verifiers.NewSHA256WithRSAVerifier(certVisitor)
+	// verifier 源必须与 GetWechatClient 同模式:新商户号(公钥模式)没有平台证书,
+	// 自动下载器取不到微信证书 → 验签必败(生产 2026-09-12 回调连吃 400 的根因)。
+	var verifier auth.Verifier
+	if operation_setting.WechatPayPublicKeyId != "" && operation_setting.WechatPayPublicKey != "" {
+		pub, pubErr := utils.LoadPublicKey(normalizeWechatPublicKey(operation_setting.WechatPayPublicKey))
+		if pubErr != nil {
+			return "", "", fmt.Errorf("load wechat public key: %w", pubErr)
+		}
+		verifier = verifiers.NewSHA256WithRSAPubkeyVerifier(operation_setting.WechatPayPublicKeyId, *pub)
+	} else {
+		certVisitor := downloader.MgrInstance().GetCertificateVisitor(operation_setting.WechatMchID)
+		verifier = verifiers.NewSHA256WithRSAVerifier(certVisitor)
+	}
 	handler, err := notify.NewRSANotifyHandler(operation_setting.WechatAPIv3Key, verifier)
 	if err != nil {
 		return "", "", fmt.Errorf("init notify handler: %w", err)

@@ -76,6 +76,14 @@
 
 验证：typecheck 0 错；docker 重建后浏览器实测 7 项全过（双球堆叠不重叠、hover 出 140×140 QR、`<a>` 带 target/rel、聊天面板不遮挡客服球、页脚已无「在线客服」、移开鼠标卡片消失）。
 
+## 部署（2026-09-10）
+
+- 机A nginx：`public/` 新增根级文件 `/wecom-avatar.png` 会被 regex `~* \.(png|...)$` 劫去 workspace-router(41000) 吃 401，按既有套路加 `location = /wecom-avatar.png { proxy_pass http://172.24.96.233:3000; ... }`（插在 waffo regex 块前），`nginx -t` + reload。公网实测 `image/png 4317`。
+- 机B：`/opt/savvy` ff-only 拉到 `bc231c814`，`deploy/` 下重建 new-api 镜像并 recreate。
+- 坑 1：备份写成 `cp -a $F $F.bak-xxx` 且落在 `sites-enabled/` 内 → nginx 把备份当第二个 default server 加载 → `nginx -t` 报 duplicate default server、reload 不生效。备份必须移出 sites-enabled（现放 `/root/nginx-conf-backup/`）。
+- 坑 2：RunCommand 脚本里验证用 curl **没加 -m**，新容器启动期接受连接但不响应 → curl 永久挂起 → 调用 Timeout，且孤儿 `docker compose build` 子进程存活继续拖垮机器（期间站点抖了一下）。后续脚本一律：curl 带 -m；构建用 `nohup ... --progress=plain > /tmp/xxx.log &` 脱离调用超时，轮询日志而非干等。
+- 机B 的 go build 在 4C 上本身就要几分钟且非 plain 模式无输出，"看起来挂住" 先查日志再下结论。
+
 ## 尾巴
 
 - `Footer`（footer.tsx:191，约 190 行）是完整死代码，含 `customPageColumns` / `fallbackColumns` 等逻辑，建议单独一次清理删掉，别混在本次修复里。

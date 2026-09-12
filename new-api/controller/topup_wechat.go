@@ -79,6 +79,7 @@ func RequestWechatPay(c *gin.Context) {
 		},
 	})
 	if err != nil {
+		logger.LogError(context.Background(), fmt.Sprintf("wechat pay prepay failed: trade_no=%s err=%v", tradeNo, err))
 		_ = model.UpdatePendingTopUpStatus(tradeNo, model.PaymentProviderWechat, common.TopUpStatusFailed)
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
 		return

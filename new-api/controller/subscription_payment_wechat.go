@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
@@ -19,6 +21,23 @@ import (
 )
 
 var wechatNativeSvc *native.NativeApiService
+
+// normalizeWechatPublicKey: 商户平台「微信支付公钥」下发的是单行 base64(无 PEM 头尾),
+// 而 utils.LoadPublicKey 只认 PEM 块 → 缺头尾时补上并按 64 字符折行。
+func normalizeWechatPublicKey(s string) string {
+	if strings.Contains(s, "BEGIN") {
+		return s
+	}
+	clean := strings.Join(strings.Fields(s), "")
+	var sb strings.Builder
+	sb.WriteString("-----BEGIN PUBLIC KEY-----\n")
+	for i := 0; i < len(clean); i += 64 {
+		sb.WriteString(clean[i:min(i+64, len(clean))])
+		sb.WriteString("\n")
+	}
+	sb.WriteString("-----END PUBLIC KEY-----\n")
+	return sb.String()
+}
 
 // GetWechatClient returns the wechat native-pay service; nil if not configured.
 // AppId 缺时返 nil → handler 友好拒绝(用户当前态:商户号已有缺 AppId)。
@@ -34,12 +53,14 @@ func GetWechatClient() *native.NativeApiService {
 	// 一键装配 signer+verifier+自动下载平台证书(覆盖 WechatPlatformCertPath,故 IsWechatConfigured 不校验它)。
 	privKey, err := utils.LoadPrivateKey(operation_setting.WechatPrivateKeyPEM)
 	if err != nil {
+		logger.LogError(context.Background(), fmt.Sprintf("wechat pay: load merchant private key failed: %v", err))
 		return nil
 	}
 	// 公钥模式:2024-10 起新商户号只发微信支付公钥、不再下发平台证书,自动下载会失败。
 	if operation_setting.WechatPayPublicKeyId != "" && operation_setting.WechatPayPublicKey != "" {
-		pub, pubErr := utils.LoadPublicKey(operation_setting.WechatPayPublicKey)
+		pub, pubErr := utils.LoadPublicKey(normalizeWechatPublicKey(operation_setting.WechatPayPublicKey))
 		if pubErr != nil {
+			logger.LogError(context.Background(), fmt.Sprintf("wechat pay: load wechat public key failed: %v", pubErr))
 			return nil
 		}
 		pkClient, pkErr := core.NewClient(
@@ -53,6 +74,7 @@ func GetWechatClient() *native.NativeApiService {
 			),
 		)
 		if pkErr != nil {
+			logger.LogError(context.Background(), fmt.Sprintf("wechat pay: new client (public-key mode) failed: %v", pkErr))
 			return nil
 		}
 		wechatNativeSvc = &native.NativeApiService{Client: pkClient}
@@ -70,6 +92,7 @@ func GetWechatClient() *native.NativeApiService {
 		),
 	)
 	if err != nil {
+		logger.LogError(context.Background(), fmt.Sprintf("wechat pay: new client (auto-auth mode) failed: %v", err))
 		return nil
 	}
 	// ponytail: SDK v0.2.21 无 NewNativeApiService 构造器(docs/payments/native/NativeApi.md:60 用法)

@@ -113,6 +113,9 @@ func SetApiRouter(router *gin.Engine) {
 				// ponytail: 订单码(扫码)充值与网站支付同配置同回调,复用 isAlipayTopUpEnabled 合规 gate,不新增后台开关
 				selfRoute.POST("/alipay/qr/pay", middleware.CriticalRateLimit(), controller.RequestAlipayQRPay)
 				selfRoute.POST("/wechat/pay", middleware.CriticalRateLimit(), controller.RequestWechatPay)
+				// ponytail: JSAPI 静默授权桥,对齐 selfRoute /wechat/pay 范式(登录态+关键限流)
+				selfRoute.GET("/wechat/jsapi/oauth/start", middleware.CriticalRateLimit(), controller.WechatJsapiOauthStart)
+				selfRoute.GET("/wechat/jsapi/oauth/callback", middleware.CriticalRateLimit(), controller.WechatJsapiOauthCallback)
 				selfRoute.POST("/amount", controller.RequestAmount)
 				selfRoute.POST("/stripe/pay", middleware.CriticalRateLimit(), controller.RequestStripePay)
 				selfRoute.POST("/stripe/amount", controller.RequestStripeAmount)

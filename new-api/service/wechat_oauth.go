@@ -20,11 +20,17 @@ func wechatJsapiOauthCallbackPath() string {
 	return "/api/user/wechat/jsapi/oauth/callback"
 }
 
-// BuildWechatOauthAuthorizeURL 构造服务号 snsapi_base 静默授权 URL。
+// BuildWechatOauthAuthorizeURL 构造服务号 snsapi_base 静默授权 URL(JSAPI 支付用)。
 // state 用于防 CSRF(回调时校验);redirect_uri 固定为本服务回调路径(同源,非外部可控)。
 func BuildWechatOauthAuthorizeURL(state string) string {
+	return BuildWechatOauthAuthorizeURLFor(state, wechatJsapiOauthCallbackPath())
+}
+
+// BuildWechatOauthAuthorizeURLFor 通用化:回调路径由调用方指定(身份体系扫码登录走
+// /api/wechat/oa/callback);redirect_uri 仍由服务端构造,绝不接受用户输入(防 open-redirect)。
+func BuildWechatOauthAuthorizeURLFor(state, callbackPath string) string {
 	base := strings.TrimRight(GetCallbackAddress(), "/") // ponytail: 用 new-api 自身对外地址,对齐 service.GetCallbackAddress 范式
-	redirect := base + wechatJsapiOauthCallbackPath()
+	redirect := base + callbackPath
 	return fmt.Sprintf(
 		"https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_base&state=%s#wechat_redirect",
 		url.QueryEscape(operation_setting.WechatMpAppId), // 服务号 AppID(openid 按账号隔离)

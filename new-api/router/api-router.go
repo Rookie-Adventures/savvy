@@ -53,6 +53,12 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/oauth/telegram/bind", middleware.CriticalRateLimit(), controller.TelegramBind)
 		// Standard OAuth providers (GitHub, Discord, OIDC, LinuxDO) - unified route
 		apiRouter.GET("/oauth/:provider", middleware.CriticalRateLimit(), controller.HandleOAuth)
+		// ponytail: 微信身份体系(服务号 OAuth)——跨设备扫码登录/微信内直登,state=kind:token 自含票证;
+		// entry/callback 是浏览器跳转链路(同源硬编码),不加限流;票证创建/轮询按 brief 走 Critical 档
+		apiRouter.POST("/wechat/oa/tokens", middleware.CriticalRateLimit(), controller.CreateWeChatOAIdentityToken)
+		apiRouter.GET("/wechat/oa/tokens/:token/status", middleware.CriticalRateLimit(), controller.GetWeChatOATokenStatus)
+		apiRouter.GET("/wechat/oa/entry", controller.WeChatOAEntry)
+		apiRouter.GET("/wechat/oa/callback", controller.WeChatOACallback)
 		apiRouter.GET("/ratio_config", middleware.CriticalRateLimit(), controller.GetRatioConfig)
 
 		apiRouter.POST("/stripe/webhook", anonymousRequestBodyLimit, controller.StripeWebhook)
@@ -113,6 +119,8 @@ func SetApiRouter(router *gin.Engine) {
 				// ponytail: 订单码(扫码)充值与网站支付同配置同回调,复用 isAlipayTopUpEnabled 合规 gate,不新增后台开关
 				selfRoute.POST("/alipay/qr/pay", middleware.CriticalRateLimit(), controller.RequestAlipayQRPay)
 				selfRoute.POST("/wechat/pay", middleware.CriticalRateLimit(), controller.RequestWechatPay)
+				// ponytail: 微信绑定票证(登录态),QR 轮询走匿名 status 路由(handler 内校验归属)
+				selfRoute.POST("/wechat/oa/tokens", middleware.CriticalRateLimit(), controller.CreateWeChatOABindToken)
 				selfRoute.POST("/wechat/jsapi/pay", middleware.CriticalRateLimit(), controller.RequestWechatJsapiPay)
 				// ponytail: JSAPI 静默授权桥,对齐 selfRoute /wechat/pay 范式(登录态+关键限流)
 				selfRoute.POST("/wechat/jsapi/oauth/start", middleware.CriticalRateLimit(), controller.WechatJsapiOauthStart)

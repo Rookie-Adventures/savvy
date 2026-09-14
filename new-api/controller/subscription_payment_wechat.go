@@ -13,6 +13,7 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/auth"
@@ -216,6 +217,86 @@ func SubscriptionRequestWechat(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"code_url": *resp.CodeUrl}})
+}
+
+// SubscriptionRequestWechatJsapi: 订阅 JSAPI 下单,返回调起参数;回调复用 /api/subscription/wechat/notify。
+// 与 SubscriptionRequestWechat 唯一区别:走 JSAPI 单例 + Payer.Openid + 返调起参数(非 code_url)。
+// 字段名以 go doc v0.2.21 为准:请求类型 jsapi.PrepayRequest,响应 Appid/TimeStamp/NonceStr/Package/SignType/PaySign。
+func SubscriptionRequestWechatJsapi(c *gin.Context) {
+	if !requirePaymentCompliance(c) {
+		return
+	}
+	var req SubscriptionWechatPayRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.PlanId <= 0 {
+		common.ApiErrorMsg(c, "参数错误")
+		return
+	}
+	plan, err := model.GetSubscriptionPlanById(req.PlanId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if !plan.Enabled {
+		common.ApiErrorMsg(c, "套餐未启用")
+		return
+	}
+	if plan.PriceAmount < 0.01 {
+		common.ApiErrorMsg(c, "套餐金额过低")
+		return
+	}
+	session := sessions.Default(c)
+	openid, _ := session.Get(wechatJsapiOpenidSessionKey).(string)
+	if openid == "" {
+		c.JSON(http.StatusOK, gin.H{"message": "wechat_oauth_required", "data": nil})
+		return
+	}
+	svc := GetWechatJsapiClient()
+	if svc == nil {
+		common.ApiErrorMsg(c, "当前管理员未配置支付信息")
+		return
+	}
+	userId := c.GetInt("id")
+	tradeNo := fmt.Sprintf("WXJSUB%dNO%s%d", userId, common.GetRandomString(6), time.Now().Unix())
+	order := &model.SubscriptionOrder{
+		UserId:          userId,
+		PlanId:          plan.Id,
+		Money:           plan.PriceAmount,
+		TradeNo:         tradeNo,
+		PaymentMethod:   model.PaymentMethodWechat,
+		PaymentProvider: model.PaymentProviderWechat,
+		CreateTime:      time.Now().Unix(),
+		Status:          common.TopUpStatusPending,
+	}
+	if err := order.Insert(); err != nil {
+		common.ApiErrorMsg(c, "创建订单失败")
+		return
+	}
+	callbackBase := service.GetCallbackAddress()
+	resp, _, err := svc.PrepayWithRequestPayment(context.Background(), jsapi.PrepayRequest{
+		Appid:       core.String(operation_setting.WechatMpAppId), // 同充值:服务号 AppID
+		Mchid:       core.String(operation_setting.WechatMchID),
+		Description: core.String("栗橙科技-" + plan.Title + "套餐"),
+		OutTradeNo:  core.String(tradeNo),
+		NotifyUrl:   core.String(callbackBase + "/api/subscription/wechat/notify"),
+		Amount: &jsapi.Amount{
+			Total:    core.Int64(int64(math.Round(plan.PriceAmount * 100))),
+			Currency: core.String("CNY"),
+		},
+		Payer: &jsapi.Payer{Openid: core.String(openid)},
+	})
+	if err != nil {
+		_ = model.ExpireSubscriptionOrder(tradeNo, model.PaymentProviderWechat)
+		common.ApiErrorMsg(c, "拉起支付失败")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{
+		"appId":     *resp.Appid,
+		"timeStamp": *resp.TimeStamp,
+		"nonceStr":  *resp.NonceStr,
+		"package":   *resp.Package,
+		"signType":  *resp.SignType,
+		"paySign":   *resp.PaySign,
+	}})
 }
 
 // SubscriptionWechatNotify: 微信 APIv3 异步通知(JSON+签名头)。SDK 解密+验签后调 CompleteSubscriptionOrder。

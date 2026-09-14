@@ -11,11 +11,7 @@ import (
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/gin-gonic/gin"
-	"github.com/wechatpay-apiv3/wechatpay-go/core/auth"
-	"github.com/wechatpay-apiv3/wechatpay-go/core/auth/verifiers"
-	"github.com/wechatpay-apiv3/wechatpay-go/core/downloader"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/notify"
-	"github.com/wechatpay-apiv3/wechatpay-go/utils"
 )
 
 // handleWxNotify 封装微信 APIv3 通知:解密+验签用 SDK,拿 OutTradeNo 后调 finalize。
@@ -76,18 +72,10 @@ func decryptWxNativeNotify(body []byte, header http.Header) (tradeNo, plaintext 
 	}
 	req.Header = header
 	req.Body = io.NopCloser(bytes.NewReader(body))
-	// verifier 源必须与 GetWechatClient 同模式:新商户号(公钥模式)没有平台证书,
-	// 自动下载器取不到微信证书 → 验签必败(生产 2026-09-12 回调连吃 400 的根因)。
-	var verifier auth.Verifier
-	if operation_setting.WechatPayPublicKeyId != "" && operation_setting.WechatPayPublicKey != "" {
-		pub, pubErr := utils.LoadPublicKey(normalizeWechatPublicKey(operation_setting.WechatPayPublicKey))
-		if pubErr != nil {
-			return "", "", fmt.Errorf("load wechat public key: %w", pubErr)
-		}
-		verifier = verifiers.NewSHA256WithRSAPubkeyVerifier(operation_setting.WechatPayPublicKeyId, *pub)
-	} else {
-		certVisitor := downloader.MgrInstance().GetCertificateVisitor(operation_setting.WechatMchID)
-		verifier = verifiers.NewSHA256WithRSAVerifier(certVisitor)
+	// verifier 源必须与 GetWechatClient 同模式:统一走 getWechatVerifier()(2026-09-12 事故铁律)。
+	verifier, err := getWechatVerifier()
+	if err != nil {
+		return "", "", fmt.Errorf("init wechat verifier: %w", err)
 	}
 	handler, err := notify.NewRSANotifyHandler(operation_setting.WechatAPIv3Key, verifier)
 	if err != nil {

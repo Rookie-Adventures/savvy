@@ -180,6 +180,18 @@ export function generatePresetAmounts(minAmount: number): PresetAmount[] {
 }
 
 /**
+ * Parse deeplink topup amount from URL search (e.g. ?amount=100 from service-account menu).
+ * Returns 0 when absent/invalid; caller clamps to min topup.
+ */
+export function parseDeeplinkTopupAmount(search: string): number {
+  if (!search) return 0
+  const raw = new URLSearchParams(search).get('amount')
+  if (!raw) return 0
+  const n = Number.parseInt(raw, 10)
+  return Number.isFinite(n) && n > 0 ? n : 0
+}
+
+/**
  * Merge custom preset amounts with discounts
  */
 export function mergePresetAmounts(

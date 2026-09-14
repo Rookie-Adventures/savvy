@@ -47,6 +47,7 @@ import {
   getDefaultPaymentType,
   getMinTopupAmount,
   isWaffoPancakePayment,
+  parseDeeplinkTopupAmount,
 } from './lib'
 import type {
   UserWalletData,
@@ -142,11 +143,14 @@ export function Wallet(props: WalletProps) {
   useEffect(() => {
     if (topupInfo && topupAmount === 0) {
       const minTopup = getMinTopupAmount(topupInfo)
-      setTopupAmount(minTopup)
+      // ponytail: 服务号菜单深链 ?amount= 预填;低于下限回落下限,支付时校验不变。
+      const deeplink = parseDeeplinkTopupAmount(window.location.search)
+      const initial = deeplink >= minTopup ? deeplink : minTopup
+      setTopupAmount(initial)
 
       // Calculate initial payment amount with default payment type
       const defaultPaymentType = getDefaultPaymentType(topupInfo)
-      calculatePaymentAmount(minTopup, defaultPaymentType)
+      calculatePaymentAmount(initial, defaultPaymentType)
     }
   }, [topupInfo, topupAmount, calculatePaymentAmount])
 

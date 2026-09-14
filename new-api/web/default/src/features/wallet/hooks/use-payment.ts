@@ -28,6 +28,8 @@ import {
   requestAlipayPayment,
   requestAlipayQRPayment,
   requestWechatPayment,
+  requestWechatJsapiPayment,
+  startWechatJsapiOauth,
   isApiSuccess,
 } from '../api'
 import {
@@ -36,6 +38,8 @@ import {
   isAlipayPayment,
   isAlipayQRPayment,
   isWechatPayment,
+  isWechatInAppBrowser,
+  invokeWeixinPay,
   submitPaymentForm,
 } from '../lib'
 
@@ -138,6 +142,43 @@ export function usePayment() {
         }
 
         if (isWechat) {
+          // 微信内浏览器走 JSAPI 调起,其余走扫码(Native)——ponytail: 双 AppID 决策,openid 按 AppID 隔离
+          if (isWechatInAppBrowser()) {
+            const res = await requestWechatJsapiPayment({ amount, payment_method: 'wechat' })
+            if (!isApiSuccess(res)) {
+              toast.error(res.message || i18next.t('Payment request failed'))
+              return { ok: false }
+            }
+            if (res.message === 'wechat_oauth_required') {
+              // 未授权:跳静默授权,微信带 code 回回调后写 session openid,前端回到钱包页再付
+              const authRes = await startWechatJsapiOauth()
+              if (isApiSuccess(authRes) && authRes.data?.authorize_url) {
+                window.location.href = authRes.data.authorize_url
+                return { ok: false } // 跳转中,不视为失败
+              }
+              toast.error(i18next.t('WeChat Oauth') + ': ' + i18next.t('Payment request failed'))
+              return { ok: false }
+            }
+            if (res.data?.appId) {
+              invokeWeixinPay(
+                {
+                  appId: res.data.appId,
+                  timeStamp: res.data.timeStamp,
+                  nonceStr: res.data.nonceStr,
+                  package: res.data.package,
+                  signType: res.data.signType,
+                  paySign: res.data.paySign,
+                },
+                () => {
+                  // ponytail: usePayment 无 onPurchaseSuccess 回调(见 use-payment 签名),
+                  // 支付成功后刷新页面以同步余额(notify 已在后端落库)。
+                  window.location.reload()
+                }
+              )
+              return { ok: true }
+            }
+            return { ok: false }
+          }
           const response = await requestWechatPayment({
             amount,
             payment_method: 'wechat',

@@ -27,6 +27,7 @@ import type {
   SubscriptionPayRequest,
   SelfSubscriptionData,
 } from './types'
+import type { WechatJsapiPaymentResponse } from '../wallet/types'
 
 // ============================================================================
 // Admin Plan Management
@@ -196,6 +197,17 @@ export async function paySubscriptionWechat(
   data: SubscriptionPayRequest
 ): Promise<SubscriptionPayResponse & { data?: { code_url?: string } }> {
   const res = await api.post('/api/subscription/wechat/pay', data)
+  return res.data
+}
+
+// WeChat in-app (JSAPI) subscription payment — returns JSAPI invoke params
+// (appId/timeStamp/nonceStr/package/signType/paySign) computed by the backend in one step.
+export async function paySubscriptionWechatJsapi(
+  data: SubscriptionPayRequest
+): Promise<WechatJsapiPaymentResponse> {
+  const res = await api.post('/api/subscription/wechat/jsapi/pay', data, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
   return res.data
 }
 

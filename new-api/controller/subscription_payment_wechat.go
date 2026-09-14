@@ -246,13 +246,13 @@ func SubscriptionRequestWechatJsapi(c *gin.Context) {
 	}
 	session := sessions.Default(c)
 	openid, _ := session.Get(wechatJsapiOpenidSessionKey).(string)
-	if openid == "" {
-		c.JSON(http.StatusOK, gin.H{"message": "wechat_oauth_required", "data": nil})
-		return
-	}
 	svc := GetWechatJsapiClient()
 	if svc == nil {
 		common.ApiErrorMsg(c, "当前管理员未配置支付信息")
+		return
+	}
+	if openid == "" {
+		c.JSON(http.StatusOK, gin.H{"message": "wechat_oauth_required", "data": nil})
 		return
 	}
 	userId := c.GetInt("id")

@@ -13,9 +13,11 @@ import (
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
+	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/jsapi"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 )
 
@@ -87,6 +89,83 @@ func RequestWechatPay(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"code_url": *resp.CodeUrl}})
 }
 
+// RequestWechatJsapiPay: 微信内 JSAPI 下单,返回调起参数(由 SDK PrepayWithRequestPayment 一步算出 paySign)。
+// openid 来自 Task2 静默授权写入的 session;缺失则返 wechat_oauth_required 让前端跳授权。
+// 回调复用现有 /api/user/wechat/notify,provider=wechat,零改动。
+func RequestWechatJsapiPay(c *gin.Context) {
+	var req WechatTopUpRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.Amount <= 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
+		return
+	}
+	session := sessions.Default(c)
+	openid, _ := session.Get(wechatJsapiOpenidSessionKey).(string)
+	svc := GetWechatJsapiClient()
+	if svc == nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "当前管理员未配置支付信息"})
+		return
+	}
+	if openid == "" {
+		c.JSON(http.StatusOK, gin.H{"message": "wechat_oauth_required", "data": nil})
+		return
+	}
+	userId := c.GetInt("id")
+	group, err := model.GetUserGroup(userId, true)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
+		return
+	}
+	payMoney := getPayMoney(req.Amount, group)
+	if payMoney < 0.01 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
+		return
+	}
+	tradeNo := fmt.Sprintf("WXJUSR%dNO%s%d", userId, common.GetRandomString(6), time.Now().Unix())
+	topUp := &model.TopUp{
+		UserId:          userId,
+		Amount:          req.Amount,
+		Money:           payMoney,
+		TradeNo:         tradeNo,
+		PaymentMethod:   model.PaymentMethodWechat,
+		PaymentProvider: model.PaymentProviderWechat,
+		CreateTime:      time.Now().Unix(),
+		Status:          common.TopUpStatusPending,
+	}
+	if err := topUp.Insert(); err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "创建订单失败"})
+		return
+	}
+	callbackBase := service.GetCallbackAddress()
+	// ponytail: JSAPI 用 Payer.Openid 绑定付款人;PrepayWithRequestPayment 一步返回调起参数(含 paySign),不手写。
+	// 字段名以 go doc v0.2.21 为准:请求类型 jsapi.PrepayRequest,响应 Appid/TimeStamp/NonceStr/Package/SignType/PaySign。
+	resp, _, err := svc.PrepayWithRequestPayment(context.Background(), jsapi.PrepayRequest{
+		Appid:       core.String(operation_setting.WechatMpAppId), // 服务号 AppID,与 openid 同号;非 Native 老号
+		Mchid:       core.String(operation_setting.WechatMchID),
+		Description: core.String("栗橙科技-服务包"),
+		OutTradeNo:  core.String(tradeNo),
+		NotifyUrl:   core.String(callbackBase + "/api/user/wechat/notify"),
+		Amount: &jsapi.Amount{
+			Total:    core.Int64(int64(math.Round(payMoney * 100))),
+			Currency: core.String("CNY"),
+		},
+		Payer: &jsapi.Payer{Openid: core.String(openid)},
+	})
+	if err != nil {
+		logger.LogError(context.Background(), fmt.Sprintf("wechat jsapi prepay failed: trade_no=%s err=%v", tradeNo, err))
+		_ = model.UpdatePendingTopUpStatus(tradeNo, model.PaymentProviderWechat, common.TopUpStatusFailed)
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{
+		"appId":     *resp.Appid,
+		"timeStamp": *resp.TimeStamp,
+		"nonceStr":  *resp.NonceStr,
+		"package":   *resp.Package,
+		"signType":  *resp.SignType,
+		"paySign":   *resp.PaySign,
+	}})
+}
+
 // WechatNotify handles wechat APIv3 async notify for wallet top-up.
 // Returns {"code":"SUCCESS",...} on completion (wechat does not retry SUCCESS).
 func WechatNotify(c *gin.Context) {
@@ -107,6 +186,7 @@ func WechatNotify(c *gin.Context) {
 			// 幂等:已处理订单仍返 SUCCESS 止 wechat 重试,不重复加钱
 			return nil
 		}
+		topUp.CompleteTime = common.GetTimestamp()
 		topUp.Status = common.TopUpStatusSuccess
 		if err := topUp.Update(); err != nil {
 			return err

@@ -42,6 +42,15 @@ export type StripePaymentResponse = ApiResponse<{ pay_link: string }>
 export type AlipayPaymentResponse = ApiResponse<{ pay_link: string }>
 export type AlipayQRPaymentResponse = ApiResponse<{ code_url: string }>
 export type WechatPaymentResponse = ApiResponse<{ code_url: string }>
+// JSAPI 调起参数:由后端 PrepayWithRequestPayment 一步算出(含 paySign),前端无需手写。
+export type WechatJsapiPaymentResponse = ApiResponse<{
+  appId: string
+  timeStamp: string
+  nonceStr: string
+  package: string
+  signType: string
+  paySign: string
+}>
 export type AffiliateCodeResponse = ApiResponse<string>
 export type AffiliateTransferResponse = ApiResponse
 export type CreemPaymentResponse = ApiResponse<{ checkout_url: string }>

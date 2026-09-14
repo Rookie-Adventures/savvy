@@ -195,3 +195,52 @@ export function mergePresetAmounts(
     discount: discounts[amount] || 1.0,
   }))
 }
+
+/**
+ * Check if running inside WeChat in-app browser (JSAPI payment needs it).
+ * ponytail: 微信内浏览器 UA 含 MicroMessenger;旧安卓微信需 WeixinJSBridgeReady 事件。
+ */
+export function isWechatInAppBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /micromessenger/i.test(navigator.userAgent)
+}
+
+export type WeixinPayParams = {
+  appId: string
+  timeStamp: string
+  nonceStr: string
+  package: string
+  signType: string
+  paySign: string
+}
+
+/**
+ * Invoke WeChat JSAPI cashier via WeixinJSBridge.
+ * Works in WeChat in-app browser; old Android WeChat needs the WeixinJSBridgeReady event.
+ */
+export function invokeWeixinPay(params: WeixinPayParams, onDone: () => void) {
+  const call = () => {
+    // ponytail: JSAPI 调起参数由后端 PrepayWithRequestPayment 一步给出,无需手写 paySign。
+    ;(window as unknown as { WeixinJSBridge: { invoke: (a: string, b: unknown, c: (r: { err_msg: string }) => void) => void } }).WeixinJSBridge.invoke(
+      'getBrandWCPayRequest',
+      {
+        appId: params.appId,
+        timeStamp: params.timeStamp,
+        nonceStr: params.nonceStr,
+        package: params.package,
+        signType: params.signType,
+        paySign: params.paySign,
+      },
+      (result) => {
+        if (result.err_msg === 'get_brand_wcpay_request:ok') {
+          onDone()
+        }
+      }
+    )
+  }
+  if ((window as unknown as { WeixinJSBridge?: unknown }).WeixinJSBridge) {
+    call()
+  } else {
+    document.addEventListener('WeixinJSBridgeReady', call, false)
+  }
+}

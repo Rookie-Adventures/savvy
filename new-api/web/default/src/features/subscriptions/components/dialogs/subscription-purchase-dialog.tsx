@@ -48,9 +48,12 @@ import {
   paySubscriptionAlipay,
   paySubscriptionAlipayQR,
   paySubscriptionWechat,
+  paySubscriptionWechatJsapi,
 } from '../../api'
 import { formatDuration, formatResetPeriod } from '../../lib'
 import type { PlanRecord } from '../../types'
+import { startWechatJsapiOauth } from '@/features/wallet/api'
+import { isWechatInAppBrowser, invokeWeixinPay } from '@/features/wallet/lib/payment'
 
 interface PaymentMethod {
   type: string
@@ -221,10 +224,47 @@ export function SubscriptionPurchaseDialog(props: Props) {
     }
   }
 
-  // WeChat Pay direct: render code_url as QR in-dialog overlay.
+  // WeChat Pay JSAPI (in-app): obtain openid via silent OAuth, then invoke WeixinJSBridge;
+  // non-WeChat-in-app falls back to QR (Native) like before.
   const handlePayWechat = async () => {
     setPaying(true)
     try {
+      if (isWechatInAppBrowser()) {
+        const res = await paySubscriptionWechatJsapi({ plan_id: plan.id })
+        if (res.message === 'success' && res.data?.appId) {
+          invokeWeixinPay(
+            {
+              appId: res.data.appId,
+              timeStamp: res.data.timeStamp,
+              nonceStr: res.data.nonceStr,
+              package: res.data.package,
+              signType: res.data.signType,
+              paySign: res.data.paySign,
+            },
+            () => {
+              void props.onPurchaseSuccess?.()
+              props.onOpenChange(false)
+            }
+          )
+          return
+        }
+        if (res.message === 'wechat_oauth_required') {
+          const authRes = await startWechatJsapiOauth()
+          if (authRes.message === 'success' && authRes.data?.authorize_url) {
+            window.location.href = authRes.data.authorize_url
+            return
+          }
+          toast.error(t('WeChat Oauth') + ': ' + t('Payment request failed'))
+          return
+        }
+        toast.error(
+          res.message && res.message !== 'success'
+            ? res.message
+            : t('Payment request failed')
+        )
+        return
+      }
+      // 非微信内:扫码(Native)渲染 code_url
       const res = await paySubscriptionWechat({ plan_id: plan.id })
       if (res.message === 'success' && res.data?.code_url) {
         setQrPay({ url: res.data.code_url, provider: 'wechat' })

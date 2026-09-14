@@ -13,14 +13,22 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
+	"github.com/wechatpay-apiv3/wechatpay-go/core/auth"
+	"github.com/wechatpay-apiv3/wechatpay-go/core/auth/verifiers"
+	"github.com/wechatpay-apiv3/wechatpay-go/core/downloader"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/option"
+	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/jsapi"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 	"github.com/wechatpay-apiv3/wechatpay-go/utils"
 )
 
-var wechatNativeSvc *native.NativeApiService
+var (
+	wechatNativeSvc *native.NativeApiService
+	wechatJsapiSvc  *jsapi.JsapiApiService
+)
 
 // normalizeWechatPublicKey: 商户平台「微信支付公钥」下发的是单行 base64(无 PEM 头尾),
 // 而 utils.LoadPublicKey 只认 PEM 块 → 缺头尾时补上并按 64 字符折行。
@@ -39,31 +47,31 @@ func normalizeWechatPublicKey(s string) string {
 	return sb.String()
 }
 
-// GetWechatClient returns the wechat native-pay service; nil if not configured.
-// AppId 缺时返 nil → handler 友好拒绝(用户当前态:商户号已有缺 AppId)。
-func GetWechatClient() *native.NativeApiService {
-	if wechatNativeSvc != nil {
-		return wechatNativeSvc
-	}
+// wechatUsePublicKeyVerifier 是"请求/回调同模式"铁律的唯一决策点(2026-09-12 事故):
+// 公钥模式=true 走公钥 verifier;否则=false 走平台证书下载器。buildWechatCoreClient 与
+// getWechatVerifier 都必须调它,绝不能在两处各写一遍条件(那正是事故根因)。
+func wechatUsePublicKeyVerifier() bool {
+	return operation_setting.WechatPayPublicKeyId != "" && operation_setting.WechatPayPublicKey != ""
+}
+
+// buildWechatCoreClient 是唯一装配 core.Client 的地方:公钥模式与平台证书模式二选一,
+// Native/JSAPI 共用 → 保证两端同模式(2026-09-12 事故铁律)。
+// ponytail: 公钥模式下 WithWechatPayPublicKeyAuthCipher 不依赖平台证书下载器,
+// 老商户号才走 WithWechatPayAutoAuthCipher(内部下载平台证书)。
+func buildWechatCoreClient() (*core.Client, error) {
 	if !operation_setting.IsWechatConfigured() {
-		return nil
+		return nil, fmt.Errorf("wechat pay not configured")
 	}
-	// ponytail: brief 假设 wxpay.NewConfig/NewClient(form) 不存在 on v0.2.21。
-	// 真 SDK 形态: utils.LoadPrivateKey 解析 PEM → core.NewClient(ctx, option.WithWechatPayAutoAuthCipher(...))
-	// 一键装配 signer+verifier+自动下载平台证书(覆盖 WechatPlatformCertPath,故 IsWechatConfigured 不校验它)。
 	privKey, err := utils.LoadPrivateKey(operation_setting.WechatPrivateKeyPEM)
 	if err != nil {
-		logger.LogError(context.Background(), fmt.Sprintf("wechat pay: load merchant private key failed: %v", err))
-		return nil
+		return nil, fmt.Errorf("load merchant private key: %w", err)
 	}
-	// 公钥模式:2024-10 起新商户号只发微信支付公钥、不再下发平台证书,自动下载会失败。
-	if operation_setting.WechatPayPublicKeyId != "" && operation_setting.WechatPayPublicKey != "" {
+	if wechatUsePublicKeyVerifier() {
 		pub, pubErr := utils.LoadPublicKey(normalizeWechatPublicKey(operation_setting.WechatPayPublicKey))
 		if pubErr != nil {
-			logger.LogError(context.Background(), fmt.Sprintf("wechat pay: load wechat public key failed: %v", pubErr))
-			return nil
+			return nil, fmt.Errorf("load wechat public key: %w", pubErr)
 		}
-		pkClient, pkErr := core.NewClient(
+		return core.NewClient(
 			context.Background(),
 			option.WithWechatPayPublicKeyAuthCipher(
 				operation_setting.WechatMchID,
@@ -73,16 +81,8 @@ func GetWechatClient() *native.NativeApiService {
 				pub,
 			),
 		)
-		if pkErr != nil {
-			logger.LogError(context.Background(), fmt.Sprintf("wechat pay: new client (public-key mode) failed: %v", pkErr))
-			return nil
-		}
-		wechatNativeSvc = &native.NativeApiService{Client: pkClient}
-		return wechatNativeSvc
 	}
-	// ponytail: WithWechatPayAutoAuthCipher 内部走 downloader.MgrInstance().RegisterDownloaderWithPrivateKey
-	// 首次调用同步下载平台证书(网络),HasDownloader 二次幂等。verifier 源 = 同 mgr.GetCertificateVisitor(mchID)。
-	client, err := core.NewClient(
+	return core.NewClient(
 		context.Background(),
 		option.WithWechatPayAutoAuthCipher(
 			operation_setting.WechatMchID,
@@ -91,14 +91,50 @@ func GetWechatClient() *native.NativeApiService {
 			operation_setting.WechatAPIv3Key,
 		),
 	)
+}
+
+// GetWechatClient 返回 Native 支付单例;nil 表示未配置(调用方友好拒绝)。
+func GetWechatClient() *native.NativeApiService {
+	if wechatNativeSvc != nil {
+		return wechatNativeSvc
+	}
+	client, err := buildWechatCoreClient()
 	if err != nil {
-		logger.LogError(context.Background(), fmt.Sprintf("wechat pay: new client (auto-auth mode) failed: %v", err))
+		logger.LogError(context.Background(), fmt.Sprintf("wechat pay: build native client failed: %v", err))
 		return nil
 	}
-	// ponytail: SDK v0.2.21 无 NewNativeApiService 构造器(docs/payments/native/NativeApi.md:60 用法)
-	// NativeApiService 是 type NativeApiService services.Service{Client *core.Client},直接结构体字面量初始化。
 	wechatNativeSvc = &native.NativeApiService{Client: client}
 	return wechatNativeSvc
+}
+
+// GetWechatJsapiClient 返回 JSAPI 支付单例;复用 buildWechatCoreClient → 与 Native/notify 同模式。
+// ponytail: 包级单例(非 sync.Once),以便测试在 cleanup 中复位 wechatJsapiSvc=nil 强制重算(nil-guard 分支)。
+func GetWechatJsapiClient() *jsapi.JsapiApiService {
+	if wechatJsapiSvc != nil {
+		return wechatJsapiSvc
+	}
+	client, err := buildWechatCoreClient()
+	if err != nil {
+		logger.LogError(context.Background(), fmt.Sprintf("wechat pay: build jsapi client failed: %v", err))
+		return nil
+	}
+	wechatJsapiSvc = &jsapi.JsapiApiService{Client: client}
+	return wechatJsapiSvc
+}
+
+// getWechatVerifier 是唯一装配 APIv3 回调验签器的地方,与 buildWechatCoreClient 同模式选择。
+// ponytail: 事故铁律——notify 必须复用此函数,绝不在 wechat_notify.go 再复制平台证书路径。
+func getWechatVerifier() (auth.Verifier, error) {
+	if wechatUsePublicKeyVerifier() {
+		pub, pubErr := utils.LoadPublicKey(normalizeWechatPublicKey(operation_setting.WechatPayPublicKey))
+		if pubErr != nil {
+			return nil, fmt.Errorf("load wechat public key: %w", pubErr)
+		}
+		return verifiers.NewSHA256WithRSAPubkeyVerifier(operation_setting.WechatPayPublicKeyId, *pub), nil
+	}
+	return verifiers.NewSHA256WithRSAVerifier(
+		downloader.MgrInstance().GetCertificateVisitor(operation_setting.WechatMchID),
+	), nil
 }
 
 type SubscriptionWechatPayRequest struct {
@@ -181,6 +217,86 @@ func SubscriptionRequestWechat(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"code_url": *resp.CodeUrl}})
+}
+
+// SubscriptionRequestWechatJsapi: 订阅 JSAPI 下单,返回调起参数;回调复用 /api/subscription/wechat/notify。
+// 与 SubscriptionRequestWechat 唯一区别:走 JSAPI 单例 + Payer.Openid + 返调起参数(非 code_url)。
+// 字段名以 go doc v0.2.21 为准:请求类型 jsapi.PrepayRequest,响应 Appid/TimeStamp/NonceStr/Package/SignType/PaySign。
+func SubscriptionRequestWechatJsapi(c *gin.Context) {
+	if !requirePaymentCompliance(c) {
+		return
+	}
+	var req SubscriptionWechatPayRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.PlanId <= 0 {
+		common.ApiErrorMsg(c, "参数错误")
+		return
+	}
+	plan, err := model.GetSubscriptionPlanById(req.PlanId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if !plan.Enabled {
+		common.ApiErrorMsg(c, "套餐未启用")
+		return
+	}
+	if plan.PriceAmount < 0.01 {
+		common.ApiErrorMsg(c, "套餐金额过低")
+		return
+	}
+	session := sessions.Default(c)
+	openid, _ := session.Get(wechatJsapiOpenidSessionKey).(string)
+	svc := GetWechatJsapiClient()
+	if svc == nil {
+		common.ApiErrorMsg(c, "当前管理员未配置支付信息")
+		return
+	}
+	if openid == "" {
+		c.JSON(http.StatusOK, gin.H{"message": "wechat_oauth_required", "data": nil})
+		return
+	}
+	userId := c.GetInt("id")
+	tradeNo := fmt.Sprintf("WXJSUB%dNO%s%d", userId, common.GetRandomString(6), time.Now().Unix())
+	order := &model.SubscriptionOrder{
+		UserId:          userId,
+		PlanId:          plan.Id,
+		Money:           plan.PriceAmount,
+		TradeNo:         tradeNo,
+		PaymentMethod:   model.PaymentMethodWechat,
+		PaymentProvider: model.PaymentProviderWechat,
+		CreateTime:      time.Now().Unix(),
+		Status:          common.TopUpStatusPending,
+	}
+	if err := order.Insert(); err != nil {
+		common.ApiErrorMsg(c, "创建订单失败")
+		return
+	}
+	callbackBase := service.GetCallbackAddress()
+	resp, _, err := svc.PrepayWithRequestPayment(context.Background(), jsapi.PrepayRequest{
+		Appid:       core.String(operation_setting.WechatMpAppId), // 同充值:服务号 AppID
+		Mchid:       core.String(operation_setting.WechatMchID),
+		Description: core.String("栗橙科技-" + plan.Title + "套餐"),
+		OutTradeNo:  core.String(tradeNo),
+		NotifyUrl:   core.String(callbackBase + "/api/subscription/wechat/notify"),
+		Amount: &jsapi.Amount{
+			Total:    core.Int64(int64(math.Round(plan.PriceAmount * 100))),
+			Currency: core.String("CNY"),
+		},
+		Payer: &jsapi.Payer{Openid: core.String(openid)},
+	})
+	if err != nil {
+		_ = model.ExpireSubscriptionOrder(tradeNo, model.PaymentProviderWechat)
+		common.ApiErrorMsg(c, "拉起支付失败")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{
+		"appId":     *resp.Appid,
+		"timeStamp": *resp.TimeStamp,
+		"nonceStr":  *resp.NonceStr,
+		"package":   *resp.Package,
+		"signType":  *resp.SignType,
+		"paySign":   *resp.PaySign,
+	}})
 }
 
 // SubscriptionWechatNotify: 微信 APIv3 异步通知(JSON+签名头)。SDK 解密+验签后调 CompleteSubscriptionOrder。

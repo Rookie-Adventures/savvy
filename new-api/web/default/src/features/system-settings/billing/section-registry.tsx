@@ -161,6 +161,8 @@ const BILLING_SECTIONS = [
           AlipayRootCertSN: settings.AlipayRootCertSN ?? '',
           AlipayNotifyURL: settings.AlipayNotifyURL ?? '',
           WechatAppId: settings.WechatAppId ?? '',
+          WechatMpAppId: settings.WechatMpAppId ?? '',
+          WechatAppSecret: settings.WechatAppSecret ?? '',
           WechatPayPublicKeyId: settings.WechatPayPublicKeyId ?? '',
           WechatPayPublicKey: settings.WechatPayPublicKey ?? '',
           WechatMchID: settings.WechatMchID ?? '',

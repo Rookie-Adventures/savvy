@@ -31,6 +31,7 @@ import type {
   AlipayPaymentResponse,
   AlipayQRPaymentResponse,
   WechatPaymentResponse,
+  WechatJsapiPaymentResponse,
   AffiliateCodeResponse,
   AffiliateTransferResponse,
   BillingHistoryResponse,
@@ -154,6 +155,30 @@ export async function requestWechatPayment(
   request: PaymentRequest
 ): Promise<WechatPaymentResponse> {
   const res = await api.post('/api/user/wechat/pay', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
+}
+
+/**
+ * Request WeChat in-app (JSAPI) topup payment. Returns JSAPI invoke params
+ * (appId/timeStamp/nonceStr/package/signType/paySign) computed by the backend in one step.
+ */
+export async function requestWechatJsapiPayment(
+  request: PaymentRequest
+): Promise<WechatJsapiPaymentResponse> {
+  const res = await api.post('/api/user/wechat/jsapi/pay', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
+}
+
+/**
+ * Start WeChat in-app silent OAuth (snsapi_base) to obtain openid for JSAPI pay.
+ * Returns the authorize URL; the caller redirects the in-app browser to it.
+ */
+export async function startWechatJsapiOauth(): Promise<ApiResponse<{ authorize_url: string }>> {
+  const res = await api.post('/api/user/wechat/jsapi/oauth/start', {}, {
     skipBusinessError: true,
   } as Record<string, unknown>)
   return res.data

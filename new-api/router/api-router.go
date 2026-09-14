@@ -113,6 +113,10 @@ func SetApiRouter(router *gin.Engine) {
 				// ponytail: 订单码(扫码)充值与网站支付同配置同回调,复用 isAlipayTopUpEnabled 合规 gate,不新增后台开关
 				selfRoute.POST("/alipay/qr/pay", middleware.CriticalRateLimit(), controller.RequestAlipayQRPay)
 				selfRoute.POST("/wechat/pay", middleware.CriticalRateLimit(), controller.RequestWechatPay)
+				selfRoute.POST("/wechat/jsapi/pay", middleware.CriticalRateLimit(), controller.RequestWechatJsapiPay)
+				// ponytail: JSAPI 静默授权桥,对齐 selfRoute /wechat/pay 范式(登录态+关键限流)
+				selfRoute.POST("/wechat/jsapi/oauth/start", middleware.CriticalRateLimit(), controller.WechatJsapiOauthStart)
+				selfRoute.GET("/wechat/jsapi/oauth/callback", middleware.CriticalRateLimit(), controller.WechatJsapiOauthCallback)
 				selfRoute.POST("/amount", controller.RequestAmount)
 				selfRoute.POST("/stripe/pay", middleware.CriticalRateLimit(), controller.RequestStripePay)
 				selfRoute.POST("/stripe/amount", controller.RequestStripeAmount)
@@ -177,6 +181,7 @@ func SetApiRouter(router *gin.Engine) {
 			// ponytail: 订阅订单码(扫码)与网站支付同配置同回调,复用合规 gate,不新增后台开关
 			subscriptionRoute.POST("/alipay/qr/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestAlipayQR)
 			subscriptionRoute.POST("/wechat/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestWechat)
+			subscriptionRoute.POST("/wechat/jsapi/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestWechatJsapi)
 			subscriptionRoute.POST("/stripe/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestStripePay)
 			subscriptionRoute.POST("/creem/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestCreemPay)
 			subscriptionRoute.POST("/waffo-pancake/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestWaffoPancakePay)

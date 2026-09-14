@@ -4,6 +4,12 @@ package operation_setting
 // 用户已开商户号缺 AppId(待已认证服务号拿到)。代码不阻塞支付宝,IsConfigured=false 即拦下单。
 var (
 	WechatAppId            = ""
+	// 微信服务号 AppID:仅用于 JSAPI 静默授权与 JSAPI 下单(openid 按 AppID 隔离,必须与 OAuth 同号;
+	// Native 继续用老号 WechatAppId,勿混)。
+	WechatMpAppId = ""
+	// 微信服务号 AppSecret:仅用于 JSAPI 静默授权(snsapi_base)换 openid,不入下单/验签。
+	// 严禁出现在前端/日志;Task 5 落 OptionMap + 后台表单。
+	WechatAppSecret = ""
 	WechatMchID            = "" // 商户号
 	WechatMchSerial        = "" // 商户证书序列号
 	WechatAPIv3Key         = "" // APIv3 密钥(32 位)

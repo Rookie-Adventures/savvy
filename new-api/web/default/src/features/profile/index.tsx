@@ -31,6 +31,7 @@ import { ProfileSecurityCard } from './components/profile-security-card'
 import { ProfileSettingsCard } from './components/profile-settings-card'
 import { SidebarModulesCard } from './components/sidebar-modules-card'
 import { TwoFACard } from './components/two-fa-card'
+import { WeChatBindCard } from './components/wechat-bind-card'
 import { useProfile } from './hooks'
 
 export function Profile() {
@@ -79,6 +80,7 @@ export function Profile() {
                 {canConfigureSidebar && <SidebarModulesCard />}
                 <PasskeyCard loading={loading} />
                 <TwoFACard loading={loading} />
+                <WeChatBindCard loading={loading} />
               </div>
             </div>
           </CardStaggerItem>

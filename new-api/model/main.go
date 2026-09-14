@@ -293,6 +293,8 @@ func migrateDB() error {
 		&SubscriptionPreConsumeRecord{},
 		&CustomOAuthProvider{},
 		&UserOAuthBinding{},
+		&WeChatAccount{},
+		&WeChatOAuthToken{},
 		&PerfMetric{},
 		&SystemTask{},
 	)
@@ -343,6 +345,8 @@ func migrateDBFast() error {
 		{&SubscriptionPreConsumeRecord{}, "SubscriptionPreConsumeRecord"},
 		{&CustomOAuthProvider{}, "CustomOAuthProvider"},
 		{&UserOAuthBinding{}, "UserOAuthBinding"},
+		{&WeChatAccount{}, "WeChatAccount"},
+		{&WeChatOAuthToken{}, "WeChatOAuthToken"},
 		{&PerfMetric{}, "PerfMetric"},
 		{&SystemTask{}, "SystemTask"},
 	}

@@ -39,6 +39,50 @@ export async function getUserProfile(): Promise<ApiResponse<UserProfile>> {
   return res.data
 }
 
+// ============================================================================
+// WeChat OA binding APIs
+// ============================================================================
+
+/**
+ * Create a bind ticket; qr_url is the entry link to render as QR.
+ */
+export async function createWeChatOABindToken(): Promise<
+  ApiResponse<{ token: string; qr_url: string }>
+> {
+  const res = await api.post('/api/user/wechat/oa/tokens', { kind: 'bind' })
+  return res.data
+}
+
+/**
+ * Bind an authorized (unbound) WeChat identity to the logged-in user.
+ */
+export async function claimWeChatOABindExisting(
+  token: string
+): Promise<ApiResponse> {
+  const res = await api.post('/api/user/wechat/oa/bind/claim-existing', {
+    token,
+  })
+  return res.data
+}
+
+/**
+ * Get the current user's WeChat binding status.
+ */
+export async function getWeChatOABinding(): Promise<
+  ApiResponse<{ bound: boolean; openid_masked: string }>
+> {
+  const res = await api.get('/api/user/wechat/oa/binding')
+  return res.data
+}
+
+/**
+ * Unbind the current user's WeChat identity.
+ */
+export async function deleteWeChatOABinding(): Promise<ApiResponse> {
+  const res = await api.delete('/api/user/wechat/oa/binding')
+  return res.data
+}
+
 /**
  * Update user profile
  */

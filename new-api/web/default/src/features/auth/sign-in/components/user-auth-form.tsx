@@ -52,6 +52,10 @@ import { loginFormSchema } from '@/features/auth/constants'
 import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
 import { beginPasskeyLogin, finishPasskeyLogin } from '@/features/auth/passkey'
+import { createWeChatOALoginToken } from '@/features/auth/api'
+import { claimWeChatOABindExisting } from '@/features/profile/api'
+import { WeChatQrLoginDialog } from '@/features/auth/sign-in/components/wechat-qr-login-dialog'
+import { isWechatInAppBrowser } from '@/lib/wechat-ua'
 import type { AuthFormProps } from '@/features/auth/types'
 
 export function UserAuthForm({
@@ -67,6 +71,8 @@ export function UserAuthForm({
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false)
   const [isWeChatDialogOpen, setIsWeChatDialogOpen] = useState(false)
   const [isWeChatSubmitting, setIsWeChatSubmitting] = useState(false)
+  const [isWxQrOpen, setIsWxQrOpen] = useState(false)
+  const [wxTokenParam, setWxTokenParam] = useState('')
   const legalConsentErrorMessage = t('Please agree to the legal terms first')
   const loginFailedMessage = t('Login failed')
 
@@ -120,6 +126,54 @@ export function UserAuthForm({
       .catch(() => setPasskeySupported(false))
   }, [])
 
+  // 微信内直登:direct 未绑回跳带 ?wx_token= → 打开两按钮模态;已绑用户由后端直接落地 /console/topup,不会回到本页。
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const wxToken = params.get('wx_token') ?? ''
+    if (wxToken) {
+      setWxTokenParam(wxToken)
+      setIsWxQrOpen(true)
+      params.delete('wx_token')
+      const rest = params.toString()
+      window.history.replaceState(
+        null,
+        '',
+        window.location.pathname + (rest ? `?${rest}` : '')
+      )
+    }
+  }, [])
+
+  // 微信内浏览器:自动发起 direct 直登(一次性防循环标记);失败静默回退普通登录。
+  useEffect(() => {
+    if (!isWechatInAppBrowser()) return
+    if (sessionStorage.getItem('wx_oa_direct_done')) return
+    sessionStorage.setItem('wx_oa_direct_done', '1')
+    createWeChatOALoginToken('direct')
+      .then((res) => {
+        if (res.success && res.data?.url) {
+          window.location.href = res.data.url
+        }
+      })
+      .catch(() => undefined)
+  }, [])
+
+  // 密码登录成功后:若持有 pending 绑定票证(authorized),自动绑定并提示。
+  async function bindPendingWeChatToken() {
+    const pending = sessionStorage.getItem('wx_pending_bind_token')
+    if (!pending) return
+    sessionStorage.removeItem('wx_pending_bind_token')
+    try {
+      const res = await claimWeChatOABindExisting(pending)
+      if (res.success) {
+        toast.success(t('WeChat bound successfully'))
+      } else {
+        toast.error(res.message || t('Failed to bind WeChat'))
+      }
+    } catch {
+      toast.error(t('Failed to bind WeChat'))
+    }
+  }
+
   const form = useForm<z.infer<typeof loginFormSchema>>({
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
@@ -165,6 +219,7 @@ export function UserAuthForm({
         }
 
         await handleLoginSuccess(res.data as { id?: number } | null, redirectTo)
+        await bindPendingWeChatToken()
         toast.success(t('Welcome back!'))
       }
     } catch (_error) {
@@ -284,6 +339,17 @@ export function UserAuthForm({
 
   const alternativeLoginMethods = (
     <>
+      <div className='mt-2 space-y-1'>
+        <Button
+          type='button'
+          variant='outline'
+          onClick={() => setIsWxQrOpen(true)}
+          disabled={isLoading || (requiresLegalConsent && !agreedToLegal)}
+          className='h-11 w-full justify-center gap-2 rounded-lg'
+        >
+          {t('WeChat QR Login')}
+        </Button>
+      </div>
       {passkeyLoginEnabled && (
         <div className='mt-2 space-y-1'>
           <Button
@@ -402,6 +468,12 @@ export function UserAuthForm({
 
         {!hasAlternativeLogin && alternativeLoginMethods}
       </form>
+
+      <WeChatQrLoginDialog
+        open={isWxQrOpen}
+        onOpenChange={setIsWxQrOpen}
+        initialToken={wxTokenParam || undefined}
+      />
 
       {hasWeChatLogin && (
         <Dialog

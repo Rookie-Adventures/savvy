@@ -115,7 +115,7 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/wechat/pay", middleware.CriticalRateLimit(), controller.RequestWechatPay)
 				selfRoute.POST("/wechat/jsapi/pay", middleware.CriticalRateLimit(), controller.RequestWechatJsapiPay)
 				// ponytail: JSAPI 静默授权桥,对齐 selfRoute /wechat/pay 范式(登录态+关键限流)
-				selfRoute.GET("/wechat/jsapi/oauth/start", middleware.CriticalRateLimit(), controller.WechatJsapiOauthStart)
+				selfRoute.POST("/wechat/jsapi/oauth/start", middleware.CriticalRateLimit(), controller.WechatJsapiOauthStart)
 				selfRoute.GET("/wechat/jsapi/oauth/callback", middleware.CriticalRateLimit(), controller.WechatJsapiOauthCallback)
 				selfRoute.POST("/amount", controller.RequestAmount)
 				selfRoute.POST("/stripe/pay", middleware.CriticalRateLimit(), controller.RequestStripePay)

@@ -146,17 +146,18 @@ export function usePayment() {
           if (isWechatInAppBrowser()) {
             const res = await requestWechatJsapiPayment({ amount, payment_method: 'wechat' })
             if (!isApiSuccess(res)) {
-              toast.error(res.message || i18next.t('Payment request failed'))
-              return { ok: false }
-            }
-            if (res.message === 'wechat_oauth_required') {
-              // 未授权:跳静默授权,微信带 code 回回调后写 session openid,前端回到钱包页再付
-              const authRes = await startWechatJsapiOauth()
-              if (isApiSuccess(authRes) && authRes.data?.authorize_url) {
-                window.location.href = authRes.data.authorize_url
-                return { ok: false } // 跳转中,不视为失败
+              // openid 缺失 → 后端返 wechat_oauth_required,前端跳静默授权再付。
+              // ponytail: 该分支必须嵌套在 !isApiSuccess 内,否则被上方提前 return 吞掉(死代码)。
+              if (res.message === 'wechat_oauth_required') {
+                const authRes = await startWechatJsapiOauth()
+                if (isApiSuccess(authRes) && authRes.data?.authorize_url) {
+                  window.location.href = authRes.data.authorize_url
+                  return { ok: true } // 跳转中,不视为失败
+                }
+                toast.error(i18next.t('WeChat Oauth') + ': ' + i18next.t('Payment request failed'))
+                return { ok: false }
               }
-              toast.error(i18next.t('WeChat Oauth') + ': ' + i18next.t('Payment request failed'))
+              toast.error(res.message || i18next.t('Payment request failed'))
               return { ok: false }
             }
             if (res.data?.appId) {

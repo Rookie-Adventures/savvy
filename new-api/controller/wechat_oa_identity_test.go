@@ -30,6 +30,10 @@ func TestMain(m *testing.M) {
 }
 
 func newWechatOATestEngine() *gin.Engine {
+	// 对齐包内既有测试约定(token_test/model_list_test):显式关 redis 缓存开关。
+	// 否则 user.Insert 链走到 updateUserCache→RedisHSetObj,RDB 为 nil 即 panic
+	// (全包跑时靠Earlier测试置 false 侥幸绿=顺序依赖潜坑,过滤跑必爆)。
+	common.RedisEnabled = false
 	r := gin.New()
 	store := cookie.NewStore([]byte("wechat-oa-test-secret"))
 	r.Use(sessions.Sessions("wechat_oa_session", store))

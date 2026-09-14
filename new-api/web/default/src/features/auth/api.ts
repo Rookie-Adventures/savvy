@@ -100,6 +100,37 @@ export async function wechatLoginByCode(code: string): Promise<ApiResponse> {
 }
 
 // ----------------------------------------------------------------------------
+// WeChat OA identity (scan login / in-WeChat direct login)
+// ----------------------------------------------------------------------------
+
+/** Create a cross-device login ticket: kind=login renders a QR on desktop, kind=direct is opened inside WeChat. */
+export async function createWeChatOALoginToken(
+  kind: 'login' | 'direct'
+): Promise<ApiResponse<{ token: string; url: string }>> {
+  const res = await api.post('/api/wechat/oa/tokens', { kind })
+  return res.data
+}
+
+/** Poll a WeChat OA ticket status: pending | completed | authorized | rejected | consumed | expired */
+export async function getWeChatOATokenStatus(
+  token: string
+): Promise<ApiResponse<{ status: string; need_action: boolean }>> {
+  const res = await api.get(`/api/wechat/oa/tokens/${token}/status`)
+  return res.data
+}
+
+/** Claim a scanned ticket: mode=login signs in the bound user; mode=create provisions a new account. */
+export async function claimWeChatOALogin(
+  token: string,
+  mode: 'login' | 'create'
+): Promise<
+  ApiResponse<{ username?: string; initial_password?: string } | null>
+> {
+  const res = await api.post('/api/wechat/oa/login/claim', { token, mode })
+  return res.data
+}
+
+// ----------------------------------------------------------------------------
 // Registration
 // ----------------------------------------------------------------------------
 

@@ -198,12 +198,9 @@ export function mergePresetAmounts(
 
 /**
  * Check if running inside WeChat in-app browser (JSAPI payment needs it).
- * ponytail: 微信内浏览器 UA 含 MicroMessenger;旧安卓微信需 WeixinJSBridgeReady 事件。
+ * ponytail: 实现已移至 @/lib/wechat-ua(登录/支付共用);此处 re-export 保持既有 import 路径零变化。
  */
-export function isWechatInAppBrowser(): boolean {
-  if (typeof navigator === 'undefined') return false
-  return /micromessenger/i.test(navigator.userAgent)
-}
+export { isWechatInAppBrowser } from '@/lib/wechat-ua'
 
 export type WeixinPayParams = {
   appId: string

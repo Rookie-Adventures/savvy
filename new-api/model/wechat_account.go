@@ -21,6 +21,11 @@ type WeChatAccount struct {
 	UpdatedAt int64  `json:"updated_at" gorm:"bigint"`
 }
 
+// TableName 显式指定:gorm 默认会把 WeChatAccount 转成 we_chat_accounts,规格要求 wechat_accounts。
+func (WeChatAccount) TableName() string {
+	return "wechat_accounts"
+}
+
 var ErrWeChatAccountTaken = errors.New("该微信已绑定其他账户")
 
 func GetWeChatAccountByOpenid(provider, appId, openid string) (*WeChatAccount, error) {

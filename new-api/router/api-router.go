@@ -59,6 +59,8 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/wechat/oa/tokens/:token/status", middleware.CriticalRateLimit(), controller.GetWeChatOATokenStatus)
 		apiRouter.GET("/wechat/oa/entry", controller.WeChatOAEntry)
 		apiRouter.GET("/wechat/oa/callback", controller.WeChatOACallback)
+		// 登录 claim(扫码已完成后的会话落地/建户;微信内未绑回跳同端点)
+		apiRouter.POST("/wechat/oa/login/claim", middleware.CriticalRateLimit(), controller.ClaimWeChatOALogin)
 		apiRouter.GET("/ratio_config", middleware.CriticalRateLimit(), controller.GetRatioConfig)
 
 		apiRouter.POST("/stripe/webhook", anonymousRequestBodyLimit, controller.StripeWebhook)
@@ -121,6 +123,9 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/wechat/pay", middleware.CriticalRateLimit(), controller.RequestWechatPay)
 				// ponytail: 微信绑定票证(登录态),QR 轮询走匿名 status 路由(handler 内校验归属)
 				selfRoute.POST("/wechat/oa/tokens", middleware.CriticalRateLimit(), controller.CreateWeChatOABindToken)
+				selfRoute.POST("/wechat/oa/bind/claim-existing", middleware.CriticalRateLimit(), controller.ClaimExistingWeChatOABind)
+				selfRoute.GET("/wechat/oa/binding", controller.GetWeChatOABinding)
+				selfRoute.DELETE("/wechat/oa/binding", controller.DeleteWeChatOABinding)
 				selfRoute.POST("/wechat/jsapi/pay", middleware.CriticalRateLimit(), controller.RequestWechatJsapiPay)
 				// ponytail: JSAPI 静默授权桥,对齐 selfRoute /wechat/pay 范式(登录态+关键限流)
 				selfRoute.POST("/wechat/jsapi/oauth/start", middleware.CriticalRateLimit(), controller.WechatJsapiOauthStart)

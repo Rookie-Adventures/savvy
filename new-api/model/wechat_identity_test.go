@@ -17,7 +17,9 @@ func migrateWeChatIdentityTables(t *testing.T) {
 	})
 }
 
-// 单用性:Consume 两次第二次必须失败;过期 token Consume 必须失败。
+// 单用性:状态机单向推进,终态(consumed/rejected)不可再消费;过期 token Consume 必须失败。
+// (completed→consumed 是 claim 的合法迁移,故"第二次 Consume"是否合法取决于目标终态——
+// 真正的单用性保证是:每个 ticket 只能被消费到终态一次,之后任何 Consume 都失败。)
 func TestWeChatOAuthTokenSingleUse(t *testing.T) {
 	migrateWeChatIdentityTables(t)
 
@@ -29,7 +31,7 @@ func TestWeChatOAuthTokenSingleUse(t *testing.T) {
 	require.Len(t, tok.Token, 64)
 	require.True(t, tok.ExpiresAt > time.Now().Unix()+4*60, "ExpiresAt 应为 now+5min 量级")
 
-	// 第一次消费成功
+	// callback: pending → completed(login 已绑)
 	require.NoError(t, ConsumeWeChatOAuthToken(tok.Token, "completed", 7, ""))
 	got, err := GetWeChatOAuthTokenByToken(tok.Token)
 	require.NoError(t, err)
@@ -37,9 +39,19 @@ func TestWeChatOAuthTokenSingleUse(t *testing.T) {
 	require.Equal(t, 7, got.UserId)
 	require.True(t, got.CompletedAt > 0)
 
-	// 第二次消费必须失败(条件更新 RowsAffected=0)
-	err = ConsumeWeChatOAuthToken(tok.Token, "consumed", 7, "")
-	require.Error(t, err, "已消费的 token 二次 Consume 必须失败")
+	// claim: completed → consumed(合法迁移,仅此一次)
+	require.NoError(t, ConsumeWeChatOAuthToken(tok.Token, "consumed", 0, ""))
+
+	// 终态后任何 Consume 必须失败
+	err = ConsumeWeChatOAuthToken(tok.Token, "consumed", 0, "")
+	require.Error(t, err, "consumed 是终态,再消费必须失败")
+
+	// rejected 同为终态
+	rej, err := CreateWeChatOAuthToken("direct", 0)
+	require.NoError(t, err)
+	require.NoError(t, ConsumeWeChatOAuthToken(rej.Token, "rejected", 0, "o-x"))
+	err = ConsumeWeChatOAuthToken(rej.Token, "consumed", 1, "")
+	require.Error(t, err, "rejected 是终态,再消费必须失败")
 
 	// bind kind: userId 在创建时固化,消费时传 0 不得清掉归属
 	bind, err := CreateWeChatOAuthToken("bind", 42)

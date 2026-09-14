@@ -21,22 +21,11 @@ import (
 	"gorm.io/gorm"
 )
 
-// controller 包测试基建:内存 sqlite 供 model 函数使用(包内此前无 TestMain;
-// 仅迁移本特性所需表,不影响其他既有测试)。
+// controller 包测试基建:包内其他测试(token_test/model_list_test)会按测试替换全局
+// model.DB 并在 cleanup 关闭 —— 本特性测试同样每测试自带 DB(shared-cache 内存库),
+// 不依赖也不污染其他测试的 DB 状态。
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		panic("failed to open test db: " + err.Error())
-	}
-	model.DB = db
-	model.LOG_DB = db
-	common.SetDatabaseTypes(common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
-	common.RedisEnabled = false
-	common.BatchUpdateEnabled = false
-	if err := db.AutoMigrate(&model.User{}, &model.Log{}, &model.WeChatAccount{}, &model.WeChatOAuthToken{}); err != nil {
-		panic("failed to migrate: " + err.Error())
-	}
 	os.Exit(m.Run())
 }
 
@@ -49,6 +38,10 @@ func newWechatOATestEngine() *gin.Engine {
 	r.GET("/api/wechat/oa/entry", WeChatOAEntry)
 	r.GET("/api/wechat/oa/callback", WeChatOACallback)
 	r.POST("/api/user/wechat/oa/tokens", CreateWeChatOABindToken)
+	r.POST("/api/wechat/oa/login/claim", ClaimWeChatOALogin)
+	r.POST("/api/user/wechat/oa/bind/claim-existing", ClaimExistingWeChatOABind)
+	r.GET("/api/user/wechat/oa/binding", GetWeChatOABinding)
+	r.DELETE("/api/user/wechat/oa/binding", DeleteWeChatOABinding)
 	// 测试辅助:预置登录态 session(模拟已登录用户携带 cookie;id 须为 int,对齐 setupLogin)
 	r.GET("/test/session/:id", func(c *gin.Context) {
 		n, _ := strconv.Atoi(c.Param("id"))
@@ -69,8 +62,31 @@ func withStubExchange(t *testing.T, openid string, retErr error) {
 	t.Cleanup(func() { wechatExchangeCodeFn = orig })
 }
 
+// setupWeChatOATestDB 每测试独立的 shared-cache 内存库(对齐 openTokenControllerTestDB 范式),
+// 迁移本特性所需表。
+func setupWeChatOATestDB(t *testing.T) {
+	t.Helper()
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to open sqlite db: %v", err)
+	}
+	model.DB = db
+	model.LOG_DB = db
+	if err := db.AutoMigrate(&model.User{}, &model.Log{}, &model.WeChatAccount{}, &model.WeChatOAuthToken{}); err != nil {
+		t.Fatalf("failed to migrate: %v", err)
+	}
+	t.Cleanup(func() {
+		if sqlDB, err := db.DB(); err == nil {
+			_ = sqlDB.Close()
+		}
+	})
+}
+
+// setWechatOAConfig 配置服务号参数 + 每测试 DB。
 func setWechatOAConfig(t *testing.T) {
 	t.Helper()
+	setupWeChatOATestDB(t)
 	operation_setting.WechatMpAppId = "wx-mp-test"
 	operation_setting.WechatAppSecret = "secret-test"
 	t.Cleanup(func() {
@@ -306,6 +322,229 @@ func TestWeChatOACreateBindTokenRequiresLogin(t *testing.T) {
 	}
 	if !strings.Contains(w3.Body.String(), "qr_url") {
 		t.Fatalf("bind token response missing qr_url: %s", w3.Body.String())
+	}
+}
+
+// ---- Task 3: claim 三路径 + 解绑 ----
+
+// makeTokenAuthorized 直改 DB,把票证置为 authorized/callback 产物(免走真实微信授权)。
+func makeTokenAuthorized(t *testing.T, kind string, userId int, openid string) *model.WeChatOAuthToken {
+	t.Helper()
+	tok, err := model.CreateWeChatOAuthToken(kind, userId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := model.DB.Model(&model.WeChatOAuthToken{}).Where("token = ?", tok.Token).
+		Updates(map[string]interface{}{"status": "authorized", "openid_pending": openid}).Error; err != nil {
+		t.Fatal(err)
+	}
+	return tok
+}
+
+func seedUser(t *testing.T, username string) *model.User {
+	t.Helper()
+	u := &model.User{Username: username, Password: "x", DisplayName: "微信用户", Role: 1, Status: 1, AffCode: username}
+	if err := model.DB.Create(u).Error; err != nil {
+		t.Fatal(err)
+	}
+	return u
+}
+
+func testSessionCookies(t *testing.T, r http.Handler, id int) []*http.Cookie {
+	t.Helper()
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/test/session/%d", id), nil)
+	r.ServeHTTP(w, req)
+	return w.Result().Cookies()
+}
+
+func TestWeChatOAClaimCreateCreatesUserAndConsumes(t *testing.T) {
+	setWechatOAConfig(t)
+	common.RegisterEnabled = true
+	t.Cleanup(func() { common.RegisterEnabled = false })
+	r := newWechatOATestEngine()
+
+	tok := makeTokenAuthorized(t, "login", 0, "o-claim-new")
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/wechat/oa/login/claim",
+		strings.NewReader(fmt.Sprintf(`{"token":%q,"mode":"create"}`, tok.Token)))
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("claim create failed: %d %s", w.Code, w.Body.String())
+	}
+
+	// token 已消费;二次使用必须拒
+	w2 := httptest.NewRecorder()
+	req2 := httptest.NewRequest(http.MethodPost, "/api/wechat/oa/login/claim",
+		strings.NewReader(fmt.Sprintf(`{"token":%q,"mode":"create"}`, tok.Token)))
+	r.ServeHTTP(w2, req2)
+	if w2.Code == http.StatusOK {
+		t.Fatalf("second claim must fail: %s", w2.Body.String())
+	}
+
+	// 绑定落地 + 用户创建 + 初始密码可哈希验证
+	acc, err := model.GetWeChatAccountByOpenid("oa", "wx-mp-test", "o-claim-new")
+	if err != nil {
+		t.Fatalf("binding not created: %v", err)
+	}
+	u, err := model.GetUserById(acc.UserId, false)
+	if err != nil {
+		t.Fatalf("created user missing: %v", err)
+	}
+	if u.DisplayName != "微信用户" {
+		t.Fatalf("unexpected display name: %s", u.DisplayName)
+	}
+	if !strings.Contains(w.Body.String(), "initial_password") {
+		t.Fatalf("response missing initial_password: %s", w.Body.String())
+	}
+}
+
+func TestWeChatOAClaimLoginConsumes(t *testing.T) {
+	setWechatOAConfig(t)
+	r := newWechatOATestEngine()
+	u := seedUser(t, fmt.Sprintf("wx_login_claim_%d", time.Now().UnixNano()))
+
+	// login 流程:callback 已把 completed+UserId 落票证;此处直造该状态
+	tok, _ := model.CreateWeChatOAuthToken("login", 0)
+	model.DB.Model(&model.WeChatOAuthToken{}).Where("token = ?", tok.Token).
+		Updates(map[string]interface{}{"status": "completed", "user_id": u.Id})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/wechat/oa/login/claim",
+		strings.NewReader(fmt.Sprintf(`{"token":%q,"mode":"login"}`, tok.Token)))
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("claim login failed: %d %s", w.Code, w.Body.String())
+	}
+	got, _ := model.GetWeChatOAuthTokenByToken(tok.Token)
+	if got.Status != "consumed" {
+		t.Fatalf("claim login should consume, got %s", got.Status)
+	}
+
+	// 二次使用必须拒(单用性)
+	w2 := httptest.NewRecorder()
+	req2 := httptest.NewRequest(http.MethodPost, "/api/wechat/oa/login/claim",
+		strings.NewReader(fmt.Sprintf(`{"token":%q,"mode":"login"}`, tok.Token)))
+	r.ServeHTTP(w2, req2)
+	if w2.Code == http.StatusOK {
+		t.Fatalf("second claim login must fail: %s", w2.Body.String())
+	}
+}
+
+func TestWeChatOAClaimLoginRejectsWrongStatus(t *testing.T) {
+	setWechatOAConfig(t)
+	r := newWechatOATestEngine()
+	// authorized 票证不能走 mode=login(completed 才行)
+	tok := makeTokenAuthorized(t, "login", 0, "o-wrong-status")
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/wechat/oa/login/claim",
+		strings.NewReader(fmt.Sprintf(`{"token":%q,"mode":"login"}`, tok.Token)))
+	r.ServeHTTP(w, req)
+	if w.Code == http.StatusOK {
+		t.Fatalf("claim login on authorized token must fail: %s", w.Body.String())
+	}
+}
+
+func TestWeChatOABindClaimExisting(t *testing.T) {
+	setWechatOAConfig(t)
+	r := newWechatOATestEngine()
+	owner := seedUser(t, fmt.Sprintf("wx_bind_owner_%d", time.Now().UnixNano()))
+	claimer := seedUser(t, fmt.Sprintf("wx_claimer_%d", time.Now().UnixNano()))
+
+	// 已占用 openid → 拒,绑定不变
+	if err := model.CreateWeChatAccount(&model.WeChatAccount{
+		UserId: owner.Id, Provider: "oa", AppId: "wx-mp-test", Openid: "o-occupied",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	tok := makeTokenAuthorized(t, "login", 0, "o-occupied")
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/user/wechat/oa/bind/claim-existing",
+		strings.NewReader(fmt.Sprintf(`{"token":%q}`, tok.Token)))
+	for _, ck := range testSessionCookies(t, r, claimer.Id) {
+		req.AddCookie(ck)
+	}
+	r.ServeHTTP(w, req)
+	if w.Code == http.StatusOK {
+		t.Fatalf("claim-existing on occupied openid must fail: %s", w.Body.String())
+	}
+	if _, err := model.GetWeChatAccountByUserId(owner.Id, "oa", "wx-mp-test"); err != nil {
+		t.Fatalf("owner binding must survive: %v", err)
+	}
+
+	// 空闲 openid → 绑到 session 用户 + consumed
+	tok2 := makeTokenAuthorized(t, "login", 0, "o-free")
+	w2 := httptest.NewRecorder()
+	req2 := httptest.NewRequest(http.MethodPost, "/api/user/wechat/oa/bind/claim-existing",
+		strings.NewReader(fmt.Sprintf(`{"token":%q}`, tok2.Token)))
+	for _, ck := range testSessionCookies(t, r, claimer.Id) {
+		req2.AddCookie(ck)
+	}
+	r.ServeHTTP(w2, req2)
+	if w2.Code != http.StatusOK {
+		t.Fatalf("claim-existing free openid failed: %d %s", w2.Code, w2.Body.String())
+	}
+	acc, err := model.GetWeChatAccountByOpenid("oa", "wx-mp-test", "o-free")
+	if err != nil || acc.UserId != claimer.Id {
+		t.Fatalf("binding should belong to claimer: %v %+v", err, acc)
+	}
+	got, _ := model.GetWeChatOAuthTokenByToken(tok2.Token)
+	if got.Status != "consumed" {
+		t.Fatalf("claim-existing should consume, got %s", got.Status)
+	}
+}
+
+func TestWeChatOABindingGetDelete(t *testing.T) {
+	setWechatOAConfig(t)
+	r := newWechatOATestEngine()
+	u := seedUser(t, fmt.Sprintf("wx_binding_%d", time.Now().UnixNano()))
+	cookies := testSessionCookies(t, r, u.Id)
+	withCookies := func() *http.Request {
+		req := httptest.NewRequest(http.MethodGet, "/api/user/wechat/oa/binding", nil)
+		for _, ck := range cookies {
+			req.AddCookie(ck)
+		}
+		return req
+	}
+
+	// 未绑定
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, withCookies())
+	if !strings.Contains(w.Body.String(), `"bound":false`) {
+		t.Fatalf("unbound expected, got %s", w.Body.String())
+	}
+
+	// 绑定后:bound + masked openid
+	longOpenid := "o-111222333444"
+	if err := model.CreateWeChatAccount(&model.WeChatAccount{
+		UserId: u.Id, Provider: "oa", AppId: "wx-mp-test", Openid: longOpenid,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	w2 := httptest.NewRecorder()
+	r.ServeHTTP(w2, withCookies())
+	if !strings.Contains(w2.Body.String(), `"bound":true`) {
+		t.Fatalf("bound expected, got %s", w2.Body.String())
+	}
+	masked := "o-1112****3444" // 前 6 后 4 中间打码
+	if !strings.Contains(w2.Body.String(), masked) {
+		t.Fatalf("masked openid expected in %s", w2.Body.String())
+	}
+
+	// DELETE 解绑后再查
+	w3 := httptest.NewRecorder()
+	delReq := httptest.NewRequest(http.MethodDelete, "/api/user/wechat/oa/binding", nil)
+	for _, ck := range cookies {
+		delReq.AddCookie(ck)
+	}
+	r.ServeHTTP(w3, delReq)
+	if w3.Code != http.StatusOK {
+		t.Fatalf("unbind failed: %d %s", w3.Code, w3.Body.String())
+	}
+	w4 := httptest.NewRecorder()
+	r.ServeHTTP(w4, withCookies())
+	if !strings.Contains(w4.Body.String(), `"bound":false`) {
+		t.Fatalf("unbound after delete expected, got %s", w4.Body.String())
 	}
 }
 

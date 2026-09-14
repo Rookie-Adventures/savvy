@@ -34,6 +34,11 @@ type WeChatOAuthToken struct {
 	CompletedAt   int64  `json:"completed_at" gorm:"bigint"`
 }
 
+// TableName 显式指定:gorm 默认会把 WeChatOAuthToken 转成 we_chat_oauth_tokens,规格要求 wechat_oauth_tokens。
+func (WeChatOAuthToken) TableName() string {
+	return "wechat_oauth_tokens"
+}
+
 const weChatOAuthTokenTTL = 5 * time.Minute
 
 func CreateWeChatOAuthToken(kind string, userId int) (*WeChatOAuthToken, error) {
@@ -77,8 +82,9 @@ func GetWeChatOAuthTokenByToken(token string) (*WeChatOAuthToken, error) {
 	return &tok, nil
 }
 
-// ConsumeWeChatOAuthToken 条件更新:仅 pending 且未过期的票证可被消费一次,
-// 单用性由 DB 的 RowsAffected 保证(并发下也只有一个请求成功)。
+// ConsumeWeChatOAuthToken 条件更新:仅可消费状态(pending/authorized/completed)且未过期的
+// 票证可被消费一次;rejected/consumed 不可再动,单用性由 DB 的 RowsAffected 保证(并发下
+// 也只有一个请求成功)。
 // userId>0 时落 user_id(login 消费落绑定用户);userId=0 保留原值(bind 票证归属不可被清掉)。
 func ConsumeWeChatOAuthToken(token, newStatus string, userId int, openidPending string) error {
 	updates := map[string]interface{}{
@@ -90,7 +96,7 @@ func ConsumeWeChatOAuthToken(token, newStatus string, userId int, openidPending 
 		updates["user_id"] = userId
 	}
 	res := DB.Model(&WeChatOAuthToken{}).
-		Where("token = ? AND status = ? AND expires_at > ?", token, "pending", time.Now().Unix()).
+		Where("token = ? AND status IN ('pending','authorized','completed') AND expires_at > ?", token, time.Now().Unix()).
 		Updates(updates)
 	if res.Error != nil {
 		return res.Error

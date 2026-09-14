@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"crypto/rand"
 	"net/http"
 	"strings"
 
@@ -249,6 +250,207 @@ func wechatOADirectLogin(user *model.User, c *gin.Context) {
 	model.UpdateUserLastLoginAt(user.Id)
 	model.RecordLoginLog(user.Id, user.Username, "Logged in successfully via wechat_oa_direct",
 		c.ClientIP(), "login", map[string]interface{}{"method": "wechat_oa_direct"}, nil)
+}
+
+// ---------------------------------------------------------------------------
+// Task 3: 登录 claim 三路径 + 解绑
+// ---------------------------------------------------------------------------
+
+type weChatOAClaimRequest struct {
+	Token string `json:"token"`
+	Mode  string `json:"mode"`
+}
+
+// ClaimWeChatOALogin POST /api/wechat/oa/login/claim(匿名+CriticalRateLimit)
+// mode=login:票证 status=completed(桌面扫码已绑)→ 落会话;
+// mode=create:票证 status=authorized(未绑,桌面或微信内回跳)→ 建新账户并绑定、落会话,
+// 初始密码仅此一次明文返回(响应后不再可查)。
+func ClaimWeChatOALogin(c *gin.Context) {
+	var req weChatOAClaimRequest
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil || req.Token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "无效的请求"})
+		return
+	}
+	tok, err := model.GetWeChatOAuthTokenByToken(req.Token)
+	if err != nil || (tok.Kind != "login" && tok.Kind != "direct") {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "票证无效"})
+		return
+	}
+
+	switch req.Mode {
+	case "login":
+		// 先消费(单用性)再落会话;消费失败即已被他人使用
+		if tok.Status != "completed" || tok.UserId <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "扫码尚未完成或该微信未绑定"})
+			return
+		}
+		user, err := model.GetUserById(tok.UserId, false)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "账户异常，请联系管理员"})
+			return
+		}
+		if err := model.ConsumeWeChatOAuthToken(tok.Token, "consumed", 0, ""); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "该链接已被使用"})
+			return
+		}
+		wechatOADirectLogin(user, c)
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "success"})
+	case "create":
+		if tok.Status != "authorized" || tok.OpenidPending == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "扫码尚未完成"})
+			return
+		}
+		if !common.RegisterEnabled {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "管理员关闭了新用户注册"})
+			return
+		}
+		appId := operation_setting.WechatMpAppId
+		// ponytail: 先查占用再建用户;建用户后绑定的极端竞态由删除兜底,绝不让 openid 被覆盖
+		if _, err := model.GetWeChatAccountByOpenid(weChatOAProvider, appId, tok.OpenidPending); err == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "该微信已绑定其他账户"})
+			return
+		}
+		initialPassword := weChatOARandomPassword()
+		var user *model.User
+		var insertErr error
+		for i := 0; i < 3; i++ { // 用户名随机 8 位,冲突重试 3 次(Insert 唯一约束兜底)
+			hashed, hashErr := common.Password2Hash(initialPassword)
+			if hashErr != nil {
+				insertErr = hashErr
+				continue
+			}
+			u := &model.User{
+				Username:    "wx_" + common.GetRandomString(8),
+				Password:    hashed,
+				DisplayName: "微信用户",
+				Role:        common.RoleCommonUser,
+				Status:      common.UserStatusEnabled,
+			}
+			insertErr = u.Insert(0)
+			if insertErr == nil {
+				user = u
+				break
+			}
+		}
+		if insertErr != nil || user == nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "创建账户失败，请重试"})
+			return
+		}
+		if err := model.CreateWeChatAccount(&model.WeChatAccount{
+			UserId: user.Id, Provider: weChatOAProvider, AppId: appId, Openid: tok.OpenidPending,
+		}); err != nil {
+			_ = model.DB.Delete(user) // 绑定失败回滚孤儿用户
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "该微信已绑定其他账户"})
+			return
+		}
+		if err := model.ConsumeWeChatOAuthToken(tok.Token, "consumed", user.Id, ""); err != nil {
+			_ = model.DB.Delete(user)
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "该链接已被使用"})
+			return
+		}
+		wechatOADirectLogin(user, c)
+		// 初始密码仅此一次明文返回,之后只存哈希
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "success", "data": gin.H{
+			"username":         user.Username,
+			"initial_password": initialPassword,
+		}})
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "无效的 mode"})
+	}
+}
+
+// weChatOARandomPassword crypto/rand 12 字符可读串(去除易混淆字符 0/O/1/l/I)。
+func weChatOARandomPassword() string {
+	const charset = "23456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ"
+	buf := make([]byte, 12)
+	rand.Read(buf)
+	out := make([]byte, 12)
+	for i, b := range buf {
+		out[i] = charset[int(b)%len(charset)]
+	}
+	return string(out)
+}
+
+// ClaimExistingWeChatOABind POST /api/user/wechat/oa/bind/claim-existing(selfRoute)
+// 微信未绑回跳后,把 authorized 票证绑到当前登录用户(openid 占用必须拒)。
+func ClaimExistingWeChatOABind(c *gin.Context) {
+	userId := weChatOASessionUserId(c)
+	if userId <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": "无权操作"})
+		return
+	}
+	var req weChatOAClaimRequest
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil || req.Token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "无效的请求"})
+		return
+	}
+	tok, err := model.GetWeChatOAuthTokenByToken(req.Token)
+	if err != nil || tok.Status != "authorized" || tok.OpenidPending == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "链接无效或已失效"})
+		return
+	}
+	appId := operation_setting.WechatMpAppId
+	if _, err := model.GetWeChatAccountByOpenid(weChatOAProvider, appId, tok.OpenidPending); err == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "该微信已绑定其他账户"})
+		return
+	}
+	if err := model.CreateWeChatAccount(&model.WeChatAccount{
+		UserId: userId, Provider: weChatOAProvider, AppId: appId, Openid: tok.OpenidPending,
+	}); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "该微信已绑定其他账户"})
+		return
+	}
+	if err := model.ConsumeWeChatOAuthToken(tok.Token, "consumed", userId, ""); err != nil {
+		// 消费失败(竞态)→ 回滚绑定,票证不可再用于重复绑定
+		if acc, e := model.GetWeChatAccountByUserId(userId, weChatOAProvider, appId); e == nil && acc.Openid == tok.OpenidPending {
+			_ = model.DeleteWeChatAccountById(acc.Id)
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "该链接已被使用"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": ""})
+}
+
+// GetWeChatOABinding GET /api/user/wechat/oa/binding(selfRoute)
+func GetWeChatOABinding(c *gin.Context) {
+	userId := weChatOASessionUserId(c)
+	if userId <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": "无权操作"})
+		return
+	}
+	data := gin.H{"bound": false, "openid_masked": ""}
+	if acc, err := model.GetWeChatAccountByUserId(userId, weChatOAProvider, operation_setting.WechatMpAppId); err == nil {
+		data["bound"] = true
+		data["openid_masked"] = maskWeChatOpenid(acc.Openid)
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "", "data": data})
+}
+
+// DeleteWeChatOABinding DELETE /api/user/wechat/oa/binding(selfRoute) 解绑
+func DeleteWeChatOABinding(c *gin.Context) {
+	userId := weChatOASessionUserId(c)
+	if userId <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": "无权操作"})
+		return
+	}
+	acc, err := model.GetWeChatAccountByUserId(userId, weChatOAProvider, operation_setting.WechatMpAppId)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "尚未绑定微信"})
+		return
+	}
+	if err := model.DeleteWeChatAccountById(acc.Id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "解绑失败"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": ""})
+}
+
+// maskWeChatOpenid 前 6 后 4 中间 *;过短(openid<=10)全部打码。
+func maskWeChatOpenid(openid string) string {
+	if len(openid) <= 10 {
+		return strings.Repeat("*", len(openid))
+	}
+	return openid[:6] + strings.Repeat("*", len(openid)-10) + openid[len(openid)-4:]
 }
 
 func weChatOAStateKind(state string) (string, string, bool) {

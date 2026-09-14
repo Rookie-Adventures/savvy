@@ -167,6 +167,8 @@ const paymentSchema = z.object({
   AlipayRootCertSN: z.string(),
   AlipayNotifyURL: z.string(),
   WechatAppId: z.string(),
+  WechatMpAppId: z.string(),
+  WechatAppSecret: z.string(),
   WechatMchID: z.string(),
   WechatMchSerial: z.string(),
   WechatAPIv3Key: z.string(),
@@ -462,6 +464,8 @@ export function PaymentSettingsSection({
       AlipayRootCertSN: values.AlipayRootCertSN.trim(),
       AlipayNotifyURL: removeTrailingSlash(values.AlipayNotifyURL.trim()),
       WechatAppId: values.WechatAppId.trim(),
+      WechatMpAppId: values.WechatMpAppId.trim(),
+      WechatAppSecret: values.WechatAppSecret.trim(),
       WechatMchID: values.WechatMchID.trim(),
       WechatMchSerial: values.WechatMchSerial.trim(),
       WechatAPIv3Key: values.WechatAPIv3Key.trim(),
@@ -526,6 +530,8 @@ export function PaymentSettingsSection({
         initialRef.current.AlipayNotifyURL.trim()
       ),
       WechatAppId: initialRef.current.WechatAppId.trim(),
+      WechatMpAppId: initialRef.current.WechatMpAppId.trim(),
+      WechatAppSecret: initialRef.current.WechatAppSecret.trim(),
       WechatMchID: initialRef.current.WechatMchID.trim(),
       WechatMchSerial: initialRef.current.WechatMchSerial.trim(),
       WechatAPIv3Key: initialRef.current.WechatAPIv3Key.trim(),
@@ -739,6 +745,19 @@ export function PaymentSettingsSection({
     // follow the same "leave blank to keep existing" pattern.
     if (sanitized.WechatAppId !== initial.WechatAppId) {
       updates.push({ key: 'WechatAppId', value: sanitized.WechatAppId })
+    }
+    if (sanitized.WechatMpAppId !== initial.WechatMpAppId) {
+      updates.push({ key: 'WechatMpAppId', value: sanitized.WechatMpAppId })
+    }
+    // WechatAppSecret 与 APIv3Key/私钥同为敏感值:非空且变化才推送,留空即保留原值。
+    if (
+      sanitized.WechatAppSecret &&
+      sanitized.WechatAppSecret !== initial.WechatAppSecret
+    ) {
+      updates.push({
+        key: 'WechatAppSecret',
+        value: sanitized.WechatAppSecret,
+      })
     }
     if (sanitized.WechatMchID !== initial.WechatMchID) {
       updates.push({ key: 'WechatMchID', value: sanitized.WechatMchID })
@@ -2040,6 +2059,47 @@ export function PaymentSettingsSection({
                         <FormControl>
                           <Input
                             placeholder={t('wx...')}
+                            {...field}
+                            onChange={(event) =>
+                              field.onChange(event.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='WechatMpAppId'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('WeChat MP App ID')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={t('wx...')}
+                            {...field}
+                            onChange={(event) =>
+                              field.onChange(event.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='WechatAppSecret'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('WeChat AppSecret')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            type='password'
+                            placeholder={t('Leave blank to keep existing')}
                             {...field}
                             onChange={(event) =>
                               field.onChange(event.target.value)

@@ -124,6 +124,8 @@ func InitOptionMap() {
 	common.OptionMap["WechatPlatformCertPath"] = operation_setting.WechatPlatformCertPath
 	common.OptionMap["WechatPayPublicKeyId"] = operation_setting.WechatPayPublicKeyId
 	common.OptionMap["WechatPayPublicKey"] = operation_setting.WechatPayPublicKey
+	common.OptionMap["WechatMpAppId"] = operation_setting.WechatMpAppId
+	common.OptionMap["WechatAppSecret"] = operation_setting.WechatAppSecret
 	common.OptionMap["WeComCorpId"] = operation_setting.WeComCorpId
 	common.OptionMap["WeComKfUrl"] = operation_setting.WeComKfUrl
 	common.OptionMap["CreemApiKey"] = setting.CreemApiKey
@@ -547,6 +549,10 @@ func updateOptionMap(key string, value string) (err error) {
 		operation_setting.WechatPayPublicKeyId = value
 	case "WechatPayPublicKey":
 		operation_setting.WechatPayPublicKey = value
+	case "WechatMpAppId":
+		operation_setting.WechatMpAppId = value
+	case "WechatAppSecret":
+		operation_setting.WechatAppSecret = value
 	case "WeComCorpId":
 		operation_setting.WeComCorpId = value
 	case "WeComKfUrl":

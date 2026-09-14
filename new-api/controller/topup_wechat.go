@@ -186,6 +186,7 @@ func WechatNotify(c *gin.Context) {
 			// 幂等:已处理订单仍返 SUCCESS 止 wechat 重试,不重复加钱
 			return nil
 		}
+		topUp.CompleteTime = common.GetTimestamp()
 		topUp.Status = common.TopUpStatusSuccess
 		if err := topUp.Update(); err != nil {
 			return err

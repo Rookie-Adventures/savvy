@@ -92,6 +92,8 @@ const defaultBillingSettings: BillingSettings = {
   AlipayRootCertSN: '',
   AlipayNotifyURL: '',
   WechatAppId: '',
+  WechatMpAppId: '',
+  WechatAppSecret: '',
   WechatPayPublicKeyId: '',
   WechatPayPublicKey: '',
   WechatMchID: '',

@@ -89,6 +89,9 @@ func SetApiRouter(router *gin.Engine) {
 			// ponytail: 充值回调走 userRoute 组, 对齐 epay L77 范式, 路径成 /user/alipay/notify
 			userRoute.POST("/alipay/notify", anonymousRequestBodyLimit, controller.AlipayNotify)
 			userRoute.POST("/wechat/notify", anonymousRequestBodyLimit, controller.WechatNotify)
+			// ponytail: JSAPI 静默授权回调在匿名层——微信浏览器跳转导航不携带 New-Api-User 头,
+			// 挂 selfRoute(UserAuth)必 401(09-15 实测);安全性靠 session 中的 state 校验
+			userRoute.GET("/wechat/jsapi/oauth/callback", controller.WechatJsapiOauthCallback)
 			// ponytail: 智能体聊天/登记对游客开放(TryUserAuth 有登录态则绑 id),配额与限额在 controller 内区分
 			userRoute.POST("/agent/chat", middleware.TryUserAuth(), middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.AgentChat)
 			userRoute.POST("/agent/topup/register", middleware.TryUserAuth(), middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.RegisterAgentTopUp)
@@ -131,7 +134,8 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/wechat/jsapi/pay", middleware.CriticalRateLimit(), controller.RequestWechatJsapiPay)
 				// ponytail: JSAPI 静默授权桥,对齐 selfRoute /wechat/pay 范式(登录态+关键限流)
 				selfRoute.POST("/wechat/jsapi/oauth/start", middleware.CriticalRateLimit(), controller.WechatJsapiOauthStart)
-				selfRoute.GET("/wechat/jsapi/oauth/callback", middleware.CriticalRateLimit(), controller.WechatJsapiOauthCallback)
+				// 回调必须在匿名层(见下方 userRoute 注册):它是微信浏览器的跳转导航,永远不携带
+				// New-Api-User 头,挂 selfRoute(UserAuth)必 401——09-15 上线首测踩坑
 				selfRoute.POST("/amount", controller.RequestAmount)
 				selfRoute.POST("/stripe/pay", middleware.CriticalRateLimit(), controller.RequestStripePay)
 				selfRoute.POST("/stripe/amount", controller.RequestStripeAmount)

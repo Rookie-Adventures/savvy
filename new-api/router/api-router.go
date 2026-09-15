@@ -54,9 +54,11 @@ func SetApiRouter(router *gin.Engine) {
 		// Standard OAuth providers (GitHub, Discord, OIDC, LinuxDO) - unified route
 		apiRouter.GET("/oauth/:provider", middleware.CriticalRateLimit(), controller.HandleOAuth)
 		// ponytail: 微信身份体系(服务号 OAuth)——跨设备扫码登录/微信内直登,state=kind:token 自含票证;
-		// entry/callback 是浏览器跳转链路(同源硬编码),不加限流;票证创建/轮询按 brief 走 Critical 档
-		apiRouter.POST("/wechat/oa/tokens", middleware.CriticalRateLimit(), controller.CreateWeChatOAIdentityToken)
-		apiRouter.GET("/wechat/oa/tokens/:token/status", middleware.CriticalRateLimit(), controller.GetWeChatOATokenStatus)
+		// entry/callback 是浏览器跳转链路(同源硬编码),不加限流;
+		// 票证创建/轮询走 Global 档:轮询每 2s 一次,Critical 档 20次/20min 会被打爆 429(09-15 上线实测,
+		// 对齐 /agent/topup/status 先例);claim 是敏感落会话/建户动作,保持 Critical
+		apiRouter.POST("/wechat/oa/tokens", middleware.GlobalAPIRateLimit(), controller.CreateWeChatOAIdentityToken)
+		apiRouter.GET("/wechat/oa/tokens/:token/status", middleware.GlobalAPIRateLimit(), controller.GetWeChatOATokenStatus)
 		apiRouter.GET("/wechat/oa/entry", controller.WeChatOAEntry)
 		apiRouter.GET("/wechat/oa/callback", controller.WeChatOACallback)
 		// 登录 claim(扫码已完成后的会话落地/建户;微信内未绑回跳同端点)

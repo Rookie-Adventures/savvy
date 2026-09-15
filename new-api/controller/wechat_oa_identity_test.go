@@ -223,12 +223,12 @@ func TestWeChatOACallbackLoginUnboundAuthorized(t *testing.T) {
 	}
 }
 
-// ---- callback: direct 已绑 → 会话落地 + 302 /console/topup ----
+// ---- callback: direct 已绑 → completed + 回跳登录页带票证(uid 由前端 claim 落地) ----
 
-func TestWeChatOACallbackDirectBoundLogsIn(t *testing.T) {
+func TestWeChatOACallbackDirectBoundRedirectsToClaim(t *testing.T) {
 	setWechatOAConfig(t)
 	withStubExchange(t, "o-direct-bound", nil)
-	user := &model.User{Username: fmt.Sprintf("wx_direct_%d", time.Now().UnixNano()), Password: "x", DisplayName: "微信用户", Role: 1, Status: 1}
+	user := &model.User{Username: fmt.Sprintf("wx_direct_%d", time.Now().UnixNano()), Password: "x", DisplayName: "微信用户", Role: 1, Status: 1, AffCode: user_AffCode(t)}
 	if err := model.DB.Create(user).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -245,21 +245,21 @@ func TestWeChatOACallbackDirectBoundLogsIn(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/wechat/oa/callback?code=abc&state=direct:"+tok.Token, nil)
 	newWechatOATestEngine().ServeHTTP(w, req)
 
-	if w.Code != http.StatusFound || w.Header().Get("Location") != "/console/topup" {
-		t.Fatalf("direct bound should 302 /console/topup, got %d %s", w.Code, w.Header().Get("Location"))
+	// 回跳登录页带票证(uid 必须由前端 claim 写 localStorage,纯后端落地会话会导致无 New-Api-User 头)
+	if w.Code != http.StatusFound || w.Header().Get("Location") != "/sign-in?wx_token="+tok.Token {
+		t.Fatalf("direct bound should 302 sign-in with wx_token, got %d %s", w.Code, w.Header().Get("Location"))
 	}
 	got, err := model.GetWeChatOAuthTokenByToken(tok.Token)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != "consumed" || got.UserId != user.Id {
-		t.Fatalf("direct bound should consume with bound user, got %s/%d", got.Status, got.UserId)
+	if got.Status != "completed" || got.UserId != user.Id {
+		t.Fatalf("direct bound should be completed with bound user, got %s/%d", got.Status, got.UserId)
 	}
-	// 会话必须已落地(session id == user.Id)
-	cookies := w.Result().Cookies()
-	if len(cookies) == 0 {
-		t.Fatal("expected session cookie after direct login")
-	}
+}
+
+func user_AffCode(t *testing.T) string {
+	return fmt.Sprintf("aff_%d", time.Now().UnixNano())
 }
 
 // ---- callback: direct 未绑 → 302 /sign-in?wx_token= ----

@@ -49,6 +49,8 @@ import {
   isWaffoPancakePayment,
   parseDeeplinkTopupAmount,
 } from './lib'
+import { isWechatInAppBrowser } from '@/lib/wechat-ua'
+import { createWeChatOALoginToken } from '@/features/auth/api'
 import type {
   UserWalletData,
   PaymentMethod,
@@ -68,6 +70,22 @@ export function Wallet(props: WalletProps) {
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null)
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethod>()
+
+  // 微信内自动直登(direct):菜单/分享直达钱包时,游客先静默授权落会话再回本页。
+  // ponytail: 与 sign-in 页共用 sessionStorage 防循环标记;uid 未入 localStorage 即视为未登录。
+  useEffect(() => {
+    if (!isWechatInAppBrowser()) return
+    if (localStorage.getItem('uid')) return
+    if (sessionStorage.getItem('wx_oa_direct_done')) return
+    sessionStorage.setItem('wx_oa_direct_done', '1')
+    createWeChatOALoginToken('direct')
+      .then((res) => {
+        if (res.success && res.data?.url) {
+          window.location.href = res.data.url
+        }
+      })
+      .catch(() => undefined)
+  }, [])
   const [paymentLoading, setPaymentLoading] = useState<string | null>(null)
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
   const [transferDialogOpen, setTransferDialogOpen] = useState(false)

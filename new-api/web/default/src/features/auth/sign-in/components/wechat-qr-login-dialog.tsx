@@ -25,6 +25,7 @@ import {
   createWeChatOALoginToken,
   getWeChatOATokenStatus,
 } from '@/features/auth/api'
+import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/dialog'
 
@@ -51,12 +52,14 @@ export function WeChatQrLoginDialog({
   initialToken,
 }: WeChatQrLoginDialogProps) {
   const { t } = useTranslation()
+  const { handleLoginSuccess } = useAuthRedirect()
   const [token, setToken] = useState('')
   const [qrUrl, setQrUrl] = useState('')
   const [phase, setPhase] = useState<Phase>('qr')
   const [created, setCreated] = useState<{
     username: string
     initial_password: string
+    uid?: number
   } | null>(null)
   const [busy, setBusy] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -81,8 +84,9 @@ export function WeChatQrLoginDialog({
             const claim = await claimWeChatOALogin(ticket, 'login')
             setBusy(false)
             if (claim.success) {
+              // uid 必须经 handleLoginSuccess 写入 localStorage,否则登录态接口全报 未提供 New-Api-User
+              await handleLoginSuccess({ id: claim.data?.uid })
               toast.success(t('Welcome back!'))
-              window.location.reload()
             } else {
               toast.error(claim.message || t('Login failed'))
               setPhase('rejected')
@@ -141,6 +145,7 @@ export function WeChatQrLoginDialog({
         setCreated({
           username: res.data.username,
           initial_password: res.data.initial_password ?? '',
+          uid: res.data.uid,
         })
         setPhase('created')
       } else {
@@ -218,7 +223,10 @@ export function WeChatQrLoginDialog({
           </div>
           <Button
             className='w-full'
-            onClick={() => window.location.reload()}
+            onClick={async () => {
+              // 会话已在服务端落地,此处补 uid 并进钱包流程
+              await handleLoginSuccess({ id: created.uid }, '/wallet')
+            }}
           >
             {t('Continue')}
           </Button>

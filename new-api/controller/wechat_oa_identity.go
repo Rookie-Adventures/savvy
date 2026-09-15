@@ -208,22 +208,18 @@ func wechatOLoginCallback(c *gin.Context, tok *model.WeChatOAuthToken, appId, op
 	wechatOATextPage(c, http.StatusOK, "请在电脑上选择「创建新账户」或「绑定已有账户」")
 }
 
-// direct(微信内直登,手机自身即登录设备):已绑 → 消费并本会话落地 → 302 /console/topup;
+// direct(微信内直登,手机自身即登录设备):已绑 → 置 completed + 回跳登录页带票证,
+// 由前端弹窗自动 claim(login) 拿 uid 存 localStorage 后刷新 —— 纯后端 setupLogin+302
+// 会造成"有会话无 uid"(所有登录态接口报 未提供 New-Api-User),09-15 上线实测踩坑;
 // 未绑 → authorized → 302 /sign-in?wx_token=<token>(前端亮两按钮)。
 func wechatOADirectCallback(c *gin.Context, tok *model.WeChatOAuthToken, appId, openid string) {
 	acc, err := model.GetWeChatAccountByOpenid(weChatOAProvider, appId, openid)
 	if err == nil {
-		if err := model.ConsumeWeChatOAuthToken(tok.Token, "consumed", acc.UserId, ""); err != nil {
+		if err := model.ConsumeWeChatOAuthToken(tok.Token, "completed", acc.UserId, ""); err != nil {
 			wechatOATextPage(c, http.StatusBadRequest, "链接已失效，请重新发起")
 			return
 		}
-		user, err := model.GetUserById(acc.UserId, false)
-		if err != nil {
-			wechatOATextPage(c, http.StatusBadRequest, "账户异常，请联系管理员")
-			return
-		}
-		wechatOADirectLogin(user, c)
-		c.Redirect(http.StatusFound, "/console/topup")
+		c.Redirect(http.StatusFound, "/sign-in?wx_token="+tok.Token)
 		return
 	}
 	if err := model.ConsumeWeChatOAuthToken(tok.Token, "authorized", 0, openid); err != nil {
@@ -294,7 +290,10 @@ func ClaimWeChatOALogin(c *gin.Context) {
 			return
 		}
 		wechatOADirectLogin(user, c)
-		c.JSON(http.StatusOK, gin.H{"success": true, "message": "success"})
+		// uid 必须回传:前端存 localStorage 后才会带 New-Api-User 头(全站约定)
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "success", "data": gin.H{
+			"uid": user.Id,
+		}})
 	case "create":
 		if tok.Status != "authorized" || tok.OpenidPending == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "扫码尚未完成"})
@@ -349,10 +348,11 @@ func ClaimWeChatOALogin(c *gin.Context) {
 			return
 		}
 		wechatOADirectLogin(user, c)
-		// 初始密码仅此一次明文返回,之后只存哈希
+		// 初始密码仅此一次明文返回,之后只存哈希;uid 供前端写入 localStorage
 		c.JSON(http.StatusOK, gin.H{"success": true, "message": "success", "data": gin.H{
 			"username":         user.Username,
 			"initial_password": initialPassword,
+			"uid":              user.Id,
 		}})
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "无效的 mode"})

@@ -124,7 +124,11 @@ export async function claimWeChatOALogin(
   token: string,
   mode: 'login' | 'create'
 ): Promise<
-  ApiResponse<{ username?: string; initial_password?: string } | null>
+  ApiResponse<{
+    username?: string
+    initial_password?: string
+    uid?: number
+  } | null>
 > {
   const res = await api.post('/api/wechat/oa/login/claim', { token, mode })
   return res.data

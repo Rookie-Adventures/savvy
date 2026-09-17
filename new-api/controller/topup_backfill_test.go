@@ -111,6 +111,7 @@ func TestBackfillTopUpChannelAudit_Handler(t *testing.T) {
 	assert.Equal(t, "u1", got.CreditedUsername)
 	assert.Equal(t, "u1@x.com", got.CreditedEmail)
 	assert.Greater(t, got.ChannelPayTime, int64(0))
+	assert.Equal(t, got.ChannelPayTime, got.CompleteTime, "complete_time=0 的老单用渠道支付时间补齐")
 	// WX-DONE 未被触碰
 	assert.Equal(t, "4200EXISTING", model.GetTopUpByTradeNo("WX-DONE").ChannelTradeNo)
 }

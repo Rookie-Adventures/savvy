@@ -4,6 +4,8 @@ import (
 	"errors"
 
 	"github.com/QuantumNous/new-api/common"
+
+	"gorm.io/gorm"
 )
 
 // UpdateTopUpChannelAudit 为已完成但缺渠道证据的订单回填审计字段(渠道查单补录)。
@@ -50,6 +52,10 @@ func UpdateTopUpChannelAudit(tradeNo string, audit TopUpAudit, creditedUsername 
 			return ErrTopUpNotFound
 		}
 	}
+	// 老版本完成订单时没写 complete_time:有渠道支付时间的用渠道时间补齐
+	DB.Model(&TopUp{}).
+		Where(refCol+" = ? AND complete_time = 0 AND channel_pay_time > 0", tradeNo).
+		Update("complete_time", gorm.Expr("channel_pay_time"))
 	return nil
 }
 

@@ -100,7 +100,11 @@ export function UserAuthForm({
     isPasskeyLoading ||
     !passkeySupported ||
     (requiresLegalConsent && !agreedToLegal)
-  const hasWeChatLogin = Boolean(status?.wechat_login)
+  const hasWeChatLogin =
+    Boolean(status?.wechat_login) &&
+    (status?.wechat_register_enabled ??
+      status?.data?.wechat_register_enabled ??
+      true) !== false
   const hasOAuthLogin = Boolean(
     status?.github_oauth ||
     status?.discord_oauth ||

@@ -23,3 +23,10 @@ func TestWechatAppSecretOptionRegistered(t *testing.T) {
 		t.Fatal("WechatMpAppId not registered in OptionMap")
 	}
 }
+
+func TestWechatRegisterEnabledOptionRegistered(t *testing.T) {
+	InitOptionMap() // 重置,消除对同文件前序测试的顺序依赖
+	if _, ok := common.OptionMap["WeChatRegisterEnabled"]; !ok {
+		t.Fatal("WeChatRegisterEnabled not registered in OptionMap")
+	}
+}

@@ -180,7 +180,7 @@ func tryCompleteAgentTopUpByQuery(topUp *model.TopUp, clientIP string) {
 	if fresh == nil || fresh.Status != common.TopUpStatusPending {
 		return
 	}
-	if cerr := completeAgentTopUp(fresh, money, clientIP); cerr != nil {
+	if cerr := completeAgentTopUp(fresh, money, alipayAuditFromQuery(rsp), clientIP); cerr != nil {
 		common.SysError("agent topup query-complete failed: " + cerr.Error())
 	}
 }

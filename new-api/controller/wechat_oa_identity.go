@@ -299,8 +299,8 @@ func ClaimWeChatOALogin(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "扫码尚未完成"})
 			return
 		}
-		if !common.RegisterEnabled {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "管理员关闭了新用户注册"})
+		if !common.RegisterEnabled || !common.WeChatRegisterEnabled {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "管理员关闭了微信注册"})
 			return
 		}
 		appId := operation_setting.WechatMpAppId

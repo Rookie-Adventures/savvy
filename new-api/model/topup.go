@@ -9,6 +9,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type TopUp struct {
@@ -24,6 +25,15 @@ type TopUp struct {
 	CreateTime      int64   `json:"create_time"`
 	CompleteTime    int64   `json:"complete_time"`
 	Status          string  `json:"status"`
+	// 审计字段(支付宝/微信审核取证):渠道交易号/付款人/入账前后余额/到账账户快照/渠道支付时间
+	ChannelTradeNo   string `json:"channel_trade_no" gorm:"type:varchar(64);index"`
+	PayerId          string `json:"payer_id" gorm:"type:varchar(128)"`
+	PayerAccount     string `json:"payer_account" gorm:"type:varchar(128)"`
+	BalanceBefore    int    `json:"balance_before"`
+	BalanceAfter     int    `json:"balance_after"`
+	CreditedUsername string `json:"credited_username" gorm:"type:varchar(255)"`
+	CreditedEmail    string `json:"credited_email" gorm:"type:varchar(255)"`
+	ChannelPayTime   int64  `json:"channel_pay_time"`
 }
 
 const (
@@ -356,8 +366,8 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		topUp := &TopUp{}
-		// 行级锁，避免并发补单
-		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
+		// 行级锁（clause.Locking,gorm v2 正确写法），避免并发补单
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
 			return errors.New("充值订单不存在")
 		}
 
@@ -388,6 +398,19 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 		// 标记完成
 		topUp.CompleteTime = common.GetTimestamp()
 		topUp.Status = common.TopUpStatusSuccess
+		if err := tx.Save(topUp).Error; err != nil {
+			return err
+		}
+
+		// 锁内读 user 行,记录入账前后余额快照(与 CompleteTopUpWithAudit 同模式)
+		user := &User{}
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", topUp.UserId).First(user).Error; err != nil {
+			return err
+		}
+		topUp.BalanceBefore = user.Quota
+		topUp.BalanceAfter = user.Quota + quotaToAdd
+		topUp.CreditedUsername = user.Username
+		topUp.CreditedEmail = user.Email
 		if err := tx.Save(topUp).Error; err != nil {
 			return err
 		}
@@ -608,4 +631,92 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 	}
 
 	return nil
+}
+
+// TopUpAudit 支付渠道侧的取证信息,随回调入账一次性落库。
+type TopUpAudit struct {
+	ChannelTradeNo string
+	PayerId        string
+	PayerAccount   string
+	ChannelPayTime int64
+}
+
+// CompleteTopUpWithAudit 单事务完成充值单:行锁(clause.Locking)读单→校验→mutate 回填→快照余额→加额度。
+// 注意:gorm v1 的 Set("gorm:query_option","FOR UPDATE") 在 v2 全平台(含 MySQL/PG)均静默 no-op,
+// 必须用 clause.Locking 才能真正加行锁,否则并发回调会双双通过 pending 校验重复加钱。
+// mutate 非 nil 时在行锁内回填额外字段(agent 单回填 Money/Amount 用);游客单(user_id=0)只标记不加余额。
+// 幂等:已 success 直接返 nil。替换"先 Update 再异步 IncreaseUserQuota"的两步式,消除钱到账未加额度的隐患。
+func CompleteTopUpWithAudit(tradeNo string, expectedProvider string, audit TopUpAudit, mutate func(tu *TopUp)) error {
+	if tradeNo == "" {
+		return errors.New("未提供支付单号")
+	}
+	refCol := "`trade_no`"
+	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
+		refCol = `"trade_no"`
+	}
+	return DB.Transaction(func(tx *gorm.DB) error {
+		topUp := &TopUp{}
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
+			return ErrTopUpNotFound
+		}
+		if topUp.PaymentProvider != expectedProvider {
+			return ErrPaymentMethodMismatch
+		}
+		if topUp.Status == common.TopUpStatusSuccess {
+			return nil // 幂等
+		}
+		if topUp.Status != common.TopUpStatusPending {
+			return ErrTopUpStatusInvalid
+		}
+		if mutate != nil {
+			mutate(topUp)
+		}
+		quotaToAdd := int(decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
+		if topUp.UserId > 0 && quotaToAdd <= 0 {
+			return errors.New("无效的充值额度")
+		}
+		topUp.CompleteTime = common.GetTimestamp()
+		topUp.Status = common.TopUpStatusSuccess
+		topUp.ChannelTradeNo = audit.ChannelTradeNo
+		topUp.PayerId = audit.PayerId
+		topUp.PayerAccount = audit.PayerAccount
+		topUp.ChannelPayTime = audit.ChannelPayTime
+		if topUp.UserId > 0 {
+			user := &User{}
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", topUp.UserId).First(user).Error; err != nil {
+				return err
+			}
+			topUp.BalanceBefore = user.Quota
+			topUp.BalanceAfter = user.Quota + quotaToAdd
+			topUp.CreditedUsername = user.Username
+			topUp.CreditedEmail = user.Email
+		}
+		// 条件更新守卫:仅 pending→success 允许写入,RowsAffected=0 说明并发下状态已被改,拒绝落库
+		res := tx.Model(&TopUp{}).Where("id = ? AND status = ?", topUp.Id, common.TopUpStatusPending).Updates(map[string]interface{}{
+			"status":           topUp.Status,
+			"complete_time":    topUp.CompleteTime,
+			"channel_trade_no": topUp.ChannelTradeNo,
+			"payer_id":         topUp.PayerId,
+			"payer_account":    topUp.PayerAccount,
+			"channel_pay_time": topUp.ChannelPayTime,
+			"money":            topUp.Money,
+			"amount":           topUp.Amount,
+			"balance_before":   topUp.BalanceBefore,
+			"balance_after":    topUp.BalanceAfter,
+			"credited_username": topUp.CreditedUsername,
+			"credited_email":    topUp.CreditedEmail,
+		})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return ErrTopUpStatusInvalid
+		}
+		if topUp.UserId > 0 {
+			if err := tx.Model(&User{}).Where("id = ?", topUp.UserId).Update("quota", gorm.Expr("quota + ?", quotaToAdd)).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

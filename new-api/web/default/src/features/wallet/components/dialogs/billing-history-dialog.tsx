@@ -17,7 +17,15 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useState } from 'react'
-import { Search, Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  Search,
+  Copy,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatCurrencyFromUSD } from '@/lib/currency'
 import { formatNumber } from '@/lib/format'
@@ -58,6 +66,15 @@ interface BillingHistoryDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
+type TFunc = (key: string) => string
+
+const getChannelTradeNoLabel = (provider: string | undefined, t: TFunc) => {
+  if (provider === 'wechat') return t('WeChat Pay Transaction ID')
+  if (provider === 'alipay' || provider === 'alipay_agent')
+    return t('Alipay Transaction ID')
+  return t('Channel Transaction ID')
+}
+
 export function BillingHistoryDialog({
   open,
   onOpenChange,
@@ -79,6 +96,7 @@ export function BillingHistoryDialog({
   } = useBillingHistory()
 
   const [confirmTradeNo, setConfirmTradeNo] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<number | null>(null)
   const { copyToClipboard, copiedText } = useCopyToClipboard({ notify: false })
 
   const totalPages = Math.ceil(total / pageSize)
@@ -255,6 +273,145 @@ export function BillingHistoryDialog({
                           </div>
                         </div>
                       </div>
+
+                      {/* Audit Details */}
+                      {record.status === 'success' &&
+                        (record.channel_trade_no ||
+                          record.payer_id ||
+                          record.balance_before != null) && (
+                          <div className='mt-3'>
+                            <button
+                              type='button'
+                              onClick={() =>
+                                setExpandedId(
+                                  expandedId === record.id ? null : record.id
+                                )
+                              }
+                              className='text-muted-foreground flex items-center gap-1 text-xs'
+                            >
+                              {expandedId === record.id ? (
+                                <ChevronUp className='h-3 w-3' />
+                              ) : (
+                                <ChevronDown className='h-3 w-3' />
+                              )}
+                              {t('Payment Details')}
+                            </button>
+                            {expandedId === record.id && (
+                              <div className='mt-2 space-y-2 rounded-md bg-muted/40 p-3'>
+                                {record.channel_trade_no && (
+                                  <div className='flex items-center gap-2'>
+                                    <Label className='text-muted-foreground w-32 shrink-0 text-xs'>
+                                      {getChannelTradeNoLabel(
+                                        record.payment_provider,
+                                        t
+                                      )}
+                                    </Label>
+                                    <code className='truncate font-mono text-xs'>
+                                      {record.channel_trade_no}
+                                    </code>
+                                    <Button
+                                      variant='ghost'
+                                      size='sm'
+                                      className='h-5 w-5 p-0'
+                                      onClick={() =>
+                                        copyToClipboard(record.channel_trade_no!)
+                                      }
+                                    >
+                                      {copiedText === record.channel_trade_no ? (
+                                        <Check className='h-3 w-3' />
+                                      ) : (
+                                        <Copy className='h-3 w-3' />
+                                      )}
+                                    </Button>
+                                  </div>
+                                )}
+                                {record.payer_id && (
+                                  <div className='flex items-center gap-2'>
+                                    <Label className='text-muted-foreground w-32 shrink-0 text-xs'>
+                                      {t('Payer')}
+                                    </Label>
+                                    <span className='truncate text-xs'>
+                                      {record.payment_provider === 'wechat'
+                                        ? `OpenID ${record.payer_id}`
+                                        : `${t('Buyer ID')} ${record.payer_id}`}
+                                      {record.payer_account
+                                        ? ` (${record.payer_account})`
+                                        : ''}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className='flex items-center gap-2'>
+                                  <Label className='text-muted-foreground w-32 shrink-0 text-xs'>
+                                    {t('Credited Account')}
+                                  </Label>
+                                  <span className='truncate text-xs'>
+                                    {record.credited_username ||
+                                      `#${record.user_id}`}
+                                    {record.credited_email
+                                      ? ` (${record.credited_email})`
+                                      : ''}{' '}
+                                    #{record.user_id}
+                                  </span>
+                                </div>
+                                {record.balance_before != null && (
+                                  <div className='flex items-center gap-2'>
+                                    <Label className='text-muted-foreground w-32 shrink-0 text-xs'>
+                                      {t('Balance Before')}
+                                    </Label>
+                                    <span className='text-xs'>
+                                      {formatCurrencyFromUSD(
+                                        record.balance_before,
+                                        {
+                                          digitsLarge: 2,
+                                          digitsSmall: 2,
+                                          abbreviate: false,
+                                        }
+                                      )}
+                                    </span>
+                                  </div>
+                                )}
+                                {record.balance_after != null && (
+                                  <div className='flex items-center gap-2'>
+                                    <Label className='text-muted-foreground w-32 shrink-0 text-xs'>
+                                      {t('Balance After')}
+                                    </Label>
+                                    <span className='text-xs'>
+                                      {formatCurrencyFromUSD(
+                                        record.balance_after,
+                                        {
+                                          digitsLarge: 2,
+                                          digitsSmall: 2,
+                                          abbreviate: false,
+                                        }
+                                      )}
+                                    </span>
+                                  </div>
+                                )}
+                                {record.status === 'success' &&
+                                record.complete_time ? (
+                                  <div className='flex items-center gap-2'>
+                                    <Label className='text-muted-foreground w-32 shrink-0 text-xs'>
+                                      {t('Credited At')}
+                                    </Label>
+                                    <span className='text-xs'>
+                                      {formatTimestamp(record.complete_time)}
+                                    </span>
+                                  </div>
+                                ) : null}
+                                {!!record.channel_pay_time && (
+                                  <div className='flex items-center gap-2'>
+                                    <Label className='text-muted-foreground w-32 shrink-0 text-xs'>
+                                      {t('Channel Paid At')}
+                                    </Label>
+                                    <span className='text-xs'>
+                                      {formatTimestamp(record.channel_pay_time)}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                       {/* Admin Actions */}
                       {isAdmin && record.status === 'pending' && (

@@ -287,6 +287,24 @@ export interface TopupRecord {
   complete_time?: number
   /** Payment status */
   status: TopupStatus
+  /** 渠道交易号:微信 transaction_id / 支付宝 trade_no */
+  channel_trade_no?: string
+  /** 付款人:微信 payer.openid / 支付宝 buyer_id */
+  payer_id?: string
+  /** 支付宝脱敏账号(可空) */
+  payer_account?: string
+  /** 入账前余额(quota) */
+  balance_before?: number
+  /** 入账后余额(quota) */
+  balance_after?: number
+  /** 入账时刻用户名快照 */
+  credited_username?: string
+  /** 入账时刻邮箱快照(微信注册用户为空) */
+  credited_email?: string
+  /** 渠道侧支付时间(unix 秒,0=无) */
+  channel_pay_time?: number
+  /** 支付提供方:wechat/alipay/alipay_agent/... */
+  payment_provider?: string
 }
 
 /**

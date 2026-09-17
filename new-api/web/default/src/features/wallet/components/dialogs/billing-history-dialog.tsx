@@ -28,7 +28,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatCurrencyFromUSD } from '@/lib/currency'
-import { formatNumber } from '@/lib/format'
+import { formatNumber, formatQuota } from '@/lib/format'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import {
   AlertDialog,
@@ -359,14 +359,7 @@ export function BillingHistoryDialog({
                                       {t('Balance Before')}
                                     </Label>
                                     <span className='text-xs'>
-                                      {formatCurrencyFromUSD(
-                                        record.balance_before,
-                                        {
-                                          digitsLarge: 2,
-                                          digitsSmall: 2,
-                                          abbreviate: false,
-                                        }
-                                      )}
+                                      {formatQuota(record.balance_before)}
                                     </span>
                                   </div>
                                 )}
@@ -377,14 +370,7 @@ export function BillingHistoryDialog({
                                       {t('Balance After')}
                                     </Label>
                                     <span className='text-xs'>
-                                      {formatCurrencyFromUSD(
-                                        record.balance_after,
-                                        {
-                                          digitsLarge: 2,
-                                          digitsSmall: 2,
-                                          abbreviate: false,
-                                        }
-                                      )}
+                                      {formatQuota(record.balance_after)}
                                     </span>
                                   </div>
                                 )}

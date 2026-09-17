@@ -116,7 +116,11 @@ type wxTopUpNotifyDetail struct {
 
 ### 5.3 i18n
 
-新增文案同步 en/ja/fr/ru/vi/zh 六个 locale（`web/default/src/i18n/locales/`）：渠道交易号、微信支付订单号、支付宝交易号、付款人、买家ID、到账账户、充值前余额、充值后余额、渠道支付时间、到账时间等。
+新增文案同步 **en/zh** 两个 locale（`web/default/src/i18n/locales/`，用户指定本任务只补中英文）：渠道交易号、微信支付订单号、支付宝交易号、付款人、买家ID、到账账户、充值前余额、充值后余额、渠道支付时间、到账时间等。
+
+### 5.4 无邮箱用户回退
+
+微信注册用户（`wx_xxxxxxxx`）Email 为空：到账账户展示回退为 `username #id`（如 `wx_ab12cd34 #1024`），不显示空括号。
 
 ## 6. 展示效果（最终形态）
 
@@ -152,7 +156,26 @@ WXUSR1024NOAb3dEf1737123456  [复制]           ● 充值成功
   - 支付宝表单提取：`trade_no`/`buyer_id`/`buyer_logon_id`/`gmt_payment` 转时间戳。
 - **前端**：`tsc` + build 通过；手动核对中英文展示与"—"降级。
 
-## 9. 实施顺序
+## 9. 附加需求：微信注册独立开关（同分支实施）
+
+### 9.1 背景
+
+现有开关：`RegisterEnabled`（总闸）、`PasswordRegisterEnabled`（密码注册）、`WeChatAuthEnabled`（微信登录+注册总闸，关了连登录都没有）。缺"单独关闭微信渠道注册"的开关。目标：管理员可配置"只允许微信注册"（关密码注册 + 开微信注册），并为将来支付宝注册预留。
+
+### 9.2 设计
+
+- 新增选项 `WeChatRegisterEnabled`（`common/constants.go`，默认 `true` 保持现行为）：
+  - `model/option.go`：OptionMap 注册 + `updateOptionMap` case；
+  - `controller/misc.go` status 接口暴露 `wechat_register_enabled`；
+  - 拦截点：
+    - `controller/wechat.go` `WeChatAuth` 注册分支（现仅查 `RegisterEnabled`，L93）；
+    - `controller/wechat_oa_identity.go` `create` 分支（现仅查 `RegisterEnabled`，L302）；
+    - 两处均要求 `RegisterEnabled && WeChatRegisterEnabled`，关闭时返回"管理员关闭了微信注册"类文案。
+- **后台设置 UI**（`web/default/src/features/system-settings/auth/`）：新增"注册方式"分组——密码注册（已有）、微信注册（新开关）、支付宝注册（**灰色禁用占位**，标注"即将支持"，纯 UI，无后端代码）；仅 default 主题，classic 不动。
+- **前台**：注册页按 `wechat_register_enabled` 标志隐藏微信注册入口（沿用现有 `password_register_enabled` 模式）。
+- i18n：en/zh。
+
+## 10. 实施顺序
 
 1. model 层：结构体字段 + `CompleteTopUpWithAudit`（含单测）
 2. 微信回调接入（含 payload 解析单测）

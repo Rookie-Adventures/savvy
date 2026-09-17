@@ -9,6 +9,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type TopUp struct {
@@ -627,7 +628,9 @@ type TopUpAudit struct {
 	ChannelPayTime int64
 }
 
-// CompleteTopUpWithAudit 单事务完成充值单:FOR UPDATE 读单→校验→mutate 回填→快照余额→加额度。
+// CompleteTopUpWithAudit 单事务完成充值单:行锁(clause.Locking)读单→校验→mutate 回填→快照余额→加额度。
+// 注意:gorm v1 的 Set("gorm:query_option","FOR UPDATE") 在 v2 全平台(含 MySQL/PG)均静默 no-op,
+// 必须用 clause.Locking 才能真正加行锁,否则并发回调会双双通过 pending 校验重复加钱。
 // mutate 非 nil 时在行锁内回填额外字段(agent 单回填 Money/Amount 用);游客单(user_id=0)只标记不加余额。
 // 幂等:已 success 直接返 nil。替换"先 Update 再异步 IncreaseUserQuota"的两步式,消除钱到账未加额度的隐患。
 func CompleteTopUpWithAudit(tradeNo string, expectedProvider string, audit TopUpAudit, mutate func(tu *TopUp)) error {
@@ -640,7 +643,7 @@ func CompleteTopUpWithAudit(tradeNo string, expectedProvider string, audit TopUp
 	}
 	return DB.Transaction(func(tx *gorm.DB) error {
 		topUp := &TopUp{}
-		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
 			return ErrTopUpNotFound
 		}
 		if topUp.PaymentProvider != expectedProvider {
@@ -667,7 +670,7 @@ func CompleteTopUpWithAudit(tradeNo string, expectedProvider string, audit TopUp
 		topUp.ChannelPayTime = audit.ChannelPayTime
 		if topUp.UserId > 0 {
 			user := &User{}
-			if err := tx.Set("gorm:query_option", "FOR UPDATE").Where("id = ?", topUp.UserId).First(user).Error; err != nil {
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", topUp.UserId).First(user).Error; err != nil {
 				return err
 			}
 			topUp.BalanceBefore = user.Quota
@@ -675,8 +678,26 @@ func CompleteTopUpWithAudit(tradeNo string, expectedProvider string, audit TopUp
 			topUp.CreditedUsername = user.Username
 			topUp.CreditedEmail = user.Email
 		}
-		if err := tx.Save(topUp).Error; err != nil {
-			return err
+		// 条件更新守卫:仅 pending→success 允许写入,RowsAffected=0 说明并发下状态已被改,拒绝落库
+		res := tx.Model(&TopUp{}).Where("id = ? AND status = ?", topUp.Id, common.TopUpStatusPending).Updates(map[string]interface{}{
+			"status":           topUp.Status,
+			"complete_time":    topUp.CompleteTime,
+			"channel_trade_no": topUp.ChannelTradeNo,
+			"payer_id":         topUp.PayerId,
+			"payer_account":    topUp.PayerAccount,
+			"channel_pay_time": topUp.ChannelPayTime,
+			"money":            topUp.Money,
+			"amount":           topUp.Amount,
+			"balance_before":   topUp.BalanceBefore,
+			"balance_after":    topUp.BalanceAfter,
+			"credited_username": topUp.CreditedUsername,
+			"credited_email":    topUp.CreditedEmail,
+		})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return ErrTopUpStatusInvalid
 		}
 		if topUp.UserId > 0 {
 			if err := tx.Model(&User{}).Where("id = ?", topUp.UserId).Update("quota", gorm.Expr("quota + ?", quotaToAdd)).Error; err != nil {

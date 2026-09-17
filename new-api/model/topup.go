@@ -366,8 +366,8 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		topUp := &TopUp{}
-		// 行级锁，避免并发补单
-		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
+		// 行级锁（clause.Locking,gorm v2 正确写法），避免并发补单
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
 			return errors.New("充值订单不存在")
 		}
 
@@ -398,6 +398,19 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 		// 标记完成
 		topUp.CompleteTime = common.GetTimestamp()
 		topUp.Status = common.TopUpStatusSuccess
+		if err := tx.Save(topUp).Error; err != nil {
+			return err
+		}
+
+		// 锁内读 user 行,记录入账前后余额快照(与 CompleteTopUpWithAudit 同模式)
+		user := &User{}
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", topUp.UserId).First(user).Error; err != nil {
+			return err
+		}
+		topUp.BalanceBefore = user.Quota
+		topUp.BalanceAfter = user.Quota + quotaToAdd
+		topUp.CreditedUsername = user.Username
+		topUp.CreditedEmail = user.Email
 		if err := tx.Save(topUp).Error; err != nil {
 			return err
 		}

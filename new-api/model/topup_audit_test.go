@@ -102,3 +102,15 @@ func TestCompleteTopUpWithAudit_MutateAndGuestOrder(t *testing.T) {
 	assert.Equal(t, "chan-1", got.ChannelTradeNo)
 	assert.Equal(t, float64(9.9), got.Money, "mutate 回填生效")
 }
+
+func TestManualCompleteTopUp_RecordsBalanceSnapshot(t *testing.T) {
+	setupTopUpAuditTest(t)
+	u := newAuditUser(t, 52000000)
+	newPendingTopUp(t, u.Id, "MANUAL-1")
+	require.NoError(t, ManualCompleteTopUp("MANUAL-1", "127.0.0.1"))
+	got := GetTopUpByTradeNo("MANUAL-1")
+	require.NotNil(t, got)
+	assert.Equal(t, 52000000, got.BalanceBefore)
+	assert.Equal(t, 52000000+10*int(common.QuotaPerUnit), got.BalanceAfter)
+	assert.Equal(t, u.Username, got.CreditedUsername)
+}

@@ -24,6 +24,15 @@ type TopUp struct {
 	CreateTime      int64   `json:"create_time"`
 	CompleteTime    int64   `json:"complete_time"`
 	Status          string  `json:"status"`
+	// 审计字段(支付宝/微信审核取证):渠道交易号/付款人/入账前后余额/到账账户快照/渠道支付时间
+	ChannelTradeNo   string `json:"channel_trade_no" gorm:"type:varchar(64);index"`
+	PayerId          string `json:"payer_id" gorm:"type:varchar(128)"`
+	PayerAccount     string `json:"payer_account" gorm:"type:varchar(128)"`
+	BalanceBefore    int    `json:"balance_before"`
+	BalanceAfter     int    `json:"balance_after"`
+	CreditedUsername string `json:"credited_username" gorm:"type:varchar(255)"`
+	CreditedEmail    string `json:"credited_email" gorm:"type:varchar(255)"`
+	ChannelPayTime   int64  `json:"channel_pay_time"`
 }
 
 const (
@@ -608,4 +617,72 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 	}
 
 	return nil
+}
+
+// TopUpAudit 支付渠道侧的取证信息,随回调入账一次性落库。
+type TopUpAudit struct {
+	ChannelTradeNo string
+	PayerId        string
+	PayerAccount   string
+	ChannelPayTime int64
+}
+
+// CompleteTopUpWithAudit 单事务完成充值单:FOR UPDATE 读单→校验→mutate 回填→快照余额→加额度。
+// mutate 非 nil 时在行锁内回填额外字段(agent 单回填 Money/Amount 用);游客单(user_id=0)只标记不加余额。
+// 幂等:已 success 直接返 nil。替换"先 Update 再异步 IncreaseUserQuota"的两步式,消除钱到账未加额度的隐患。
+func CompleteTopUpWithAudit(tradeNo string, expectedProvider string, audit TopUpAudit, mutate func(tu *TopUp)) error {
+	if tradeNo == "" {
+		return errors.New("未提供支付单号")
+	}
+	refCol := "`trade_no`"
+	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
+		refCol = `"trade_no"`
+	}
+	return DB.Transaction(func(tx *gorm.DB) error {
+		topUp := &TopUp{}
+		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
+			return ErrTopUpNotFound
+		}
+		if topUp.PaymentProvider != expectedProvider {
+			return ErrPaymentMethodMismatch
+		}
+		if topUp.Status == common.TopUpStatusSuccess {
+			return nil // 幂等
+		}
+		if topUp.Status != common.TopUpStatusPending {
+			return ErrTopUpStatusInvalid
+		}
+		if mutate != nil {
+			mutate(topUp)
+		}
+		quotaToAdd := int(decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
+		if topUp.UserId > 0 && quotaToAdd <= 0 {
+			return errors.New("无效的充值额度")
+		}
+		topUp.CompleteTime = common.GetTimestamp()
+		topUp.Status = common.TopUpStatusSuccess
+		topUp.ChannelTradeNo = audit.ChannelTradeNo
+		topUp.PayerId = audit.PayerId
+		topUp.PayerAccount = audit.PayerAccount
+		topUp.ChannelPayTime = audit.ChannelPayTime
+		if topUp.UserId > 0 {
+			user := &User{}
+			if err := tx.Set("gorm:query_option", "FOR UPDATE").Where("id = ?", topUp.UserId).First(user).Error; err != nil {
+				return err
+			}
+			topUp.BalanceBefore = user.Quota
+			topUp.BalanceAfter = user.Quota + quotaToAdd
+			topUp.CreditedUsername = user.Username
+			topUp.CreditedEmail = user.Email
+		}
+		if err := tx.Save(topUp).Error; err != nil {
+			return err
+		}
+		if topUp.UserId > 0 {
+			if err := tx.Model(&User{}).Where("id = ?", topUp.UserId).Update("quota", gorm.Expr("quota + ?", quotaToAdd)).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

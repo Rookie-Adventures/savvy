@@ -268,6 +268,7 @@
     "Allow inference_geo passthrough": "允许 inference_geo 透传",
     "Allow Insecure Origins": "允许不安全来源",
     "Allow new users to register": "允许新用户注册",
+    "Allow new users to sign up by scanning the WeChat QR code": "允许新用户通过微信扫码注册新账号",
     "Allow Private IPs": "允许私有 IP",
     "Allow registration with password": "允许使用密码注册",
     "Allow requests to private IP ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)": "允许请求私有 IP 范围 (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)",

@@ -102,7 +102,11 @@ export function SignUpForm({
     status?.oauth_register_enabled ??
     status?.data?.oauth_register_enabled ??
     true
-  const hasWeChatLogin = Boolean(status?.wechat_login)
+  const hasWeChatLogin =
+    Boolean(status?.wechat_login) &&
+    (status?.wechat_register_enabled ??
+      status?.data?.wechat_register_enabled ??
+      true) !== false
   const turnstileReady = !isTurnstileEnabled || Boolean(turnstileToken)
 
   const wechatQrCodeUrl = useMemo(() => {

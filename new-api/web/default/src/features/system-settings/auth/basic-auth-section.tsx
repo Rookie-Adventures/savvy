@@ -47,6 +47,7 @@ const basicAuthSchema = z.object({
   PasswordRegisterEnabled: z.boolean(),
   EmailVerificationEnabled: z.boolean(),
   RegisterEnabled: z.boolean(),
+  WeChatRegisterEnabled: z.boolean(),
   EmailDomainRestrictionEnabled: z.boolean(),
   EmailAliasRestrictionEnabled: z.boolean(),
   EmailDomainWhitelist: z.string(),
@@ -133,6 +134,10 @@ export function BasicAuthSection({ defaultValues }: BasicAuthSectionProps) {
             )}
           />
 
+          <div data-settings-form-span='full' className='text-sm font-medium'>
+            {t('Registration Methods')}
+          </div>
+
           <FormField
             control={form.control}
             name='RegisterEnabled'
@@ -174,6 +179,40 @@ export function BasicAuthSection({ defaultValues }: BasicAuthSectionProps) {
               </SettingsSwitchItem>
             )}
           />
+
+          <FormField
+            control={form.control}
+            name='WeChatRegisterEnabled'
+            render={({ field }) => (
+              <SettingsSwitchItem>
+                <SettingsSwitchContent>
+                  <FormLabel>{t('WeChat Register')}</FormLabel>
+                  <FormDescription>
+                    {t(
+                      'Allow new users to sign up by scanning the WeChat QR code'
+                    )}
+                  </FormDescription>
+                </SettingsSwitchContent>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </SettingsSwitchItem>
+            )}
+          />
+
+          {/* 支付宝注册预留位: 纯 UI, 后端未实现 */}
+          <SettingsSwitchItem className='opacity-50'>
+            <SettingsSwitchContent>
+              <FormLabel>{t('Alipay Register')}</FormLabel>
+              <FormDescription>{t('Coming Soon')}</FormDescription>
+            </SettingsSwitchContent>
+            <FormControl>
+              <Switch checked={false} disabled />
+            </FormControl>
+          </SettingsSwitchItem>
 
           <FormField
             control={form.control}

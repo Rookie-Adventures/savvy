@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -177,7 +178,12 @@ func AlipayNotify(c *gin.Context) {
 			_, _ = c.Writer.Write([]byte("fail"))
 			return
 		}
-		if cerr := completeAgentTopUp(topUp, money, c.ClientIP()); cerr != nil {
+		audit, aerr := alipayAuditFromForm(c.Request.Form)
+		if aerr != nil {
+			_, _ = c.Writer.Write([]byte("fail"))
+			return
+		}
+		if cerr := completeAgentTopUp(topUp, money, audit, c.ClientIP()); cerr != nil {
 			common.SysError("agent topup notify-complete failed: " + cerr.Error())
 			_, _ = c.Writer.Write([]byte("fail"))
 			return
@@ -194,12 +200,17 @@ func AlipayNotify(c *gin.Context) {
 		_, _ = c.Writer.Write([]byte("success"))
 		return
 	}
-	topUp.Status = common.TopUpStatusSuccess
-	topUp.CompleteTime = common.GetTimestamp()
-	if err := topUp.Update(); err != nil {
+	audit, aerr := alipayAuditFromForm(c.Request.Form)
+	if aerr != nil {
 		_, _ = c.Writer.Write([]byte("fail"))
 		return
 	}
+	// ponytail: 单事务完成(行锁+pending 守卫+行内加额度),消除"Update 已落库 Success 而 IncreaseUserQuota 失败"的 latent money leak。
+	if err := model.CompleteTopUpWithAudit(tradeNo, model.PaymentProviderAlipay, audit, nil); err != nil {
+		_, _ = c.Writer.Write([]byte("fail"))
+		return
+	}
+	topUp = model.GetTopUpByTradeNo(tradeNo) // 刷新后供存证/log 使用
 	// 蚂蚁链存证: fire-and-forget, 状态已落库, 失败仅 SysError.
 	if model.SubmitOrderEvidenceFn != nil {
 		go func(in model.SubmitOrderEvidenceInput) {
@@ -208,45 +219,74 @@ func AlipayNotify(c *gin.Context) {
 			}
 		}(model.BuildTopupEvidence(topUp))
 	}
-	dAmount := decimal.NewFromInt(int64(topUp.Amount))
-	dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-	quotaToAdd := int(dAmount.Mul(dQuotaPerUnit).IntPart())
-	if err := model.IncreaseUserQuota(topUp.UserId, quotaToAdd, true); err != nil {
-		// ponytail: latent money leak — Update 已落库 Success,IncreaseUserQuota 失败则钱到账未加额度。
-		//   与 EpayNotify (topup.go:401-405) 同结构,parity 保留;model 层修复不在本任务范围。
-		_, _ = c.Writer.Write([]byte("fail"))
-		return
-	}
+	quotaToAdd := int(decimal.NewFromInt(int64(topUp.Amount)).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
 	model.RecordTopupLog(topUp.UserId,
 		fmt.Sprintf("使用支付宝在线充值成功，充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), topUp.Money),
 		c.ClientIP(), topUp.PaymentMethod, model.PaymentMethodAlipay)
 	_, _ = c.Writer.Write([]byte("success"))
 }
 
-// completeAgentTopUp 是 alipay_agent 订单的完成逻辑: 回填实付金额、标记 success;
+// alipayAuditFromForm 从支付宝异步通知表单提取取证字段。
+func alipayAuditFromForm(form url.Values) (model.TopUpAudit, error) {
+	audit := model.TopUpAudit{
+		ChannelTradeNo: form.Get("trade_no"),
+		PayerId:        form.Get("buyer_id"),
+		PayerAccount:   form.Get("buyer_logon_id"),
+	}
+	audit.ChannelPayTime = alipayPayTimeUnix(form.Get("gmt_payment"))
+	return audit, nil
+}
+
+// alipayAuditFromQuery 从支付宝查单响应提取取证字段(与 alipayAuditFromForm 同口径),
+// 供智能体订单查单兜底通道 tryCompleteAgentTopUpByQuery 使用。
+func alipayAuditFromQuery(rsp *alipay.TradeQueryRsp) model.TopUpAudit {
+	return model.TopUpAudit{
+		ChannelTradeNo: rsp.TradeNo,
+		PayerId:        rsp.BuyerUserId,
+		PayerAccount:   rsp.BuyerLogonId,
+		ChannelPayTime: alipayPayTimeUnix(rsp.SendPayDate),
+	}
+}
+
+// alipayPayTimeUnix 解析支付宝 "2006-01-02 15:04:05" 时间;空串或解析失败返回 0(不阻断入账)。
+func alipayPayTimeUnix(gmt string) int64 {
+	if gmt == "" {
+		return 0
+	}
+	ts, err := time.ParseInLocation("2006-01-02 15:04:05", gmt, time.Local)
+	if err != nil {
+		return 0
+	}
+	return ts.Unix()
+}
+
+// completeAgentTopUp 是 alipay_agent 订单的完成逻辑: 单事务回填实付金额、额度换算与审计字段并标记 success;
 // 已绑用户的直接入账,游客单(user_id=0)只标记,等认领接口入账。
 // 调用方必须已 LockOrder。金额以支付宝侧为准(actualMoney 来自回调 total_amount 或查单)。
-func completeAgentTopUp(topUp *model.TopUp, actualMoney float64, clientIP string) error {
-	topUp.Money = actualMoney
-	topUp.Status = common.TopUpStatusSuccess
-	topUp.CompleteTime = common.GetTimestamp()
+func completeAgentTopUp(topUp *model.TopUp, actualMoney float64, audit model.TopUpAudit, clientIP string) error {
+	// group 在事务外取: mutate 无错误返回通道,且入账换算与回填须用同一份分组口径
+	group := ""
 	if topUp.UserId > 0 {
-		group, err := model.GetUserGroup(topUp.UserId, true)
+		g, err := model.GetUserGroup(topUp.UserId, true)
 		if err != nil {
 			return err
 		}
-		topUp.Amount = agentQuotaAmountFromMoney(actualMoney, group)
+		group = g
 	}
-	if err := topUp.Update(); err != nil {
+	// ponytail: Money/Amount 回填必须在 mutate 内(行锁内、model 层额度计算前),否则并发下按旧 Amount 入账。
+	if err := model.CompleteTopUpWithAudit(topUp.TradeNo, model.PaymentProviderAlipayAgent, audit, func(tu *model.TopUp) {
+		tu.Money = actualMoney
+		if tu.UserId > 0 {
+			tu.Amount = agentQuotaAmountFromMoney(actualMoney, group)
+		}
+	}); err != nil {
 		return err
 	}
+	topUp = model.GetTopUpByTradeNo(topUp.TradeNo) // 刷新后供存证/log 使用
 	if topUp.UserId == 0 || topUp.Amount <= 0 {
 		return nil // 游客单等认领;换算为 0 的极小额单不入账(认领接口会拒绝)
 	}
 	quotaToAdd := int(decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
-	if err := model.IncreaseUserQuota(topUp.UserId, quotaToAdd, true); err != nil {
-		return err
-	}
 	if model.SubmitOrderEvidenceFn != nil {
 		go func(in model.SubmitOrderEvidenceInput) {
 			if err := model.SubmitOrderEvidenceFn(in); err != nil {

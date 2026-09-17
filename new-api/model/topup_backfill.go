@@ -37,7 +37,7 @@ func UpdateTopUpChannelAudit(tradeNo string, audit TopUpAudit, creditedUsername 
 		return nil
 	}
 	result := DB.Model(&TopUp{}).
-		Where(refCol+" = ? AND channel_trade_no = ''", tradeNo).
+		Where(refCol+" = ? AND (channel_trade_no = '' OR channel_trade_no IS NULL)", tradeNo).
 		Updates(updates)
 	if result.Error != nil {
 		return result.Error
@@ -69,7 +69,7 @@ func GetTopUpsNeedingChannelBackfill(limit int) ([]*TopUp, error) {
 		limit = 200
 	}
 	var topups []*TopUp
-	err := DB.Where("status = ? AND channel_trade_no = '' AND payment_provider IN ?",
+	err := DB.Where("status = ? AND (channel_trade_no = '' OR channel_trade_no IS NULL) AND payment_provider IN ?",
 		common.TopUpStatusSuccess,
 		[]string{PaymentProviderAlipay, PaymentProviderAlipayAgent, PaymentProviderWechat},
 	).Order("id desc").Limit(limit).Find(&topups).Error

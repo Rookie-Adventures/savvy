@@ -148,3 +148,46 @@ func TestBackfillTopUpChannelAudit_Idempotent(t *testing.T) {
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
 	assert.Zero(t, resp.Data.Scanned)
 }
+
+// 生产形态回归:AutoMigrate 加列后老订单 channel_trade_no 为 NULL(非空串),必须同样被扫描。
+func TestBackfillTopUpChannelAudit_NullChannelColumn(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupModelListControllerTestDB(t)
+	require.NoError(t, db.AutoMigrate(&model.TopUp{}, &model.User{}))
+	require.NoError(t, model.DB.Create(&model.User{Id: 1, Username: "u1", Status: common.UserStatusEnabled}).Error)
+	require.NoError(t, model.DB.Create(&model.TopUp{
+		UserId: 1, Amount: 310, Money: 310, TradeNo: "WX-NULLCOL",
+		PaymentMethod: model.PaymentMethodWechat, PaymentProvider: model.PaymentProviderWechat,
+		CreateTime: common.GetTimestamp(), Status: common.TopUpStatusSuccess,
+	}).Error)
+	// 模拟老库加列:置为 NULL
+	require.NoError(t, model.DB.Model(&model.TopUp{}).Where("trade_no = ?", "WX-NULLCOL").Update("channel_trade_no", nil).Error)
+
+	origWx := wechatQueryOrderFn
+	wechatQueryOrderFn = func(tradeNo string) (*payments.Transaction, error) {
+		return &payments.Transaction{
+			TradeState:    strPtr("SUCCESS"),
+			TransactionId: strPtr("4200NULLCOL"),
+			Payer:         &payments.TransactionPayer{Openid: strPtr("openid-null")},
+		}, nil
+	}
+	t.Cleanup(func() { wechatQueryOrderFn = origWx })
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/user/topup/backfill_channel", bytes.NewReader([]byte("{}")))
+	BackfillTopUpChannelAudit(c)
+
+	var resp struct {
+		Data struct {
+			Scanned int `json:"scanned"`
+			Updated int `json:"updated"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
+	assert.Equal(t, 1, resp.Data.Scanned, "NULL 列必须被扫描到")
+	assert.Equal(t, 1, resp.Data.Updated)
+	got := model.GetTopUpByTradeNo("WX-NULLCOL")
+	require.NotNil(t, got)
+	assert.Equal(t, "4200NULLCOL", got.ChannelTradeNo)
+}

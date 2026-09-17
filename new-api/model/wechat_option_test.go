@@ -23,3 +23,9 @@ func TestWechatAppSecretOptionRegistered(t *testing.T) {
 		t.Fatal("WechatMpAppId not registered in OptionMap")
 	}
 }
+
+func TestWechatRegisterEnabledOptionRegistered(t *testing.T) {
+	if _, ok := common.OptionMap["WeChatRegisterEnabled"]; !ok {
+		t.Fatal("WeChatRegisterEnabled not registered in OptionMap")
+	}
+}

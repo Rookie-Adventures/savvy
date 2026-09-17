@@ -166,6 +166,30 @@ func RequestWechatJsapiPay(c *gin.Context) {
 	}})
 }
 
+// wxTopUpNotifyDetail 微信充值回调明文中本路径消费的字段(其余忽略)。
+type wxTopUpNotifyDetail struct {
+	TransactionId string `json:"transaction_id"`
+	SuccessTime   string `json:"success_time"` // RFC3339,解析失败置 0 不阻断
+	Payer         struct {
+		Openid string `json:"openid"`
+	} `json:"payer"`
+
+	SuccessTimeUnix int64 `json:"-"`
+}
+
+func parseWxTopUpNotifyDetail(plaintext string) (*wxTopUpNotifyDetail, error) {
+	detail := &wxTopUpNotifyDetail{}
+	if err := common.Unmarshal([]byte(plaintext), detail); err != nil {
+		return nil, err
+	}
+	if detail.SuccessTime != "" {
+		if ts, err := time.Parse(time.RFC3339, detail.SuccessTime); err == nil {
+			detail.SuccessTimeUnix = ts.Unix()
+		}
+	}
+	return detail, nil
+}
+
 // WechatNotify handles wechat APIv3 async notify for wallet top-up.
 // Returns {"code":"SUCCESS",...} on completion (wechat does not retry SUCCESS).
 func WechatNotify(c *gin.Context) {
@@ -186,19 +210,19 @@ func WechatNotify(c *gin.Context) {
 			// 幂等:已处理订单仍返 SUCCESS 止 wechat 重试,不重复加钱
 			return nil
 		}
-		topUp.CompleteTime = common.GetTimestamp()
-		topUp.Status = common.TopUpStatusSuccess
-		if err := topUp.Update(); err != nil {
+		detail, perr := parseWxTopUpNotifyDetail(payload)
+		if perr != nil {
+			return fmt.Errorf("parse notify payload: %w", perr)
+		}
+		audit := model.TopUpAudit{
+			ChannelTradeNo: detail.TransactionId,
+			PayerId:        detail.Payer.Openid,
+			ChannelPayTime: detail.SuccessTimeUnix,
+		}
+		if err := model.CompleteTopUpWithAudit(tradeNo, model.PaymentProviderWechat, audit, nil); err != nil {
 			return err
 		}
-		dAmount := decimal.NewFromInt(int64(topUp.Amount))
-		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-		quotaToAdd := int(dAmount.Mul(dQuotaPerUnit).IntPart())
-		if err := model.IncreaseUserQuota(topUp.UserId, quotaToAdd, true); err != nil {
-			// ponytail: latent money leak — Update 已落库 Success,IncreaseUserQuota 失败则钱到账未加额度。
-			//   与 AlipayNotify (topup_alipay.go:134-138) + EpayNotify (topup.go:401-405) 同结构,parity 保留;model 层修复不在本任务范围。
-			return err
-		}
+		quotaToAdd := int(decimal.NewFromInt(int64(topUp.Amount)).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
 		model.RecordTopupLog(topUp.UserId,
 			fmt.Sprintf("使用微信在线充值成功，充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), topUp.Money),
 			c.ClientIP(), topUp.PaymentMethod, model.PaymentMethodWechat)

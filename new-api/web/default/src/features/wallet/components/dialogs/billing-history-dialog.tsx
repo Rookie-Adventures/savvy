@@ -276,9 +276,7 @@ export function BillingHistoryDialog({
 
                       {/* Audit Details */}
                       {record.status === 'success' &&
-                        (record.channel_trade_no ||
-                          record.payer_id ||
-                          record.balance_before != null) && (
+                        (record.channel_trade_no || record.payer_id) && (
                           <div className='mt-3'>
                             <button
                               type='button'
@@ -340,20 +338,22 @@ export function BillingHistoryDialog({
                                     </span>
                                   </div>
                                 )}
-                                <div className='flex items-center gap-2'>
-                                  <Label className='text-muted-foreground w-32 shrink-0 text-xs'>
-                                    {t('Credited Account')}
-                                  </Label>
-                                  <span className='truncate text-xs'>
-                                    {record.credited_username ||
-                                      `#${record.user_id}`}
-                                    {record.credited_email
-                                      ? ` (${record.credited_email})`
-                                      : ''}{' '}
-                                    #{record.user_id}
-                                  </span>
-                                </div>
-                                {record.balance_before != null && (
+                                {record.credited_username && (
+                                  <div className='flex items-center gap-2'>
+                                    <Label className='text-muted-foreground w-32 shrink-0 text-xs'>
+                                      {t('Credited Account')}
+                                    </Label>
+                                    <span className='truncate text-xs'>
+                                      {record.credited_username}
+                                      {record.credited_email
+                                        ? ` (${record.credited_email})`
+                                        : ''}{' '}
+                                      #{record.user_id}
+                                    </span>
+                                  </div>
+                                )}
+                                {(record.balance_before !== 0 ||
+                                  record.balance_after !== 0) && (
                                   <div className='flex items-center gap-2'>
                                     <Label className='text-muted-foreground w-32 shrink-0 text-xs'>
                                       {t('Balance Before')}
@@ -370,7 +370,8 @@ export function BillingHistoryDialog({
                                     </span>
                                   </div>
                                 )}
-                                {record.balance_after != null && (
+                                {(record.balance_before !== 0 ||
+                                  record.balance_after !== 0) && (
                                   <div className='flex items-center gap-2'>
                                     <Label className='text-muted-foreground w-32 shrink-0 text-xs'>
                                       {t('Balance After')}

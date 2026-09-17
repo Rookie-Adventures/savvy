@@ -211,6 +211,10 @@ func AlipayNotify(c *gin.Context) {
 		return
 	}
 	topUp = model.GetTopUpByTradeNo(tradeNo) // 刷新后供存证/log 使用
+	if topUp == nil {
+		_, _ = c.Writer.Write([]byte("fail"))
+		return
+	}
 	// 蚂蚁链存证: fire-and-forget, 状态已落库, 失败仅 SysError.
 	if model.SubmitOrderEvidenceFn != nil {
 		go func(in model.SubmitOrderEvidenceInput) {
@@ -282,7 +286,11 @@ func completeAgentTopUp(topUp *model.TopUp, actualMoney float64, audit model.Top
 	}); err != nil {
 		return err
 	}
-	topUp = model.GetTopUpByTradeNo(topUp.TradeNo) // 刷新后供存证/log 使用
+	completedTradeNo := topUp.TradeNo
+	topUp = model.GetTopUpByTradeNo(completedTradeNo) // 刷新后供存证/log 使用
+	if topUp == nil {
+		return fmt.Errorf("topup %s not found after completion", completedTradeNo)
+	}
 	if topUp.UserId == 0 || topUp.Amount <= 0 {
 		return nil // 游客单等认领;换算为 0 的极小额单不入账(认领接口会拒绝)
 	}

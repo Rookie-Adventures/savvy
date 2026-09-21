@@ -28,6 +28,7 @@ import (
 	"github.com/QuantumNous/new-api/router"
 	"github.com/QuantumNous/new-api/service"
 	_ "github.com/QuantumNous/new-api/setting/performance_setting"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/bytedance/gopkg/util/gopool"
@@ -299,6 +300,8 @@ func InitResources() error {
 
 	// 加载环境变量
 	common.InitEnv()
+	// SkillPay(微信 Agent Pay X402)配置：.env 已加载，此处装载 SKILLPAY_* 环境变量
+	operation_setting.InitSkillPayFromEnv()
 
 	logger.SetupLogger()
 

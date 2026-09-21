@@ -22,6 +22,10 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/setup", controller.GetSetup)
 		apiRouter.POST("/setup", anonymousRequestBodyLimit, controller.PostSetup)
 		apiRouter.GET("/status", controller.GetStatus)
+		// ponytail: SkillPay(微信 Agent Pay X402)付费技能公开入口——Agent 无登录态调用,
+		// 402/重试履约语义在 controller.SkillInvoke 内;notify 是微信服务器回调,必须在匿名层
+		apiRouter.POST("/skill/invoke", anonymousRequestBodyLimit, controller.SkillInvoke)
+		apiRouter.POST("/skill/notify", anonymousRequestBodyLimit, controller.SkillPayNotify)
 		apiRouter.GET("/uptime/status", controller.GetUptimeKumaStatus)
 		apiRouter.GET("/models", middleware.UserAuth(), controller.DashboardListModels)
 		apiRouter.GET("/status/test", middleware.AdminAuth(), controller.TestStatus)

@@ -281,6 +281,7 @@ func migrateDB() error {
 		&TopUp{},
 		&QuotaData{},
 		&Task{},
+		&SkillPayOrder{},
 		&Model{},
 		&Vendor{},
 		&PrefillGroup{},

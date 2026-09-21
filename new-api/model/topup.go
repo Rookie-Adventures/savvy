@@ -57,6 +57,8 @@ const (
 	PaymentProviderWechat       = "wechat"
 	// 智能体(百炼 MCP)对话下单的充值单,认领/入账走 agent_topup 链路
 	PaymentProviderAlipayAgent = "alipay_agent"
+	// 微信 SkillPay(Agent Pay X402)智能体充值的充值单,认领/入账同走 agent_topup 链路
+	PaymentProviderWechatSkillPay = "wechat_skillpay"
 )
 
 var (

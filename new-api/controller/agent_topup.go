@@ -197,7 +197,9 @@ const (
 
 // agentClaimDecision 纯函数判定可否认领(不碰 DB);分组/零金额检查在 handler 内做。
 func agentClaimDecision(topUp *model.TopUp, userId int) agentClaimCode {
-	if topUp.PaymentProvider != model.PaymentProviderAlipayAgent {
+	// 两个智能体渠道共用认领链路: alipay_agent(百炼/支付宝) + wechat_skillpay(微信 X402)
+	if topUp.PaymentProvider != model.PaymentProviderAlipayAgent &&
+		topUp.PaymentProvider != model.PaymentProviderWechatSkillPay {
 		return agentClaimNotAgentOrder
 	}
 	if topUp.Status != common.TopUpStatusSuccess {

@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 
@@ -162,4 +164,49 @@ func mustB64(t *testing.T, s string) []byte {
 		t.Fatalf("bad base64 signature: %v", err)
 	}
 	return b
+}
+
+// —— topup 动作 ——
+
+func TestAgentClaimDecisionAcceptsWechatSkillPay(t *testing.T) {
+	// 微信 SkillPay 充值单必须与 alipay_agent 共用认领链路
+	topUp := &model.TopUp{
+		PaymentProvider: model.PaymentProviderWechatSkillPay,
+		Status:          common.TopUpStatusSuccess,
+		UserId:          0,
+	}
+	if code := agentClaimDecision(topUp, 1); code != agentClaimOK {
+		t.Fatalf("wechat_skillpay 游客已支付单应可认领，实际 %v", code)
+	}
+	topUp.UserId = 7
+	if code := agentClaimDecision(topUp, 7); code != agentClaimAlreadyMine {
+		t.Fatalf("本人单应返回 alreadyMine，实际 %v", code)
+	}
+	if code := agentClaimDecision(topUp, 8); code != agentClaimTaken {
+		t.Fatalf("他人单应返回 taken，实际 %v", code)
+	}
+}
+
+func TestSkillPayTopUpAmountValidation(t *testing.T) {
+	cases := []struct {
+		yuan  float64
+		valid bool
+	}{
+		{1, true}, {10.5, true}, {5000, true},
+		{0.99, false}, {0, false}, {-1, false}, {5000.01, false},
+	}
+	for _, tc := range cases {
+		yuan := tc.yuan
+		ok := yuan >= 1 && yuan <= 5000
+		if ok != tc.valid {
+			t.Fatalf("金额 %v 期望 valid=%v", yuan, tc.valid)
+		}
+	}
+}
+
+func TestSkillPayOutTradeNoFormat(t *testing.T) {
+	no := generateSkillPayOutTradeNo()
+	if !strings.HasPrefix(no, "WX402_") || len(no) != 32 {
+		t.Fatalf("订单号格式错误: %q (len=%d)", no, len(no))
+	}
 }

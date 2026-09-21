@@ -7,15 +7,22 @@ import (
 // SkillPayOrder 微信 Agent Pay X402 付费技能订单（一次 AI 问答 = 一单）。
 // 幂等契约：Fulfilled 仅允许 false→true 原子翻转一次，重复重试返回缓存内容。
 type SkillPayOrder struct {
-	Id            int    `json:"id"`
-	OutTradeNo    string `json:"out_trade_no" gorm:"unique;type:varchar(32);index"` // WX402_+14+12=32 位
-	PaymentCode   string `json:"payment_code" gorm:"type:varchar(128);index"`       // X402 预下单返回
-	Status        string `json:"status" gorm:"type:varchar(20)"`                    // pending/paid/fulfilled/closed
-	Fulfilled     bool   `json:"fulfilled"`
-	TransactionId string `json:"transaction_id" gorm:"type:varchar(64)"`
-	Content       string `json:"content" gorm:"type:text"` // 付费内容（AI 问答结果）
-	CreateTime    int64  `json:"create_time"`
+	Id            int     `json:"id"`
+	OutTradeNo    string  `json:"out_trade_no" gorm:"unique;type:varchar(32);index"` // WX402_+14+12=32 位
+	PaymentCode   string  `json:"payment_code" gorm:"type:varchar(128);index"`       // X402 预下单返回
+	Kind          string  `json:"kind" gorm:"type:varchar(20)"`                      // qa=付费问答 / topup=额度充值(服务包)
+	MoneyYuan     float64 `json:"money_yuan"`                                        // topup: 用户申报充值金额（元）；qa: 单价
+	Status        string  `json:"status" gorm:"type:varchar(20)"`                    // pending/paid/fulfilled/closed
+	Fulfilled     bool    `json:"fulfilled"`
+	TransactionId string  `json:"transaction_id" gorm:"type:varchar(64)"`
+	Content       string  `json:"content" gorm:"type:text"` // 付费内容（AI 问答结果 / 认领凭据）
+	CreateTime    int64   `json:"create_time"`
 }
+
+const (
+	SkillPayKindQA    = "qa"
+	SkillPayKindTopUp = "topup"
+)
 
 const (
 	SkillPayStatusPending   = "pending"

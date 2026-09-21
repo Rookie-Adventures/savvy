@@ -1,0 +1,34 @@
+{
+  "name": "wechatpay-direct-v3",
+  "version": "1.1.0",
+  "description": "微信支付直连商户 APIv3 收款技能（公钥模式）：下单/查单/关单/退款/回调验签解密 + X402 Pay Skill 改造（AI 预下单/402 触发/重试履约），零依赖 Node 实现",
+  "main": "lib/wechatpay-v3.js",
+  "files": [
+    "lib",
+    "examples",
+    "references",
+    "SKILL.md",
+    "README.md"
+  ],
+  "scripts": {
+    "demo": "node examples/demo.js",
+    "demo:pay": "node examples/pay-skill-demo.js"
+  },
+  "keywords": [
+    "wechatpay",
+    "wechat",
+    "payment",
+    "api-v3",
+    "public-key-mode",
+    "direct-merchant",
+    "x402",
+    "skillpay",
+    "agent-pay",
+    "pay-skill",
+    "skill"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=14"
+  }
+}

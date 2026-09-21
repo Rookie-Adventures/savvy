@@ -43,7 +43,7 @@ func TestSkillPaySignStringFormat(t *testing.T) {
 }
 
 func TestSkillPayL2JsonStructure(t *testing.T) {
-	l2, err := service.BuildSkillPayL2Json("savvy-ai-qa", "1.0.0", "weixin://wxpay/bizpayurl?pr=x")
+	l2, err := service.BuildSkillPayL2Json("savvy-ai-qa", "1.0.0", "code_url", "weixin://wxpay/bizpayurl?pr=x")
 	if err != nil {
 		t.Fatalf("build L2: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestSkillPayL2JsonStructure(t *testing.T) {
 }
 
 func TestSkillPayL2Base64RoundTrip(t *testing.T) {
-	l2, _ := service.BuildSkillPayL2Json("savvy-ai-qa", "1.0.0", "weixin://x")
+	l2, _ := service.BuildSkillPayL2Json("savvy-ai-qa", "1.0.0", "code_url", "weixin://x")
 	pr := base64.StdEncoding.EncodeToString([]byte(l2))
 	if strings.ContainsAny(pr, "-_") {
 		t.Fatalf("必须使用标准 Base64（非 URL-safe）")
@@ -81,6 +81,26 @@ func TestSkillPayL2Base64RoundTrip(t *testing.T) {
 	decoded, err := base64.StdEncoding.DecodeString(pr)
 	if err != nil || string(decoded) != l2 {
 		t.Fatalf("Base64 往返失败: %v", err)
+	}
+}
+
+func TestSkillPayL2PayDataTypes(t *testing.T) {
+	// FAQ：pay_data.type 按下单方式选 code_url/prepay_id/h5_url
+	for _, pt := range []string{"code_url", "prepay_id", "h5_url"} {
+		l2, err := service.BuildSkillPayL2Json("savvy-ai-qa", "1.0.0", pt, "ORDER_VALUE")
+		if err != nil {
+			t.Fatalf("pay_type %s 应合法: %v", pt, err)
+		}
+		var m map[string]interface{}
+		_ = json.Unmarshal([]byte(l2), &m)
+		item := m["pay_items"].([]interface{})[0].(map[string]interface{})
+		pd := item["pay_data"].(map[string]interface{})
+		if pd["type"] != pt || pd["value"] != "ORDER_VALUE" {
+			t.Fatalf("pay_data 错误: %v", pd)
+		}
+	}
+	if _, err := service.BuildSkillPayL2Json("savvy-ai-qa", "1.0.0", "bogus_type", "V"); err == nil {
+		t.Fatalf("非法 pay_type 应报错")
 	}
 }
 

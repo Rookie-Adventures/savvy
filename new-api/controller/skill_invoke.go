@@ -92,7 +92,7 @@ func handleSkillPayFirstRequest(c *gin.Context) {
 		return
 	}
 
-	paymentCode, err := service.SkillPayX402Preorder(*resp.CodeUrl)
+	paymentCode, err := service.SkillPayX402Preorder("code_url", *resp.CodeUrl)
 	if err != nil {
 		logger.LogError(c, fmt.Sprintf("skillpay preorder failed: out_trade_no=%s err=%v", outTradeNo, err))
 		// 预下单失败关微信单，避免脏订单；再关本地单

@@ -132,6 +132,16 @@ async function main() {
     assert.strictEqual(Buffer.from(paymentRequired, 'base64').toString('utf8'), l2Json);
   });
 
+  await check('L2 支持三种 pay_data.type（code_url/prepay_id/h5_url），非法值报错', () => {
+    for (const pt of ['code_url', 'prepay_id', 'h5_url']) {
+      const { l2Json } = x402.buildL1Body('ORDER_VALUE', undefined, pt);
+      const l2 = JSON.parse(l2Json);
+      assert.strictEqual(l2.pay_items[0].pay_data.type, pt);
+      assert.strictEqual(l2.pay_items[0].pay_data.value, 'ORDER_VALUE');
+    }
+    assert.throws(() => x402.buildL1Body('V', undefined, 'bogus_type'), X402PayError);
+  });
+
   await check('L1 请求体字段齐全（signature_type/platform/developer_id/pub_key_id）', () => {
     const { body } = x402.buildL1Body('weixin://wxpay/bizpayurl?pr=x');
     assert.strictEqual(body.signature_type, 'SKILLHUB-SHA256-RSA2048');

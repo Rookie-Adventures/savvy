@@ -203,7 +203,8 @@ Body: {"query": "原始查询内容"}（body 与第一步完全一致）
 
 - 签名串固定 **5 行、每行以 `\n` 结尾（含最后一行）**，与微信支付 V3 签名同款红线
 - L2 业务 JSON → **标准 Base64**（非 URL-safe）→ 填入 L1 `payment_required`
-- `expires_at` 最长 **15 分钟**；`out_trade_no` ≤ **32 位**（`WX402_` + 14 位时间戳 + 12 位随机）
+- `pay_data.type` 按下单方式选：`code_url`(Native) / `prepay_id`(JSAPI/小程序/APP) / `h5_url`(H5)，value 为下单原样返回值
+- `expires_at` 最长 **15 分钟**——`payment_code` 过期后必须**重新走下单→预下单**（生成新订单），不可复用过期支付码；`out_trade_no` ≤ **32 位**（`WX402_` + 14 位时间戳 + 12 位随机）
 - 预下单用 **纯 Body 鉴权**，无 Authorization 头；`signature_type=SKILLHUB-SHA256-RSA2048`
 - 同一订单只履约一次（幂等，重复返回 `already_fulfilled: true`）；预下单失败自动关单
 

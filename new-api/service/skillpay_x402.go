@@ -40,11 +40,15 @@ func BuildSkillPaySignString(timestamp, nonceStr, paymentRequired string) string
 	return fmt.Sprintf("POST\n%s\n%s\n%s\n%s\n", SkillPayX402SignPath, timestamp, nonceStr, paymentRequired)
 }
 
-// BuildSkillPayL2Json 构造 L2 业务 JSON（skill_info + pay_items(code_url) + expires_at）。
-// expires_at 最长 15 分钟；product_id 为保留字段（SP+hex，值任意）。
-func BuildSkillPayL2Json(skillId, skillVersion, codeUrl string) (string, error) {
-	if codeUrl == "" {
-		return "", errors.New("code_url is empty")
+// BuildSkillPayL2Json 构造 L2 业务 JSON（skill_info + pay_items + expires_at）。
+// payType 按下单方式选：code_url(Native) / prepay_id(JSAPI/小程序/APP) / h5_url(H5)，
+// orderValue 为对应下单接口的原样返回值。expires_at 最长 15 分钟；product_id 为保留字段。
+func BuildSkillPayL2Json(skillId, skillVersion, payType, orderValue string) (string, error) {
+	if orderValue == "" {
+		return "", errors.New("order value is empty")
+	}
+	if payType != "code_url" && payType != "prepay_id" && payType != "h5_url" {
+		return "", fmt.Errorf("invalid pay_data.type: %s", payType)
 	}
 	l2 := map[string]interface{}{
 		"skill_info": map[string]string{
@@ -56,8 +60,8 @@ func BuildSkillPayL2Json(skillId, skillVersion, codeUrl string) (string, error) 
 		"pay_items": []map[string]interface{}{{
 			"product_id": "SP" + common.GetRandomString(8),
 			"pay_data": map[string]string{
-				"type":  "code_url",
-				"value": codeUrl,
+				"type":  payType,
+				"value": orderValue,
 			},
 		}},
 		"expires_at": fmt.Sprintf("%d", time.Now().Unix()+900),
@@ -99,10 +103,11 @@ func rsaSignBase64(key *rsa.PrivateKey, signString string) (string, error) {
 	return base64.StdEncoding.EncodeToString(sig), nil
 }
 
-// SkillPayX402Preorder 第③步：code_url → X402 AI 预下单 → payment_code。
+// SkillPayX402Preorder 第③步：下单标识 → X402 AI 预下单 → payment_code。
+// payType：code_url(Native) / prepay_id(JSAPI/小程序/APP) / h5_url(H5)；orderValue 为下单原样返回值。
 // 流程：L2 → 标准 Base64（非 URL-safe）→ 5 行签名串 → SHA256withRSA → L1 → POST。
-func SkillPayX402Preorder(codeUrl string) (string, error) {
-	l2Json, err := BuildSkillPayL2Json(operation_setting.SkillPaySkillId, operation_setting.SkillPaySkillVersion, codeUrl)
+func SkillPayX402Preorder(payType, orderValue string) (string, error) {
+	l2Json, err := BuildSkillPayL2Json(operation_setting.SkillPaySkillId, operation_setting.SkillPaySkillVersion, payType, orderValue)
 	if err != nil {
 		return "", err
 	}

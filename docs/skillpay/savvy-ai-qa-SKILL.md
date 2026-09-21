@@ -75,3 +75,5 @@ Content-Type: application/json
 ```
 
 支付未完成时返回 402 `PAYMENT_NOT_COMPLETED`（携当前 trade_state），等待用户完成支付后重试。
+
+**payment_code 时效**：支付码最长 15 分钟。超时未支付（或原订单已关闭）时，**回到第一步重新发起请求**生成新订单，不要复用过期的 `WeixinPay-Required` 值。

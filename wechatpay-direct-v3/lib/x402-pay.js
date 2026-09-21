@@ -112,15 +112,23 @@ class X402Preorder {
     }
   }
 
-  /** L2 业务 JSON（skill_info + pay_items(code_url) + expires_at） */
-  buildL2Json(codeUrl, expiresAt) {
-    if (!codeUrl) throw new X402PayError('buildL2Json 缺少 codeUrl', 'PARAM_ERROR');
+  /**
+   * L2 业务 JSON（skill_info + pay_items + expires_at）。
+   * @param {string} orderValue 下单原样返回值
+   * @param {number} [expiresAt] 过期时间戳（秒），默认 now+900（上限 15 分钟）
+   * @param {string} [payType] code_url(Native) / prepay_id(JSAPI/小程序/APP) / h5_url(H5)
+   */
+  buildL2Json(orderValue, expiresAt, payType = 'code_url') {
+    if (!orderValue) throw new X402PayError('buildL2Json 缺少 orderValue', 'PARAM_ERROR');
+    if (!['code_url', 'prepay_id', 'h5_url'].includes(payType)) {
+      throw new X402PayError(`非法 pay_data.type: ${payType}`, 'PARAM_ERROR');
+    }
     const exp = String(expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_EXPIRES_SECONDS);
     return JSON.stringify({
       skill_info: { skill_id: this.skillId, skill_version: this.skillVersion },
       pay_type: PAY_TYPE,
       pay_mode: PAY_MODE,
-      pay_items: [{ product_id: generateProductId(), pay_data: { type: 'code_url', value: codeUrl } }],
+      pay_items: [{ product_id: generateProductId(), pay_data: { type: payType, value: orderValue } }],
       expires_at: exp,
     });
   }
@@ -136,8 +144,8 @@ class X402Preorder {
   }
 
   /** 组装 L1 请求体（返回 body 与签名串，便于离线自检） */
-  buildL1Body(codeUrl, expiresAt) {
-    const l2Json = this.buildL2Json(codeUrl, expiresAt);
+  buildL1Body(orderValue, expiresAt, payType = 'code_url') {
+    const l2Json = this.buildL2Json(orderValue, expiresAt, payType);
     const paymentRequired = Buffer.from(l2Json, 'utf8').toString('base64'); // 标准 Base64，非 URL-safe
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const nonceStr = generateNonceStr(32);
@@ -157,12 +165,13 @@ class X402Preorder {
 
   /**
    * 调用预下单接口换 payment_code。
-   * @param {string} codeUrl 微信 Native 下单返回的 code_url
+   * @param {string} orderValue 微信下单原样返回值（code_url/prepay_id/h5_url）
    * @param {function} [transport] 自定义传输层 (url, bodyString, headers, timeoutMs) => Promise<{status, text}>，测试注入用
+   * @param {string} [payType] 默认 code_url
    * @returns {Promise<string>} payment_code
    */
-  async preorder(codeUrl, transport) {
-    const { body } = this.buildL1Body(codeUrl);
+  async preorder(orderValue, transport, payType = 'code_url') {
+    const { body } = this.buildL1Body(orderValue, undefined, payType);
     const bodyString = JSON.stringify(body);
     const doRequest = transport || defaultTransport;
     const { status, text } = await doRequest(

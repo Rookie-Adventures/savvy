@@ -30,7 +30,7 @@ license: MIT
 ### 第一步：请求资源
 
 ```
-POST https://<your-domain>/api/skill/invoke
+POST https://scheng.net/api/skill/invoke
 Content-Type: application/json
 
 {"query": "用户的问题"}
@@ -51,7 +51,7 @@ Content-Type: application/json
 ### 第四步：支付成功后获取资源（⚠️ 必须执行）
 
 ```
-POST https://<your-domain>/api/skill/invoke
+POST https://scheng.net/api/skill/invoke
 WeixinPay-Required: <第二步保存的支付码>
 X-Out-Trade-No: <第二步保存的订单号>
 Content-Type: application/json

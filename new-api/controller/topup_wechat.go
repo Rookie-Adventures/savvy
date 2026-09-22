@@ -173,6 +173,10 @@ type wxTopUpNotifyDetail struct {
 	Payer         struct {
 		Openid string `json:"openid"`
 	} `json:"payer"`
+	Amount struct {
+		Total    int64  `json:"total"` // 单位:分(智能体代触发单的入账依据)
+		Currency string `json:"currency"`
+	} `json:"amount"`
 
 	SuccessTimeUnix int64 `json:"-"`
 }
@@ -202,8 +206,9 @@ func WechatNotify(c *gin.Context) {
 		if topUp == nil {
 			return fmt.Errorf("order not found")
 		}
-		// 防跨网关:订单 provider 必须是 wechat
-		if topUp.PaymentProvider != model.PaymentProviderWechat {
+		// 防跨网关:订单 provider 必须是 wechat 或 wechat_agent(智能体代触发)
+		if topUp.PaymentProvider != model.PaymentProviderWechat &&
+			topUp.PaymentProvider != model.PaymentProviderWechatAgent {
 			return fmt.Errorf("provider mismatch")
 		}
 		if topUp.Status != common.TopUpStatusPending {
@@ -213,6 +218,18 @@ func WechatNotify(c *gin.Context) {
 		detail, perr := parseWxTopUpNotifyDetail(payload)
 		if perr != nil {
 			return fmt.Errorf("parse notify payload: %w", perr)
+		}
+		// 智能体代触发单: 复用 agent_topup 完成逻辑(登录单直接入账,游客单只标记等认领)
+		if topUp.PaymentProvider == model.PaymentProviderWechatAgent {
+			audit := model.TopUpAudit{
+				ChannelTradeNo: detail.TransactionId,
+				PayerId:        detail.Payer.Openid,
+				ChannelPayTime: detail.SuccessTimeUnix,
+			}
+			if detail.Amount.Total <= 0 {
+				return fmt.Errorf("notify amount missing")
+			}
+			return completeAgentTopUp(topUp, float64(detail.Amount.Total)/100, audit, c.ClientIP(), model.PaymentProviderWechatAgent)
 		}
 		audit := model.TopUpAudit{
 			ChannelTradeNo: detail.TransactionId,

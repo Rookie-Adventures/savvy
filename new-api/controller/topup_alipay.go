@@ -183,7 +183,7 @@ func AlipayNotify(c *gin.Context) {
 			_, _ = c.Writer.Write([]byte("fail"))
 			return
 		}
-		if cerr := completeAgentTopUp(topUp, money, audit, c.ClientIP()); cerr != nil {
+		if cerr := completeAgentTopUp(topUp, money, audit, c.ClientIP(), model.PaymentProviderAlipayAgent); cerr != nil {
 			common.SysError("agent topup notify-complete failed: " + cerr.Error())
 			_, _ = c.Writer.Write([]byte("fail"))
 			return
@@ -264,10 +264,10 @@ func alipayPayTimeUnix(gmt string) int64 {
 	return ts.Unix()
 }
 
-// completeAgentTopUp 是 alipay_agent 订单的完成逻辑: 单事务回填实付金额、额度换算与审计字段并标记 success;
-// 已绑用户的直接入账,游客单(user_id=0)只标记,等认领接口入账。
-// 调用方必须已 LockOrder。金额以支付宝侧为准(actualMoney 来自回调 total_amount 或查单)。
-func completeAgentTopUp(topUp *model.TopUp, actualMoney float64, audit model.TopUpAudit, clientIP string) error {
+// completeAgentTopUp 是智能体订单(alipay_agent/wechat_agent)的完成逻辑: 单事务回填实付金额、
+// 额度换算与审计字段并标记 success;已绑用户的直接入账,游客单(user_id=0)只标记,等认领接口入账。
+// 调用方必须已 LockOrder。金额以渠道侧为准(actualMoney 来自回调金额或查单)。
+func completeAgentTopUp(topUp *model.TopUp, actualMoney float64, audit model.TopUpAudit, clientIP string, provider string) error {
 	// group 在事务外取: mutate 无错误返回通道,且入账换算与回填须用同一份分组口径
 	group := ""
 	if topUp.UserId > 0 {
@@ -278,7 +278,7 @@ func completeAgentTopUp(topUp *model.TopUp, actualMoney float64, audit model.Top
 		group = g
 	}
 	// ponytail: Money/Amount 回填必须在 mutate 内(行锁内、model 层额度计算前),否则并发下按旧 Amount 入账。
-	if err := model.CompleteTopUpWithAudit(topUp.TradeNo, model.PaymentProviderAlipayAgent, audit, func(tu *model.TopUp) {
+	if err := model.CompleteTopUpWithAudit(topUp.TradeNo, provider, audit, func(tu *model.TopUp) {
 		tu.Money = actualMoney
 		if tu.UserId > 0 {
 			tu.Amount = agentQuotaAmountFromMoney(actualMoney, group)

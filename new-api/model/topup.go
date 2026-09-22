@@ -59,6 +59,8 @@ const (
 	PaymentProviderAlipayAgent = "alipay_agent"
 	// 微信 SkillPay(Agent Pay X402)智能体充值的充值单,认领/入账同走 agent_topup 链路
 	PaymentProviderWechatSkillPay = "wechat_skillpay"
+	// 微信智能体代触发原生充值(Native 扫码,无需 AI 专属卡),认领/入账同走 agent_topup 链路
+	PaymentProviderWechatAgent = "wechat_agent"
 )
 
 var (

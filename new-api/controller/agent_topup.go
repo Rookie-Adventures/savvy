@@ -130,7 +130,9 @@ func AgentTopUpStatus(c *gin.Context) {
 		return
 	}
 	topUp := model.GetTopUpByClaimToken(token)
-	if topUp == nil || topUp.PaymentProvider != model.PaymentProviderAlipayAgent {
+	if topUp == nil || (topUp.PaymentProvider != model.PaymentProviderAlipayAgent &&
+		topUp.PaymentProvider != model.PaymentProviderWechatAgent &&
+		topUp.PaymentProvider != model.PaymentProviderWechatSkillPay) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单不存在"})
 		return
 	}
@@ -138,7 +140,12 @@ func AgentTopUpStatus(c *gin.Context) {
 	if topUp.Status == common.TopUpStatusPending &&
 		time.Now().Unix()-topUp.CreateTime > 10 &&
 		time.Now().Unix()-topUp.CreateTime < 7200 {
-		tryCompleteAgentTopUpByQuery(topUp, c.ClientIP())
+		switch topUp.PaymentProvider {
+		case model.PaymentProviderAlipayAgent:
+			tryCompleteAgentTopUpByQuery(topUp, c.ClientIP())
+		case model.PaymentProviderWechatAgent:
+			tryCompleteWechatAgentByQuery(topUp, c.ClientIP())
+		}
 		topUp = model.GetTopUpByClaimToken(token)
 		if topUp == nil {
 			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单不存在"})
@@ -180,7 +187,7 @@ func tryCompleteAgentTopUpByQuery(topUp *model.TopUp, clientIP string) {
 	if fresh == nil || fresh.Status != common.TopUpStatusPending {
 		return
 	}
-	if cerr := completeAgentTopUp(fresh, money, alipayAuditFromQuery(rsp), clientIP); cerr != nil {
+	if cerr := completeAgentTopUp(fresh, money, alipayAuditFromQuery(rsp), clientIP, model.PaymentProviderAlipayAgent); cerr != nil {
 		common.SysError("agent topup query-complete failed: " + cerr.Error())
 	}
 }
@@ -197,9 +204,10 @@ const (
 
 // agentClaimDecision 纯函数判定可否认领(不碰 DB);分组/零金额检查在 handler 内做。
 func agentClaimDecision(topUp *model.TopUp, userId int) agentClaimCode {
-	// 两个智能体渠道共用认领链路: alipay_agent(百炼/支付宝) + wechat_skillpay(微信 X402)
+	// 三个智能体渠道共用认领链路: alipay_agent(百炼/支付宝) + wechat_skillpay(微信 X402) + wechat_agent(微信原生代触发)
 	if topUp.PaymentProvider != model.PaymentProviderAlipayAgent &&
-		topUp.PaymentProvider != model.PaymentProviderWechatSkillPay {
+		topUp.PaymentProvider != model.PaymentProviderWechatSkillPay &&
+		topUp.PaymentProvider != model.PaymentProviderWechatAgent {
 		return agentClaimNotAgentOrder
 	}
 	if topUp.Status != common.TopUpStatusSuccess {

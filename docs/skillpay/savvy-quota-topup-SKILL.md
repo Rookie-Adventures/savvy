@@ -2,7 +2,7 @@
 name: savvy-quota-topup
 slug: savvy-quota-topup
 displayName: Savvy 额度充值（服务包）
-version: 1.2.2
+version: 1.2.3
 summary: "在对话中帮用户充值 Savvy 平台额度（服务包）。≤100 元走微信 AI 支付（授权即付）；>100 元或无支付插件时走原生微信扫码。付款后自动到账，游客发认领凭据。无需注册即可付款。"
 description: "输入：用户在对话中指定的充值金额（1~5000 元）。行为：智能体按能力与金额自动选择支付路径——智能体具备 weixinpay 插件且金额 ≤100 元时走微信 AI 支付（X402 授权即付，拉起 AI 专属卡）；金额 >100 元或无插件时走原生微信扫码（智能体代用户创建微信 Native 订单）。输出：付款成功后返回到账确认，游客另含 32 位 claim_token 认领凭据与认领链接（登录 Savvy 后自动入账）。边界：本 Skill 仅受理 1~5000 元；支付由微信收银台完成，本 Skill 不接触用户支付凭据；同订单只入账一次（幂等）。"
 license: MIT
@@ -11,7 +11,7 @@ tags:
   - 充值
   - 支付
   - Savvy
-changelog: "1.2.2 修正接口路径前缀(/api/user/agent/...)；1.2.1 防幻觉铁律(禁虚构二维码/报错原样转述/未付款禁称到账) + X-Agent-Token 鉴权说明；1.2.0 双路径：≤100 元走微信 AI 支付(X402)，>100 元/无插件走原生扫码代触发"
+changelog: "1.2.3 工具优先(createWechatTopUp/queryTopUpStatus)，无工具时如实告知而非引导用户自行操作；1.2.2 修正接口路径前缀(/api/user/agent/...)；1.2.1 防幻觉铁律(禁虚构二维码/报错原样转述/未付款禁称到账) + X-Agent-Token 鉴权说明；1.2.0 双路径：≤100 元走微信 AI 支付(X402)，>100 元/无插件走原生扫码代触发"
 ---
 
 # Savvy 额度充值（服务包）
@@ -107,12 +107,18 @@ Content-Type: application/json
 
 ### B-1：创建充值订单（智能体代用户触发）
 
+**优先使用工具**：如果可用工具列表里有 `createWechatTopUp`（或名称含 `topup`/`topup_create` 的 HTTP 工具），直接调用它并传入 `amount_yuan`。
+
+**工具不可用时**才自行发起 HTTP 请求：
+
 ```
 POST https://scheng.net/api/user/agent/wechat/topup/create
 Content-Type: application/json
 
 {"amount_yuan": 200}
 ```
+
+⚠️ 若当前环境没有任何可发起 HTTP 请求的工具，也不要让用户去网页自己操作——先说明"当前智能体未配置充值工具，请联系管理员在智能体中添加 createWechatTopUp 工具"，并如实告知无法代触发。
 
 成功响应：
 
@@ -140,7 +146,7 @@ Content-Type: application/json
 
 ### B-3：轮询支付状态
 
-用 `status_url` 轮询（**间隔 ≥8 秒**，接口限频 360 次/3 分钟）：
+优先调用 `queryTopUpStatus` 工具（传 `claim_token`）；工具不可用则用 `status_url` 轮询（**间隔 ≥8 秒**，接口限频 360 次/3 分钟）：
 
 ```
 GET https://scheng.net/api/user/agent/topup/status?claim_token=<B-1 返回的凭据>

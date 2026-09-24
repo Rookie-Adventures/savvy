@@ -2,7 +2,7 @@
 name: savvy-quota-topup
 slug: savvy-quota-topup
 displayName: Savvy 额度充值（服务包）
-version: 1.2.3
+version: 1.2.4
 summary: "在对话中帮用户充值 Savvy 平台额度（服务包）。≤100 元走微信 AI 支付（授权即付）；>100 元或无支付插件时走原生微信扫码。付款后自动到账，游客发认领凭据。无需注册即可付款。"
 description: "输入：用户在对话中指定的充值金额（1~5000 元）。行为：智能体按能力与金额自动选择支付路径——智能体具备 weixinpay 插件且金额 ≤100 元时走微信 AI 支付（X402 授权即付，拉起 AI 专属卡）；金额 >100 元或无插件时走原生微信扫码（智能体代用户创建微信 Native 订单）。输出：付款成功后返回到账确认，游客另含 32 位 claim_token 认领凭据与认领链接（登录 Savvy 后自动入账）。边界：本 Skill 仅受理 1~5000 元；支付由微信收银台完成，本 Skill 不接触用户支付凭据；同订单只入账一次（幂等）。"
 license: MIT
@@ -11,7 +11,7 @@ tags:
   - 充值
   - 支付
   - Savvy
-changelog: "1.2.3 工具优先(createWechatTopUp/queryTopUpStatus)，无工具时如实告知而非引导用户自行操作；1.2.2 修正接口路径前缀(/api/user/agent/...)；1.2.1 防幻觉铁律(禁虚构二维码/报错原样转述/未付款禁称到账) + X-Agent-Token 鉴权说明；1.2.0 双路径：≤100 元走微信 AI 支付(X402)，>100 元/无插件走原生扫码代触发"
+changelog: "1.2.4 认领链接带 claim_token（/agent?claim_token=...），游客点开即自动认领，不必手抄凭据；1.2.3 工具优先(createWechatTopUp/queryTopUpStatus)，无工具时如实告知而非引导用户自行操作；1.2.2 修正接口路径前缀(/api/user/agent/...)；1.2.1 防幻觉铁律(禁虚构二维码/报错原样转述/未付款禁称到账) + X-Agent-Token 鉴权说明；1.2.0 双路径：≤100 元走微信 AI 支付(X402)，>100 元/无插件走原生扫码代触发"
 ---
 
 # Savvy 额度充值（服务包）
@@ -97,7 +97,7 @@ Content-Type: application/json
 
 ⚠️ **A-4 是最容易被遗漏的一步**：不携带 `X-Out-Trade-No` Header 重试，就永远拿不到认领凭据。
 
-成功返回 HTTP 200，`content` 内含充值结果（已登录用户显示"已到账"；游客显示 `claim_token` + 认领链接 `https://scheng.net/agent`，请完整转述并提醒保存）。
+成功返回 HTTP 200，`content` 内含充值结果（已登录用户显示"已到账"；游客显示 `claim_token` + **认领直达链接**，形如 `https://scheng.net/agent?claim_token=<32位凭据>&out_trade_no=<订单号>`，请把链接**完整原样转述**给用户——点开即自动挂载认领卡片，登录/注册后自动入账，用户无需手抄凭据）。
 
 `payment_code` 时效 15 分钟，超时未支付请重新从 A-1 发起（生成新订单），不要复用过期支付码。
 
@@ -130,11 +130,13 @@ Content-Type: application/json
     "out_trade_no": "WXAGT20260922120000abcdef1234",
     "amount_yuan": 200,
     "claim_token": "32位认领凭据",
-    "status_url": "/api/agent/topup/status?claim_token=xxx",
+    "status_url": "/api/user/agent/topup/status?claim_token=xxx",
     "bind_mode": "claim",
-    "claim_url": "https://scheng.net/agent"
+    "claim_url": "https://scheng.net/agent?claim_token=xxx&out_trade_no=WXAGT..."
   }
 }
+
+⚠️ `claim_url` 已自带 `claim_token`，**原样转述给用户即可**（不要只给 `https://scheng.net/agent`，那样用户拿不到凭据、钱入不了账）。
 ```
 
 ### B-2：把支付二维码展示给用户（⚠️ 必须执行）
@@ -156,7 +158,7 @@ GET https://scheng.net/api/user/agent/topup/status?claim_token=<B-1 返回的凭
 - `pending`：未支付，继续轮询（下单 10 秒后接口自动向微信查单兜底）
 - `success`：已支付
   - 登录用户：额度已自动到账
-  - 游客：转述 **`claim_token`** 和认领链接 `https://scheng.net/agent`，提醒用户保存凭据、登录/注册后自动入账
+  - 游客：转述 B-1 返回的 **`claim_url`**（已带 `claim_token`，原样转发），并同时给出 **`claim_token`** 原文；提醒用户点开链接登录/注册后自动入账
 - `failed`：重新从 B-1 发起
 
 微信 Native 订单默认 2 小时有效；超时未支付引导用户重新发起。同一订单只入账一次，不要催用户重复支付。

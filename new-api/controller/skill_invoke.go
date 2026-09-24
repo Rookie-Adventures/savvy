@@ -287,7 +287,7 @@ func fulfillSkillPayTopUp(c *gin.Context, outTradeNo, transactionId string, paid
 		return "", fmt.Errorf("insert topup: %w", err)
 	}
 
-	claimURL := system_setting.ServerAddress + "/agent"
+	claimURL := buildAgentClaimUrl(system_setting.ServerAddress, claimToken, outTradeNo)
 	if userId > 0 {
 		group, gerr := model.GetUserGroup(userId, true)
 		if gerr != nil {

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -27,6 +29,18 @@ import (
 
 type AgentWechatTopUpRequest struct {
 	AmountYuan float64 `json:"amount_yuan"`
+}
+
+// buildAgentClaimUrl 拼跨端认领直达链接：前端 /agent 支持 ?claim_token= 挂载认领卡片，
+// 智能体把整条链接转述给游客，点开即进入「登录/注册 → 自动认领入账」闭环，不必手抄凭据。
+// outTradeNo 只是卡片去重键，可空（前端用 token 兜底）。
+func buildAgentClaimUrl(serverAddress, claimToken, outTradeNo string) string {
+	q := url.Values{}
+	q.Set("claim_token", strings.TrimSpace(claimToken))
+	if no := strings.TrimSpace(outTradeNo); no != "" {
+		q.Set("out_trade_no", no)
+	}
+	return strings.TrimSuffix(strings.TrimSpace(serverAddress), "/") + "/agent?" + q.Encode()
 }
 
 // CreateAgentWechatTopUp POST /api/agent/wechat/topup/create
@@ -97,7 +111,8 @@ func CreateAgentWechatTopUp(c *gin.Context) {
 		"out_trade_no": outTradeNo,
 		"amount_yuan":  req.AmountYuan,
 		"claim_token":  claimToken,
-		"status_url":   fmt.Sprintf("/api/agent/topup/status?claim_token=%s", claimToken),
+		// ponytail: 前缀必须是 /api/user/agent/...（userRoute 组），写 /api/agent/... 会 Invalid URL
+		"status_url": fmt.Sprintf("/api/user/agent/topup/status?claim_token=%s", claimToken),
 	}
 	if userId > 0 {
 		// 登录单：付款后由 /api/user/wechat/notify 直接入账，无需认领
@@ -105,7 +120,7 @@ func CreateAgentWechatTopUp(c *gin.Context) {
 	} else {
 		// 游客单：付款后凭 claim_token 认领（ClaimAgentTopUp）
 		data["bind_mode"] = "claim"
-		data["claim_url"] = system_setting.ServerAddress + "/agent"
+		data["claim_url"] = buildAgentClaimUrl(system_setting.ServerAddress, claimToken, outTradeNo)
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": data})
 }

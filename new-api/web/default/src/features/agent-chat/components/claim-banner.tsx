@@ -18,14 +18,22 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useState } from 'react'
 import { ClaimCard } from './claim-card'
-import { readClaims, type ClaimRecord } from '../lib/claim-storage'
+import { mergeUrlClaim, readClaims, type ClaimRecord } from '../lib/claim-storage'
+
+type ClaimBannerProps = {
+  /** URL 注入的认领凭据(/agent?claim_token=),跨端直达场景由路由传入。 */
+  claimToken?: string
+  /** 与 claimToken 配套的订单号,可缺省(缺省时以 token 兜底作去重键)。 */
+  outTradeNo?: string
+}
 
 // 登录/注册回跳后聊天消息态已丢,未认领单由这里接力(sessionStorage 恢复)。
 // widget 浮窗与 /agent 独立页共用;挂载时读取,认领完成后下次挂载自动消失。
-export function ClaimBanner() {
-  const [claims] = useState<ClaimRecord[]>(() =>
-    readClaims().filter((r) => !r.done)
-  )
+export function ClaimBanner({ claimToken, outTradeNo }: ClaimBannerProps) {
+  const [claims] = useState<ClaimRecord[]>(() => {
+    if (claimToken) mergeUrlClaim(claimToken, outTradeNo)
+    return readClaims().filter((r) => !r.done)
+  })
   if (claims.length === 0) return null
   return (
     <div className='px-1'>

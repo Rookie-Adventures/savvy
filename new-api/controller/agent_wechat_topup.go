@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -30,7 +31,13 @@ type AgentWechatTopUpRequest struct {
 
 // CreateAgentWechatTopUp POST /api/agent/wechat/topup/create
 // 返回 code_url（微信 Native 支付二维码内容）+ claim_token + 状态轮询地址。
+// 鉴权：配置了环境变量 AGENT_TOPUP_TOKEN 后，要求请求头 X-Agent-Token 匹配（供百炼等平台的
+// 「环境变量」托管，防公网裸刷脏单）；未配置时接口保持公开。
 func CreateAgentWechatTopUp(c *gin.Context) {
+	if tok := os.Getenv("AGENT_TOPUP_TOKEN"); tok != "" && c.GetHeader("X-Agent-Token") != tok {
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "error", "data": "缺少或错误的 X-Agent-Token"})
+		return
+	}
 	var req AgentWechatTopUpRequest
 	if err := c.ShouldBindJSON(&req); err != nil || req.AmountYuan <= 0 {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})

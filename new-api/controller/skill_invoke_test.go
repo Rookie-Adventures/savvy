@@ -22,6 +22,34 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 付款码是「谁真的付了钱」的唯一凭证。这条校验放错位置（比如放在幂等缓存之后）
+// 不会有任何外部症状，所以正反用例都钉死：错码/空值/前缀追加/截断一律拒绝。
+func TestVerifySkillPayCode(t *testing.T) {
+	const code = "90a499c2-b50f-437b-8c5e-7e3ecdd5854f"
+	cases := []struct {
+		name      string
+		stored    string
+		presented string
+		want      bool
+	}{
+		{name: "完全一致的付款码放行", stored: code, presented: code, want: true},
+		{name: "错一个字符即拒", stored: code, presented: "90a499c2-b50f-437b-8c5e-7e3ecdd5854e", want: false},
+		{name: "未带 WeixinPay-Required 头被拒", stored: code, presented: "", want: false},
+		{name: "库里没存付款码(异常单)被拒", stored: "", presented: code, want: false},
+		{name: "两边都空被拒", stored: "", presented: "", want: false},
+		{name: "前缀追加攻击被拒", stored: code, presented: code + "A", want: false},
+		{name: "截断被拒", stored: code, presented: code[:10], want: false},
+		{name: "大小写敏感", stored: code, presented: strings.ToUpper(code), want: false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := verifySkillPayCode(c.stored, c.presented); got != c.want {
+				t.Fatalf("verifySkillPayCode() = %v, want %v", got, c.want)
+			}
+		})
+	}
+}
+
 // —— X402 签名链路（service 层纯函数，离线可测）——
 
 func TestSkillPaySignStringFormat(t *testing.T) {

@@ -2,6 +2,8 @@ package controller
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
 	"fmt"
 	"net/http"
 	"time"
@@ -51,6 +53,17 @@ func respondSkillPay402(c *gin.Context, paymentCode, outTradeNo, amountYuan, tit
 		"amount":       amountYuan,
 		"currency":     "CNY",
 	})
+}
+
+// verifySkillPayCode 用 SHA-256 + 常量时间比对校验付款码，避免把"知道订单号"当成"付了钱"。
+// 两侧都先做 SHA-256 再常量时间比对：长度归一、且不会按字节逐个短路泄漏差异位置。
+func verifySkillPayCode(stored, presented string) bool {
+	if stored == "" || presented == "" {
+		return false
+	}
+	a := sha256.Sum256([]byte(stored))
+	b := sha256.Sum256([]byte(presented))
+	return subtle.ConstantTimeCompare(a[:], b[:]) == 1
 }
 
 // SkillInvoke POST /api/skill/invoke（公开路由 + TryUserAuth：服务号 webview 有登录态，外部 Agent 无）。
@@ -198,6 +211,13 @@ func handleSkillPayRetry(c *gin.Context, req SkillInvokeRequest, outTradeNo stri
 	order := model.GetSkillPayOrderByTradeNo(outTradeNo)
 	if order == nil {
 		c.JSON(http.StatusNotFound, gin.H{"code": "ORDER_NOT_FOUND", "message": "订单不存在"})
+		return
+	}
+	// ponytail: 付款码校验必须在幂等缓存之前——否则拿到订单号的人能直接取走已履约内容。
+	// out_trade_no 尾部虽有随机串，但订单号会出现在日志/代理链路里，不能当作凭证本身。
+	if !verifySkillPayCode(order.PaymentCode, c.GetHeader("WeixinPay-Required")) {
+		logger.LogError(c, fmt.Sprintf("skillpay retry with invalid payment code: out_trade_no=%s", outTradeNo))
+		c.JSON(http.StatusUnauthorized, gin.H{"code": "PAYMENT_CODE_INVALID", "message": "缺少或错误的 WeixinPay-Required"})
 		return
 	}
 	LockOrder(outTradeNo)

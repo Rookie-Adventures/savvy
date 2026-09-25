@@ -22,13 +22,13 @@ import (
 // SkillPay（微信 Agent Pay X402）付费技能入口，对齐官方 9 步协议。
 // 两个动作（kind）：
 //   - qa    付费问答：首次 402（PRICE_FEN 定价）→ 付款重试 → 履约=专用 token 走 relay 一次 AI 问答
-//   - topup 额度充值（服务包）：金额由智能体传（amount_yuan，1~5000 元）→ 付款重试 →
+//   - topup 额度充值（服务包）：金额由智能体传（amount_yuan，0.01~5000 元）→ 付款重试 →
 //     实付为准 → TopUp(wechat_skillpay) + claim_token → 用户登录 Savvy 认领入账
 //     （对齐 alipay_agent 模式：申报值下单、实付为准、claim_token、蚂蚁链存证）
 type SkillInvokeRequest struct {
-	Action     string  `json:"action"`                // ""/"qa" = 付费问答；"topup" = 额度充值
-	Query      string  `json:"query"`                 // qa 必填；topup 忽略
-	AmountYuan float64 `json:"amount_yuan"`           // topup 必填：充值金额（元）
+	Action     string  `json:"action"`      // ""/"qa" = 付费问答；"topup" = 额度充值
+	Query      string  `json:"query"`       // qa 必填；topup 忽略
+	AmountYuan float64 `json:"amount_yuan"` // topup 必填：充值金额（元）
 }
 
 // generateSkillPayOutTradeNo WX402_(6) + 14 位时间戳 + 12 位随机 = 32 位（微信上限）。
@@ -152,12 +152,12 @@ func handleSkillPayQAFirstRequest(c *gin.Context) {
 
 // handleSkillPayTopUpFirstRequest 场景 topup-一：服务包充值首请求 → 402（金额智能体申报）。
 func handleSkillPayTopUpFirstRequest(c *gin.Context, amountYuan float64) {
-	if amountYuan < 1 || amountYuan > 5000 {
-		c.JSON(http.StatusBadRequest, gin.H{"code": "AMOUNT_OUT_OF_RANGE", "message": "充值金额需在 1~5000 元之间"})
+	totalFen, ok := agentTopUpAmountCents(amountYuan)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"code": "AMOUNT_OUT_OF_RANGE", "message": "充值金额需在 0.01~5000 元之间"})
 		return
 	}
 	outTradeNo := generateSkillPayOutTradeNo()
-	totalFen := int64(amountYuan * 100)
 	codeUrl, err := createSkillPayNativeOrder(c, outTradeNo, totalFen, "栗橙科技-服务包")
 	if err != nil {
 		logger.LogError(c, fmt.Sprintf("skillpay topup prepay failed: out_trade_no=%s err=%v", outTradeNo, err))

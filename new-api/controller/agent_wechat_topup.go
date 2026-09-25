@@ -25,7 +25,7 @@ import (
 // 微信智能体代触发原生充值（服务包）：
 // 智能体代用户创建微信 Native 充值订单 → 用户微信扫码支付（普通微信支付，无需 AI 专属卡/weixinpay 插件）
 // → 现有 /api/user/wechat/notify 回调入账（登录单）或游客单标记等认领（claim_token，复用 agent_topup 链路）。
-// 金额由智能体按用户对话申报（1~5000 元），入账以渠道实付为准（completeAgentTopUp 同构）。
+// 金额由智能体按用户对话申报（0.01~5000 元），入账以渠道实付为准（completeAgentTopUp 同构）。
 
 type AgentWechatTopUpRequest struct {
 	AmountYuan float64 `json:"amount_yuan"`
@@ -43,6 +43,20 @@ func buildAgentClaimUrl(serverAddress, claimToken, outTradeNo string) string {
 	return strings.TrimSuffix(strings.TrimSpace(serverAddress), "/") + "/agent?" + q.Encode()
 }
 
+// agentTopUpAmountCents 校验智能体申报的充值金额并换算成微信侧的分值。
+// 下限 0.01 元：微信 Native 最小 1 分，低于此值乘 100 后会被 round 成 0 分导致免单；
+// 上限 5000 元沿用既有业务约定。返回值 ok=false 时调用方应回「金额不在 0.01~5000 元之间」。
+func agentTopUpAmountCents(amountYuan float64) (int64, bool) {
+	if math.IsNaN(amountYuan) || math.IsInf(amountYuan, 0) || amountYuan <= 0 || amountYuan > 5000 {
+		return 0, false
+	}
+	cents := int64(math.Round(amountYuan * 100))
+	if cents < 1 {
+		return 0, false
+	}
+	return cents, true
+}
+
 // CreateAgentWechatTopUp POST /api/agent/wechat/topup/create
 // 返回 code_url（微信 Native 支付二维码内容）+ claim_token + 状态轮询地址。
 // 鉴权：配置了环境变量 AGENT_TOPUP_TOKEN 后，要求请求头 X-Agent-Token 匹配（供百炼等平台的
@@ -57,8 +71,9 @@ func CreateAgentWechatTopUp(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
 		return
 	}
-	if req.AmountYuan < 1 || req.AmountYuan > 5000 {
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额需在 1~5000 元之间"})
+	totalCents, ok := agentTopUpAmountCents(req.AmountYuan)
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额需在 0.01~5000 元之间"})
 		return
 	}
 	svc := GetWechatClient()
@@ -95,8 +110,8 @@ func CreateAgentWechatTopUp(c *gin.Context) {
 		OutTradeNo:  core.String(outTradeNo),
 		NotifyUrl:   core.String(service.GetCallbackAddress() + "/api/user/wechat/notify"),
 		Amount: &native.Amount{
-			// ponytail: float→分 math.Round 防截断（同 topup_wechat.go 先例）
-			Total:    core.Int64(int64(math.Round(req.AmountYuan * 100))),
+			// ponytail: float→分 math.Round 防截断（同 topup_wechat.go 先例），0.1 元这类小额必须 round 不能截断
+			Total:    core.Int64(totalCents),
 			Currency: core.String("CNY"),
 		},
 	})

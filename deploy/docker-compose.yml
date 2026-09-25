@@ -71,6 +71,11 @@ services:
       # 例如聚合商: silverroad / aiproxy / openai-sb 国内已备案转售
       # 控制台 → 渠道 → 新建 → 类型选 OpenAI → BaseURL 填聚合商的 https://agg.xxx.com
 
+      # ---- 智能体代下单接口鉴权（AGENT_TOPUP_TOKEN，防公网刷单）----
+      # 未配置时 /api/user/agent/wechat/topup/create 完全公开：任何人都能无限创建充值订单（脏单/二维码污染）
+      # 配置后该接口要求请求头 X-Agent-Token 等值匹配；技能公开到 SkillHub/百炼前**必须**配置
+      - AGENT_TOPUP_TOKEN=${AGENT_TOPUP_TOKEN:-}
+
       # ---- SkillPay（微信 Agent Pay X402 / 对话内 AI 收银台）----
       # 未配置时 /api/skill/invoke 返回 503 SKILLPAY_DISABLED（默认值即为此，不影响既有功能）
       # 私钥走 SKILLPAY_PRIVATE_KEY_PATH 指向 /secrets/skillpay-private.pem（只读挂载），勿用 SKILLPAY_PRIVATE_KEY 内联（多行 PEM 在 .env 里易出错）

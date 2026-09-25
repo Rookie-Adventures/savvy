@@ -77,6 +77,11 @@ func SkillInvoke(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"code": "BAD_REQUEST", "message": "缺少 query"})
 		return
 	}
+	// ponytail: 只有 AI 问答这条要服务端代跑一次模型,缺 relay 就单独拒;不能因此挡住充值
+	if !operation_setting.IsSkillPayRelayConfigured() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"code": "SKILLPAY_RELAY_DISABLED", "message": "AI 问答履约未配置(SKILLPAY_RELAY_*)"})
+		return
+	}
 	handleSkillPayQAFirstRequest(c)
 }
 

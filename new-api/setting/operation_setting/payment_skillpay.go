@@ -28,10 +28,19 @@ var (
 	SkillPayRelayModel = ""
 )
 
+// IsSkillPayConfigured X402 核心配置是否齐全（回复 AI 收银台所需的全部凭据）。
+// 只覆盖 X402 预下单真正用到的几项价款/签名参数；
+// **不含** SKILLPAY_RELAY_*——那是 topup 之外的「AI 问答」履约专用（见 IsSkillPayRelayConfigured）。
+// ponytail: 两者早期被绑在同一道门槛上，导致只开通充值时必须先凑齐履约 token，否则 /api/skill/invoke 一律 503。
 func IsSkillPayConfigured() bool {
 	return SkillPayEnabled && SkillPayPriceFen > 0 && SkillPaySkillId != "" &&
-		SkillPayDeveloperId != "" && SkillPayPubKeyId != "" && SkillPayPrivateKeyPEM != "" &&
-		SkillPayRelayToken != "" && SkillPayRelayModel != ""
+		SkillPayDeveloperId != "" && SkillPayPubKeyId != "" && SkillPayPrivateKeyPEM != ""
+}
+
+// IsSkillPayRelayConfigured AI 问答履约所需配置是否齐全（系统 token + 模型名）。
+// 只有 action=qa 那条路径需要，充值路径不必拥有。
+func IsSkillPayRelayConfigured() bool {
+	return SkillPayRelayToken != "" && SkillPayRelayModel != ""
 }
 
 // InitSkillPayFromEnv 从环境变量装载 SkillPay 配置（main.go 在 common.InitEnv() 后调用）。

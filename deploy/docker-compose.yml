@@ -71,6 +71,19 @@ services:
       # 例如聚合商: silverroad / aiproxy / openai-sb 国内已备案转售
       # 控制台 → 渠道 → 新建 → 类型选 OpenAI → BaseURL 填聚合商的 https://agg.xxx.com
 
+      # ---- SkillPay（微信 Agent Pay X402 / 对话内 AI 收银台）----
+      # 未配置时 /api/skill/invoke 返回 503 SKILLPAY_DISABLED（默认值即为此，不影响既有功能）
+      # 私钥走 SKILLPAY_PRIVATE_KEY_PATH 指向 /secrets/skillpay-private.pem（只读挂载），勿用 SKILLPAY_PRIVATE_KEY 内联（多行 PEM 在 .env 里易出错）
+      - SKILLPAY_ENABLED=${SKILLPAY_ENABLED:-false}
+      - SKILLPAY_PRICE_FEN=${SKILLPAY_PRICE_FEN:-10}
+      - SKILLPAY_SKILL_ID=${SKILLPAY_SKILL_ID:-}
+      - SKILLPAY_SKILL_VERSION=${SKILLPAY_SKILL_VERSION:-1.0.0}
+      - SKILLPAY_DEVELOPER_ID=${SKILLPAY_DEVELOPER_ID:-}
+      - SKILLPAY_PUB_KEY_ID=${SKILLPAY_PUB_KEY_ID:-}
+      - SKILLPAY_PRIVATE_KEY_PATH=${SKILLPAY_PRIVATE_KEY_PATH:-/secrets/skillpay-private.pem}
+      - SKILLPAY_RELAY_TOKEN=${SKILLPAY_RELAY_TOKEN:-}
+      - SKILLPAY_RELAY_MODEL=${SKILLPAY_RELAY_MODEL:-}
+
       # ---- 蚂蚁链订单存证 (可选; ANTCHAIN_ENABLED!=true 则存证静默, 支付照跑) ----
       # 私钥文件只读挂载在 /secrets/antchain-access.key (见 volumes), 其余参数从 .env 读
       - ANTCHAIN_ENABLED=${ANTCHAIN_ENABLED:-false}

@@ -202,6 +202,33 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "X402Enabled":
+		// 与 WeChatAuthEnabled 同款 fail-fast:缺 SkillHub 开发者密钥或商户证书时
+		// 不允许打开总开关,避免线上收到请求却只能 502/500。
+		if option.Value == "true" && !operation_setting.IsX402KeysReady() {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "无法启用微信AI支付(X402)，请先填入 SkillHub 开发者号/公钥ID/私钥与技能 slug！",
+			})
+			return
+		}
+		if option.Value == "true" && operation_setting.WechatMchID == "" {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "无法启用微信AI支付(X402)，请先配置微信支付商户证书（下单与查单依赖）！",
+			})
+			return
+		}
+	case "X402AmountCents":
+		// 落库前拦截:单价必须是整元(100 的整数倍分),否则台账记 0 元对账不上。
+		amount, aerr := strconv.Atoi(strings.TrimSpace(option.Value.(string)))
+		if aerr != nil || amount <= 0 || amount%100 != 0 {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "单次价格必须是正整元(单位:分,须为 100 的整数倍),例如 1 元填 100！",
+			})
+			return
+		}
 	case "TurnstileCheckEnabled":
 		if option.Value == "true" && common.TurnstileSiteKey == "" {
 			c.JSON(http.StatusOK, gin.H{

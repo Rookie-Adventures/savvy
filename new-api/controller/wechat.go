@@ -53,6 +53,35 @@ func getWeChatIdByCode(code string) (string, error) {
 	return res.Data, nil
 }
 
+// resolveOrCreateWeChatUser — 微信身份 → savvy 账号,「有则取、无则建」。
+//
+// 这是本仓唯一的微信身份落库口径(现有扫码登录与 X402 先付后认都走这里),
+// 因此不产生第二套注册逻辑:匹配 users.wechat_id(索引列)→ 命中即返回;
+// 未命中且开放注册 → 按登录页同款规则建号。错误文案与 WeChatAuth 保持一致。
+func resolveOrCreateWeChatUser(wechatId string) (*model.User, error) {
+	user := &model.User{WeChatId: wechatId}
+	if model.IsWeChatIdAlreadyTaken(wechatId) {
+		if err := user.FillUserByWeChatId(); err != nil {
+			return nil, err
+		}
+		if user.Id == 0 {
+			return nil, errors.New("用户已注销")
+		}
+		return user, nil
+	}
+	if !common.RegisterEnabled {
+		return nil, errors.New("管理员关闭了新用户注册")
+	}
+	user.Username = "wechat_" + strconv.Itoa(model.GetMaxUserId()+1)
+	user.DisplayName = "WeChat User"
+	user.Role = common.RoleCommonUser
+	user.Status = common.UserStatusEnabled
+	if err := user.Insert(0); err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
 func WeChatAuth(c *gin.Context) {
 	if !common.WeChatAuthEnabled {
 		c.JSON(http.StatusOK, gin.H{
@@ -70,46 +99,13 @@ func WeChatAuth(c *gin.Context) {
 		})
 		return
 	}
-	user := model.User{
-		WeChatId: wechatId,
-	}
-	if model.IsWeChatIdAlreadyTaken(wechatId) {
-		err := user.FillUserByWeChatId()
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": err.Error(),
-			})
-			return
-		}
-		if user.Id == 0 {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": "用户已注销",
-			})
-			return
-		}
-	} else {
-		if common.RegisterEnabled {
-			user.Username = "wechat_" + strconv.Itoa(model.GetMaxUserId()+1)
-			user.DisplayName = "WeChat User"
-			user.Role = common.RoleCommonUser
-			user.Status = common.UserStatusEnabled
-
-			if err := user.Insert(0); err != nil {
-				c.JSON(http.StatusOK, gin.H{
-					"success": false,
-					"message": err.Error(),
-				})
-				return
-			}
-		} else {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": "管理员关闭了新用户注册",
-			})
-			return
-		}
+	user, err := resolveOrCreateWeChatUser(wechatId)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
 	}
 
 	if user.Status != common.UserStatusEnabled {
@@ -119,7 +115,7 @@ func WeChatAuth(c *gin.Context) {
 		})
 		return
 	}
-	setupLogin(&user, c)
+	setupLogin(user, c)
 }
 
 type wechatBindRequest struct {

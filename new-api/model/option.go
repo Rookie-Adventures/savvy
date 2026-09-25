@@ -115,6 +115,17 @@ func InitOptionMap() {
 	common.OptionMap["WechatAPIv3Key"] = operation_setting.WechatAPIv3Key
 	common.OptionMap["WechatPrivateKeyPEM"] = operation_setting.WechatPrivateKeyPEM
 	common.OptionMap["WechatPlatformCertPath"] = operation_setting.WechatPlatformCertPath
+	// 微信 AI 支付(Pay Skill / X402)—— SkillHub 开发者密钥体系,与上面微信支付
+	// API 证书完全独立(签名算法不同),两套都要配齐才能收钱。
+	common.OptionMap["X402Enabled"] = strconv.FormatBool(operation_setting.X402Enabled)
+	common.OptionMap["SkillhubDeveloperId"] = operation_setting.SkillhubDeveloperId
+	common.OptionMap["SkillhubPubKeyId"] = operation_setting.SkillhubPubKeyId
+	common.OptionMap["SkillhubPrivateKeyPEM"] = operation_setting.SkillhubPrivateKeyPEM
+	common.OptionMap["X402SkillId"] = operation_setting.X402SkillId
+	common.OptionMap["X402SkillVersion"] = operation_setting.X402SkillVersion
+	common.OptionMap["X402AmountCents"] = strconv.Itoa(operation_setting.X402AmountCents)
+	common.OptionMap["X402ServiceName"] = operation_setting.X402ServiceName
+	common.OptionMap["X402MpOAuthURL"] = operation_setting.X402MpOAuthURL
 	common.OptionMap["CreemApiKey"] = setting.CreemApiKey
 	common.OptionMap["CreemProducts"] = setting.CreemProducts
 	common.OptionMap["CreemTestMode"] = strconv.FormatBool(setting.CreemTestMode)
@@ -522,6 +533,30 @@ func updateOptionMap(key string, value string) (err error) {
 		operation_setting.WechatPrivateKeyPEM = value
 	case "WechatPlatformCertPath":
 		operation_setting.WechatPlatformCertPath = value
+	case "X402Enabled":
+		operation_setting.X402Enabled = value == "true"
+	case "SkillhubDeveloperId":
+		operation_setting.SkillhubDeveloperId = value
+	case "SkillhubPubKeyId":
+		operation_setting.SkillhubPubKeyId = value
+	case "SkillhubPrivateKeyPEM":
+		operation_setting.SkillhubPrivateKeyPEM = value
+	case "X402SkillId":
+		operation_setting.X402SkillId = value
+	case "X402SkillVersion":
+		operation_setting.X402SkillVersion = value
+	case "X402AmountCents":
+		// 只允许整元单价:配额与 TopUp.Amount 都按整数「元」台账记,30 分这类价格会
+		// 记成 0 元对账不上。非法值不回写内存(保留当前值),UI 侧由 controller 落库前拦截。
+		if amount, aerr := strconv.Atoi(value); aerr == nil && amount > 0 && amount%100 == 0 {
+			operation_setting.X402AmountCents = amount
+		} else {
+			common.SysError("X402AmountCents 非法值 " + value + "（须为正整元,即 100 的整数倍分),已忽略")
+		}
+	case "X402ServiceName":
+		operation_setting.X402ServiceName = value
+	case "X402MpOAuthURL":
+		operation_setting.X402MpOAuthURL = value
 	case "TopupGroupRatio":
 		err = common.UpdateTopupGroupRatioByJSONString(value)
 	case "GitHubClientId":

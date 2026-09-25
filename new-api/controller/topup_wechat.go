@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -94,6 +95,27 @@ func WechatNotify(c *gin.Context) {
 		return
 	}
 	finalize := func(c *gin.Context, tradeNo, payload string) error {
+		// X402(Pay Skill)单:下单时还没有身份,故没有 topup 行。加款由「⑨步查单 +
+		// 身份绑定/挂账认领」完成,这里只把 pending 推到 held —— 让钱在 Agent 不再
+		// 重试的情况下也能被用户凭 claim 链接认领。绝不在此处加款,否则与
+		// BindX402Hold 双路重复入账。
+		if strings.HasPrefix(tradeNo, x402TradeNoPrefix) {
+			if hold := model.GetX402HoldByTradeNo(tradeNo); hold != nil {
+				// 能走到这里说明通知已验签解密 = 微信确认扣款成功。pending 与
+				// 「过期后才付款」的 expired 都要入队(MarkX402Held 允许复活),
+				// 否则这笔钱再也无人认领。
+				if hold.Status != model.X402HoldStatusCredited {
+					if err := model.MarkX402Held(hold); err != nil {
+						return err
+					}
+					common.SysLog(fmt.Sprintf("x402 notify: %s 已入账挂账队列(等待认领)", tradeNo))
+				}
+			} else {
+				// hold 不存在(已归档/重启前丢单):无法归属,记录后回 SUCCESS 止重试
+				common.SysError("x402 notify: 找不到挂账单 " + tradeNo)
+			}
+			return nil
+		}
 		topUp := model.GetTopUpByTradeNo(tradeNo)
 		if topUp == nil {
 			return fmt.Errorf("order not found")

@@ -295,6 +295,8 @@ func migrateDB() error {
 		&UserOAuthBinding{},
 		&PerfMetric{},
 		&SystemTask{},
+		&X402Hold{},
+		&X402AgentBind{},
 	)
 	if err != nil {
 		return err

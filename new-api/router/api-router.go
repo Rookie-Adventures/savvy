@@ -65,6 +65,22 @@ func SetApiRouter(router *gin.Engine) {
 		// Universal secure verification routes
 		apiRouter.POST("/verify", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.UniversalVerify)
 
+		// 微信 AI 支付(Pay Skill / X402)
+		x402Route := apiRouter.Group("/x402")
+		{
+			// ①⑦ Agent 调用入口:首次无 X-Out-Trade-No → 402;携单号重试 → 履约。
+			// 无会话(先收钱、后认身份),故不加 Auth 中间件;但必须限频 —— 首次
+			// 请求会真实创建微信 Native 订单,不能被人刷单。
+			x402Route.POST("/invoke", anonymousRequestBodyLimit, middleware.CriticalRateLimit(), controller.SkillInvoke)
+			// ⑨-补 挂账认领:用户在微信内完成登录/注册后,前端带会话调此接口排空队列。
+			x402Route.POST("/claim", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.SkillBindClaim)
+			// 免登录认领(服务号/微信内置浏览器):携微信 OAuth code 直接落身份 + 入账。
+			x402Route.GET("/wechat/claim", middleware.CriticalRateLimit(), controller.SkillWeChatClaim)
+			// 挂账认领落地页(服务端直出 HTML,微信内打开;公开,内部再判定身份)
+			x402Route.GET("/bind", controller.SkillBindPage)
+			x402Route.GET("/holds", middleware.UserAuth(), controller.SkillHoldsStatus)
+		}
+
 		userRoute := apiRouter.Group("/user")
 		{
 			userRoute.POST("/register", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, middleware.TurnstileCheck(), controller.Register)

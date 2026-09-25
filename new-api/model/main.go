@@ -298,6 +298,7 @@ func migrateDB() error {
 		&WeChatOAuthToken{},
 		&PerfMetric{},
 		&SystemTask{},
+		&AgentRefundRequest{},
 	)
 	if err != nil {
 		return err

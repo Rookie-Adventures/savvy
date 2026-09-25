@@ -14,6 +14,7 @@ import (
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/system_setting"
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"github.com/smartwalle/alipay/v3"
@@ -286,5 +287,9 @@ func ClaimAgentTopUp(c *gin.Context) {
 	model.RecordTopupLog(userId,
 		fmt.Sprintf("使用智能体支付宝充值成功（认领），充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), fresh.Money),
 		c.ClientIP(), fresh.PaymentMethod, model.PaymentMethodAlipay)
-	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"amount": fresh.Amount}})
+	// 运营类: 认领成功后告诉他下一步去哪(看余额/用量),别让用户对着一句成功提示发呆
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{
+		"amount":   fresh.Amount,
+		"next_url": strings.TrimSuffix(system_setting.ServerAddress, "/") + "/wallet",
+	}})
 }

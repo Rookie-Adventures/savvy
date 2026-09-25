@@ -126,6 +126,18 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/topup", middleware.CriticalRateLimit(), controller.TopUp)
 				// ponytail: 智能体游客单认领(登录态+claim_token),入账逻辑在 controller.ClaimAgentTopUp
 				selfRoute.POST("/agent/topup/claim", middleware.CriticalRateLimit(), controller.ClaimAgentTopUp)
+				// ponytail: Agent 能力层——能力调用要求真实用户身份(session 或 Authorization: Bearer <access_token>),
+				// 游客不在任何能力的信任边界内(claim_token 只代表某一笔订单,不代表这个人)
+				abilityRoute := selfRoute.Group("agent/ability")
+				{
+					abilityRoute.GET("/balance", controller.AgentAbilityBalance)
+					abilityRoute.GET("/usage", controller.AgentAbilityUsage)
+					abilityRoute.GET("/orders", controller.AgentAbilityTopUps)
+					// 写操作走 Critical 档:兑换入账/退款工单都是高价值动作
+					abilityRoute.POST("/redeem", middleware.CriticalRateLimit(), controller.AgentAbilityRedeem)
+					abilityRoute.POST("/refund/apply", middleware.CriticalRateLimit(), controller.AgentAbilityRefundApply)
+					abilityRoute.GET("/refund/list", controller.AgentAbilityRefundList)
+				}
 				selfRoute.POST("/pay", middleware.CriticalRateLimit(), controller.RequestEpay)
 				// ponytail: 充值 alipay/wechat 直连, 对齐 selfRoute /pay L100 范式
 				selfRoute.POST("/alipay/pay", middleware.CriticalRateLimit(), controller.RequestAlipayPay)
@@ -182,6 +194,9 @@ func SetApiRouter(router *gin.Engine) {
 				adminRoute.DELETE("/:id/bindings/:binding_type", controller.AdminClearUserBinding)
 				adminRoute.GET("/:id", controller.GetUser)
 				adminRoute.POST("/", controller.CreateUser)
+				// ponytail: Agent 退款工单处理队列(管理员),工单本身不允许由智能体直接改状态
+				adminRoute.GET("/agent/ability/refund/list", controller.AgentAdminRefundList)
+				adminRoute.POST("/agent/ability/refund/handle", middleware.CriticalRateLimit(), controller.AgentAdminRefundHandle)
 				adminRoute.POST("/manage", controller.ManageUser)
 				adminRoute.PUT("/", controller.UpdateUser)
 				adminRoute.DELETE("/:id", controller.DeleteUser)

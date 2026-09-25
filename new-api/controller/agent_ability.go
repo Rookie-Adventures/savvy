@@ -142,7 +142,7 @@ type agentRefundHandleRequest struct {
 	Remark string `json:"remark"`
 }
 
-// AgentAdminRefundList GET /api/user/agent/ability/refund/admin/list?status=pending
+// AgentAdminRefundList GET /api/user/agent/admin/refund/list?status=pending
 func AgentAdminRefundList(c *gin.Context) {
 	page, pageSize := parsePosPage(c, 20)
 	rows, total, err := service.AgentAdminListRefunds(c.Query("status"), page, pageSize)
@@ -157,7 +157,7 @@ func AgentAdminRefundList(c *gin.Context) {
 	}})
 }
 
-// AgentAdminRefundHandle POST /api/user/agent/ability/refund/admin/handle
+// AgentAdminRefundHandle POST /api/user/agent/admin/refund/handle
 func AgentAdminRefundHandle(c *gin.Context) {
 	var req agentRefundHandleRequest
 	if err := c.ShouldBindJSON(&req); err != nil || req.Id <= 0 ||

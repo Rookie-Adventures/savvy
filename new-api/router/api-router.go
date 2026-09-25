@@ -195,8 +195,10 @@ func SetApiRouter(router *gin.Engine) {
 				adminRoute.GET("/:id", controller.GetUser)
 				adminRoute.POST("/", controller.CreateUser)
 				// ponytail: Agent 退款工单处理队列(管理员),工单本身不允许由智能体直接改状态
-				adminRoute.GET("/agent/ability/refund/list", controller.AgentAdminRefundList)
-				adminRoute.POST("/agent/ability/refund/handle", middleware.CriticalRateLimit(), controller.AgentAdminRefundHandle)
+				// ponytail: 路径必须带 /admin 段——selfRoute 与 adminRoute 都挂在 /api/user 下,
+				// 写成 /agent/ability/refund/list 会和智能体侧的认领路由同名,gib 启动时直接 panic(曾致生产 crash-loop)
+				adminRoute.GET("/agent/admin/refund/list", controller.AgentAdminRefundList)
+				adminRoute.POST("/agent/admin/refund/handle", middleware.CriticalRateLimit(), controller.AgentAdminRefundHandle)
 				adminRoute.POST("/manage", controller.ManageUser)
 				adminRoute.PUT("/", controller.UpdateUser)
 				adminRoute.DELETE("/:id", controller.DeleteUser)

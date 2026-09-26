@@ -22,6 +22,12 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/setup", controller.GetSetup)
 		apiRouter.POST("/setup", anonymousRequestBodyLimit, controller.PostSetup)
 		apiRouter.GET("/status", controller.GetStatus)
+		// ponytail: 服务号对话 - 消息回调(GET 握手/POST 收消息,签名即鉴权,匿名);
+		// 微信浏览器跳转不携带 auth 头,必须在匿名层(参照 WechatJsapiOauthCallback 踩坑)。
+		apiRouter.GET("/wechat/mp/message", controller.WechatMpMessageGet)
+		apiRouter.POST("/wechat/mp/message", anonymousRequestBodyLimit, controller.WechatMpMessagePost)
+		// ponytail: 服务号内 JSAPI 支付触发页(微信 webview 内调 WeixinJSBridge),匿名。
+		apiRouter.GET("/mp/pay", controller.WechatMpPayPage)
 		// ponytail: SkillPay(微信 Agent Pay X402)付费技能公开入口——Agent 无登录态调用,
 		// TryUserAuth 有登录态(服务号 webview)则充值单直接绑用户;notify 是微信服务器回调,必须在匿名层
 		apiRouter.POST("/skill/invoke", middleware.TryUserAuth(), anonymousRequestBodyLimit, controller.SkillInvoke)

@@ -10,6 +10,9 @@ var (
 	// 微信服务号 AppSecret:仅用于 JSAPI 静默授权(snsapi_base)换 openid,不入下单/验签。
 	// 严禁出现在前端/日志;Task 5 落 OptionMap + 后台表单。
 	WechatAppSecret = ""
+	// 服务号消息回调验签 Token:微信 GET 握手与 POST 推送的 SHA1 签名校验密钥,
+	// 由管理员在公众平台"服务器配置"填写,需与 new-api 此处一致。仅用于验签,不入下单/支付。
+	WechatMpToken = ""
 	WechatMchID            = "" // 商户号
 	WechatMchSerial        = "" // 商户证书序列号
 	WechatAPIv3Key         = "" // APIv3 密钥(32 位)

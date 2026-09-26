@@ -22,6 +22,9 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# Secrets（SkillHub 开发者私钥等，严禁入库）
+secrets/
+
 # Logs
 *.log
 npm-debug.log*

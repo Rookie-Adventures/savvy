@@ -33,6 +33,7 @@ type User struct {
 	DiscordId        string         `json:"discord_id" gorm:"column:discord_id;index"`
 	OidcId           string         `json:"oidc_id" gorm:"column:oidc_id;index"`
 	WeChatId         string         `json:"wechat_id" gorm:"column:wechat_id;index"`
+	MpOpenid         string         `json:"mp_openid" gorm:"column:mp_openid;index"` // 服务号 openid 绑定(认领充值单时写入,此后服务号渠道直充直入)
 	TelegramId       string         `json:"telegram_id" gorm:"column:telegram_id;index"`
 	VerificationCode string         `json:"verification_code" gorm:"-:all"`                         // this field is only for Email verification, don't save it to database!
 	AccessToken      *string        `json:"-" gorm:"type:char(32);column:access_token;uniqueIndex"` // this token is for system management
@@ -849,6 +850,27 @@ func (user *User) UpdateGitHubId(newGitHubId string) error {
 		return errors.New("user id is empty")
 	}
 	return DB.Model(user).Update("github_id", newGitHubId).Error
+}
+
+// GetUserIdByMpOpenid 按服务号 openid 反查已绑定用户;未绑返回 (0,false)。
+func GetUserIdByMpOpenid(openid string) (int, bool) {
+	if openid == "" {
+		return 0, false
+	}
+	var bound User
+	if err := DB.Where(User{MpOpenid: openid}).First(&bound).Error; err != nil {
+		return 0, false
+	}
+	return bound.Id, true
+}
+
+// BindMpOpenid 把服务号 openid 绑到用户(认领成功同事务外调用)。
+// 同 openid 换绑给新认领人 = 资金跟人走,微信本人优先于历史绑定。
+func BindMpOpenid(userId int, openid string) error {
+	if userId == 0 || openid == "" {
+		return errors.New("user id or openid is empty")
+	}
+	return DB.Model(&User{Id: userId}).Update("mp_openid", openid).Error
 }
 
 func (user *User) FillUserByDiscordId() error {

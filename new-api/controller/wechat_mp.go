@@ -236,8 +236,13 @@ func CreateAgentMpJsapiTopUp(openid string, amountYuan float64) (map[string]any,
 		return nil, err
 	}
 	outTradeNo := fmt.Sprintf("WXAGT%s%s", time.Now().Format("20060102150405"), common.GetRandomString(10))
+	userId := 0
+	// 该微信已绑账户(此前认领过)→ 直接开登录单,notify 命中现成自动入账路径,无需再认领
+	if uid, bound := model.GetUserIdByMpOpenid(openid); bound {
+		userId = uid
+	}
 	topUp := &model.TopUp{
-		UserId:          0, // 服务号游客单,付款后凭 claim_token 认领
+		UserId:          userId, // 0=服务号游客单,付款后凭 claim_token 认领并绑定
 		TradeNo:         outTradeNo,
 		ClaimToken:      claimToken,
 		Money:           amountYuan,
@@ -265,8 +270,9 @@ func CreateAgentMpJsapiTopUp(openid string, amountYuan float64) (map[string]any,
 		_ = model.UpdatePendingTopUpStatus(outTradeNo, model.PaymentProviderWechatAgent, common.TopUpStatusFailed)
 		return nil, fmt.Errorf("jsapi prepay failed: %w", err)
 	}
-	// H5 支付页地址:页内凭 token 向后端取 JSAPI 调起参数。
-	payURL := strings.TrimRight(system_setting.ServerAddress, "/") + "/mp/pay?token=" + claimToken
+	// H5 支付页地址:页内凭 token 向后端取 JSAPI 调起参数。路由注册在 /api/mp/pay,
+	// 裸 /mp/pay 会被 SPA 兜底成首页(200 假象),必须带 /api 前缀。
+	payURL := strings.TrimRight(system_setting.ServerAddress, "/") + "/api/mp/pay?token=" + claimToken
 	data := map[string]any{
 		"out_trade_no": outTradeNo,
 		"amount_yuan":  amountYuan,
@@ -341,7 +347,7 @@ const mpPayPageTpl = `<!doctype html>
  <div class="card">
   <div class="label">微信充值</div>
   <div class="amt">¥%.2f</div>
-  <div class="sub">确认支付后将自动到账</div>
+  <div class="sub">支付完成后,本聊天会推送到账或认领消息</div>
   <button id="payBtn">立即支付</button>
   <div class="tip" id="tip"></div>
  </div>
@@ -351,7 +357,7 @@ const mpPayPageTpl = `<!doctype html>
    var tip=document.getElementById('tip');
    function call(){
      WeixinJSBridge.invoke('getBrandWCPayRequest', PAY, function(r){
-       if(r.err_msg==='get_brand_wcpay_request:ok'){ tip.textContent='支付成功,到账中…'; }
+       if(r.err_msg==='get_brand_wcpay_request:ok'){ tip.textContent='支付成功,结果稍后在本聊天推送'; }
        else { tip.textContent='支付未完成,可在服务号重新发起'; }
      });
    }
@@ -394,6 +400,38 @@ func WechatMpPayPage(c *gin.Context) {
 	payJSON := string(payBytes)
 	html := fmt.Sprintf(mpPayPageTpl, p.AmountYuan, payJSON)
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
+}
+
+// mpTopUpReply 服务号 JSAPI 充值入账后的聊天回推文案(纯函数可测)。
+// 空串 = 不该推送(未成功/无认领凭据的中间态)。
+func mpTopUpReply(tu *model.TopUp) string {
+	if tu == nil || tu.Status != common.TopUpStatusSuccess {
+		return ""
+	}
+	if tu.UserId > 0 {
+		return fmt.Sprintf("✅ ¥%.2f 已到账,可在「我的钱包」查看余额。", tu.Money)
+	}
+	// 游客单:钱已收到,把认领入口送到用户眼前(claim_token 已在单上,不经模型/前端编造)
+	if tu.ClaimToken == "" {
+		return ""
+	}
+	return fmt.Sprintf("✅ ¥%.2f 已收到。首次在服务号充值,点开下面链接登录/注册并认领即可入账:%s/agent?claim_token=%s",
+		tu.Money, strings.TrimRight(system_setting.ServerAddress, "/"), tu.ClaimToken)
+}
+
+// mpPushPaidTopUp 支付确认后经客服消息异步回推结果;失败仅记日志(客服兜底),不阻塞 notify 应答。
+func mpPushPaidTopUp(openid, tradeNo string) {
+	text := mpTopUpReply(model.GetTopUpByTradeNo(tradeNo))
+	if text == "" || openid == "" {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		if err := service.SendCustomTextMessage(ctx, openid, text); err != nil {
+			common.SysError("mp topup result push failed: " + err.Error())
+		}
+	}()
 }
 
 // wechatMpPayError 极简错误页(服务号 webview 内展示)。

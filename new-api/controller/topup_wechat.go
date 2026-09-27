@@ -229,7 +229,12 @@ func WechatNotify(c *gin.Context) {
 			if detail.Amount.Total <= 0 {
 				return fmt.Errorf("notify amount missing")
 			}
-			return completeAgentTopUp(topUp, float64(detail.Amount.Total)/100, audit, c.ClientIP(), model.PaymentProviderWechatAgent)
+			if cerr := completeAgentTopUp(topUp, float64(detail.Amount.Total)/100, audit, c.ClientIP(), model.PaymentProviderWechatAgent); cerr != nil {
+				return cerr
+			}
+			// 聊天回推闭环: 绑定用户收"已到账",游客收认领链接——根治页面"到账中…"死等问题
+			mpPushPaidTopUp(detail.Payer.Openid, topUp.TradeNo)
+			return nil
 		}
 		audit := model.TopUpAudit{
 			ChannelTradeNo: detail.TransactionId,

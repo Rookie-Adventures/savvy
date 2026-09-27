@@ -287,6 +287,13 @@ func ClaimAgentTopUp(c *gin.Context) {
 	model.RecordTopupLog(userId,
 		fmt.Sprintf("使用智能体支付宝充值成功（认领），充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), fresh.Money),
 		c.ClientIP(), fresh.PaymentMethod, model.PaymentMethodAlipay)
+	// 认领即绑定:服务号 JSAPI 单在 notify 里已把付款人 openid 存进 PayerId,
+	// 同一微信的人此后充值直接开登录单,不再需要认领。绑定失败不影响本笔入账。
+	if fresh.PaymentProvider == model.PaymentProviderWechatAgent && fresh.PayerId != "" {
+		if err := model.BindMpOpenid(userId, fresh.PayerId); err != nil {
+			common.SysError("claim bind mp openid failed: " + err.Error())
+		}
+	}
 	// 运营类: 认领成功后告诉他下一步去哪(看余额/用量),别让用户对着一句成功提示发呆
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{
 		"amount":   fresh.Amount,

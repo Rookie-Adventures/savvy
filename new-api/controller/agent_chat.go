@@ -17,7 +17,7 @@ type AgentChatRequest struct {
 	SessionID string `json:"session_id"`
 }
 
-// AgentChat forwards a chat turn to the Bailian agent app (non-stream).
+// AgentChat forwards a chat turn to the self-hosted ZeroClaw agent runtime (non-stream).
 func AgentChat(c *gin.Context) {
 	var req AgentChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil ||
@@ -30,7 +30,7 @@ func AgentChat(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "请求过于频繁，请稍后再试"})
 		return
 	}
-	if !operation_setting.IsAgentBailianConfigured() {
+	if !operation_setting.IsAgentZeroClawConfigured() {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "当前管理员未配置智能体信息"})
 		return
 	}

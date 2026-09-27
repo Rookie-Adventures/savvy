@@ -11,10 +11,10 @@ import (
 
 func TestAgentChatRejectsUnconfigured(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	origHost, origKey, origApp := operation_setting.AgentBailianHost, operation_setting.AgentBailianKey, operation_setting.AgentBailianAppId
-	operation_setting.AgentBailianHost, operation_setting.AgentBailianKey, operation_setting.AgentBailianAppId = "", "", ""
+	origURL, origToken, origAgent := operation_setting.AgentZeroClawURL, operation_setting.AgentZeroClawToken, operation_setting.AgentZeroClawAgent
+	operation_setting.AgentZeroClawURL, operation_setting.AgentZeroClawToken, operation_setting.AgentZeroClawAgent = "", "", ""
 	defer func() {
-		operation_setting.AgentBailianHost, operation_setting.AgentBailianKey, operation_setting.AgentBailianAppId = origHost, origKey, origApp
+		operation_setting.AgentZeroClawURL, operation_setting.AgentZeroClawToken, operation_setting.AgentZeroClawAgent = origURL, origToken, origAgent
 	}()
 
 	w := httptest.NewRecorder()

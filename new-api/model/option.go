@@ -110,10 +110,10 @@ func InitOptionMap() {
 	common.OptionMap["AlipayRootCertSN"] = operation_setting.AlipayRootCertSN
 	common.OptionMap["AlipayNotifyURL"] = operation_setting.AlipayNotifyURL
 
-	// 百炼智能体配置:对齐上方支付宝连续的注册范式,否则 admin 写入后重启即丢。
-	common.OptionMap["AgentBailianHost"] = operation_setting.AgentBailianHost
-	common.OptionMap["AgentBailianKey"] = operation_setting.AgentBailianKey
-	common.OptionMap["AgentBailianAppId"] = operation_setting.AgentBailianAppId
+	// ZeroClaw 智能体运行时配置:对齐上方支付宝连续的注册范式,否则 admin 写入后重启即丢。
+	common.OptionMap["AgentZeroClawURL"] = operation_setting.AgentZeroClawURL
+	common.OptionMap["AgentZeroClawToken"] = operation_setting.AgentZeroClawToken
+	common.OptionMap["AgentZeroClawAgent"] = operation_setting.AgentZeroClawAgent
 	common.OptionMap["AgentGuestChatHourLimit"] = strconv.Itoa(operation_setting.AgentGuestChatHourLimit)
 	common.OptionMap["AgentGuestChatDayLimit"] = strconv.Itoa(operation_setting.AgentGuestChatDayLimit)
 	// 同上,微信直连配置注册(关闭 Task5 遗留缺口)。
@@ -527,12 +527,12 @@ func updateOptionMap(key string, value string) (err error) {
 		operation_setting.AlipayRootCertSN = value
 	case "AlipayNotifyURL":
 		operation_setting.AlipayNotifyURL = value
-	case "AgentBailianHost":
-		operation_setting.AgentBailianHost = value
-	case "AgentBailianKey":
-		operation_setting.AgentBailianKey = value
-	case "AgentBailianAppId":
-		operation_setting.AgentBailianAppId = value
+	case "AgentZeroClawURL":
+		operation_setting.AgentZeroClawURL = value
+	case "AgentZeroClawToken":
+		operation_setting.AgentZeroClawToken = value
+	case "AgentZeroClawAgent":
+		operation_setting.AgentZeroClawAgent = value
 	case "AgentGuestChatHourLimit":
 		operation_setting.AgentGuestChatHourLimit, _ = strconv.Atoi(value)
 	case "AgentGuestChatDayLimit":

@@ -49,7 +49,7 @@ sleep 15
 
 echo "== 6. 对话后端参数落库(百炼键清除, ZeroClaw 键写入) =="
 # 机B 生产库是 Postgres(newapi-db, compose override 注入 SQL_DSN), 不是仓库 compose 默认的 SQLite
-docker exec newapi-db psql -U newapi -d new-api -v ON_ERROR_STOP=1 <<'SQL'
+docker exec -i newapi-db psql -U newapi -d new-api -v ON_ERROR_STOP=1 <<'SQL'
 INSERT INTO options(key,value) VALUES
   ('AgentZeroClawURL','ws://zeroclaw:42617'),
   ('AgentZeroClawToken','intranet-only'),

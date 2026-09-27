@@ -106,7 +106,8 @@ export function AgentChat({ onClose }: AgentChatProps = {}) {
       <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
         <Conversation className='flex-1'>
           <ConversationContent className='p-0'>
-            <div className='mx-auto w-full max-w-3xl px-4 py-6'>
+            {/* pb 留悬浮"滚到底部"按钮的安全区,否则最后一条消息的支付卡链接行会被它盖住 */}
+            <div className='mx-auto w-full max-w-3xl px-4 pt-6 pb-20'>
               {messages.map((m, i) => {
                 const payLinks =
                   m.role === 'assistant' ? extractPayLinks(m.content) : []

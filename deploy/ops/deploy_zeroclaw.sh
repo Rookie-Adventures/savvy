@@ -48,21 +48,16 @@ docker compose up -d new-api
 sleep 15
 
 echo "== 6. 对话后端参数落库(百炼键清除, ZeroClaw 键写入) =="
-python3 - <<'PY'
-import sqlite3
-db = sqlite3.connect('/opt/savvy/deploy/data/new-api/one-api.db', timeout=20)
-rows = [
-    ('AgentZeroClawURL', 'ws://zeroclaw:42617'),
-    # require_pairing=false 时网关忽略此值; 留非空以通过 Go 侧三键齐全闸门
-    ('AgentZeroClawToken', 'intranet-only'),
-    ('AgentZeroClawAgent', 'topup'),
-]
-for k, v in rows:
-    db.execute("INSERT INTO options(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (k, v))
-db.execute("DELETE FROM options WHERE key LIKE 'AgentBailian%'")
-db.commit()
-print("options:", [r for r in db.execute("SELECT key,value FROM options WHERE key LIKE 'Agent%'")])
-PY
+# 机B 生产库是 Postgres(newapi-db, compose override 注入 SQL_DSN), 不是仓库 compose 默认的 SQLite
+docker exec newapi-db psql -U newapi -d new-api -v ON_ERROR_STOP=1 <<'SQL'
+INSERT INTO options(key,value) VALUES
+  ('AgentZeroClawURL','ws://zeroclaw:42617'),
+  ('AgentZeroClawToken','intranet-only'),
+  ('AgentZeroClawAgent','topup')
+ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value;
+DELETE FROM options WHERE key LIKE 'AgentBailian%';
+SELECT key,value FROM options WHERE key LIKE 'Agent%';
+SQL
 docker compose restart new-api >/dev/null
 
 echo "== 7. 端到端冒烟(游客一轮对话, DeepSeek 真调用) =="

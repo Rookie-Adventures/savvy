@@ -32,8 +32,9 @@ done
 [ "$(docker inspect -f '{{.State.Status}}' zeroclaw)" = running ] || { echo "FATAL: zeroclaw 未常驻"; docker compose logs --tail 30 zeroclaw; exit 1; }
 
 echo "== 4. 安装技能进 bundle(幂等, 落 $ZDIR) =="
-docker compose exec -T zeroclaw skills install /zeroclaw-data/skills-src/savvy-quota-topup --bundle topup
-docker compose exec -T zeroclaw skills list || true
+# docker exec 绕过 ENTRYPOINT, distroless 里必须给完整二进制路径
+docker compose exec -T zeroclaw /usr/local/bin/zeroclaw skills install /zeroclaw-data/skills-src/savvy-quota-topup --bundle topup
+docker compose exec -T zeroclaw /usr/local/bin/zeroclaw skills list || true
 chown -R 65534:65534 "$ZDIR"
 docker compose restart zeroclaw >/dev/null
 # 只记录响应码做诊断:连接被拒=网关没起来,任何 HTTP 码=端口通了

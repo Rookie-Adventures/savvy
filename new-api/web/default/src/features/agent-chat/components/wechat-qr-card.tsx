@@ -18,7 +18,9 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ExternalLink } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
+import { Button } from '@/components/ui/button'
 import { parseWechatAgentOrder } from '../lib/agent-order'
 import { readClaims, saveClaim } from '../lib/claim-storage'
 import { ClaimCard } from './claim-card'
@@ -48,6 +50,24 @@ export function WechatQrCard({ codeUrl, context }: WechatQrCardProps) {
     }
     return order
   })
+  const [copied, setCopied] = useState(false)
+  const isHttp = codeUrl.startsWith('http')
+
+  const copyLink = () => {
+    navigator.clipboard
+      ?.writeText(codeUrl)
+      .then(() => setCopied(true))
+      .catch(() => {
+        // clipboard API 不可用(非安全上下文/旧浏览器)时的 execCommand 兜底
+        const ta = document.createElement('textarea')
+        ta.value = codeUrl
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand('copy')
+        ta.remove()
+        setCopied(true)
+      })
+  }
 
   return (
     <div className='bg-card my-2 rounded-lg border p-4'>
@@ -56,6 +76,33 @@ export function WechatQrCard({ codeUrl, context }: WechatQrCardProps) {
         <div className='rounded-lg bg-white p-3'>
           <QRCodeSVG value={codeUrl} size={180} />
         </div>
+      </div>
+      {/* 三合一交付:桌面扫码 / 手机与微信内点链接 / 复制粘贴兜底,不判断宿主环境 */}
+      <div className='mt-3 flex items-center gap-2'>
+        <p className='text-muted-foreground min-w-0 flex-1 break-all text-[11px]'>
+          {codeUrl}
+        </p>
+        {isHttp && (
+          <Button
+            size='sm'
+            variant='outline'
+            className='shrink-0'
+            onClick={() =>
+              window.open(codeUrl, '_blank', 'noopener,noreferrer')
+            }
+          >
+            <ExternalLink className='mr-1 h-3.5 w-3.5' />
+            {t('Open')}
+          </Button>
+        )}
+        <Button
+          size='sm'
+          variant='outline'
+          className='shrink-0'
+          onClick={copyLink}
+        >
+          {copied ? t('Copied') : t('Copy')}
+        </Button>
       </div>
       {parsed?.claimUrl && (
         <a

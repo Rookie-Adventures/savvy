@@ -79,5 +79,31 @@ def list_refunds(api_key: str, page: int = 1, page_size: int = 10) -> dict:
     return _call("GET", "/api/user/agent/ability/refund/list", api_key=api_key, params={"page": page, "page_size": page_size})
 
 
+@mcp.tool(description="微信AI支付(X402)通道。第一步不带 payment_code 下单:status=402 属正常,响应里的 payment_code/out_trade_no 交给 weixinpay 支付工具;用户确认付款后带这两个值再调一次完成履约,返回入账结果。")
+def invoke_skill(action: str, amount_yuan: float = 0, payment_code: str = "", out_trade_no: str = "") -> dict:
+    headers = {}
+    if payment_code:
+        headers["WeixinPay-Required"] = payment_code
+    if out_trade_no:
+        headers["X-Out-Trade-No"] = out_trade_no
+    body = {"action": action}
+    if amount_yuan:
+        body["amount_yuan"] = amount_yuan
+    with httpx.Client(timeout=30) as client:
+        r = client.post(f"{BASE}/api/skill/invoke", headers=headers, json=body)
+    try:
+        data = r.json()
+    except ValueError:
+        data = r.text
+    # 402 是 X402 协议的"待支付"信号,不是失败;其余 >=400 原样转述
+    return {
+        "ok": r.status_code in (200, 402),
+        "status": r.status_code,
+        "payment_code": r.headers.get("WeixinPay-Required", ""),
+        "out_trade_no": r.headers.get("X-Out-Trade-No", ""),
+        "body": data,
+    }
+
+
 if __name__ == "__main__":
     mcp.run(transport="streamable-http")

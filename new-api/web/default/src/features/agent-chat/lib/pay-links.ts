@@ -23,14 +23,15 @@ const WEIXIN_RE = /weixin:\/\/wxpay\/[^\s<>"'`)\]]+/g
 
 /**
  * Extract payment links from agent reply text.
- * ponytail: 只认包含 alipay 的 URL 与 weixin://wxpay 前缀,漏判无害(退化为普通文本),误判会弹支付卡
+ * ponytail: 认三类——alipay 网关 URL、weixin://wxpay(Native code_url)、
+ * payapp.weixin.qq.com(微信AI支付绑定/授权页)。漏判无害(退化为普通文本),误判会弹支付卡
  */
 export function extractPayLinks(text: string): string[] {
-  const alipay = Array.from(text.matchAll(URL_RE))
+  const https = [...text.matchAll(URL_RE)]
     .map((m) => m[0])
-    .filter((u) => /alipay/i.test(u))
+    .filter((u) => /alipay/i.test(u) || u.includes('payapp.weixin.qq.com'))
   const wechat = [...text.matchAll(WEIXIN_RE)].map((m) => m[0])
-  return [...alipay, ...wechat]
+  return [...https, ...wechat]
 }
 
 /**
@@ -41,11 +42,12 @@ export function extractPayLinks(text: string): string[] {
 export function stripPayLinks(text: string): string {
   const stripped = text
     .replace(URL_RE, (u) =>
-      /alipay/i.test(u) || u.includes('claim_token=') ? '' : u
+      /alipay/i.test(u) || u.includes('claim_token=') || u.includes('payapp.weixin.qq.com') ? '' : u
     )
     .replace(WEIXIN_RE, '')
   return stripped
     .replaceAll('``', '') // 剥掉反引号包裹的链接后残留的空对
+    .replace(/\[[^\]]*\]\(\s*\)/g, '') // markdown 链接被剥成 [text]() 后清掉
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0)

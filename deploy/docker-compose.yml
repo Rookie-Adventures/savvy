@@ -205,6 +205,22 @@ services:
     networks:
       - savvy-net
 
+  # ============ 微信AI支付官方插件宿主(weixinpay MCP 桥) ============
+  # ZeroClaw distroless 无 shell/node,官方安装器装不进宿主;此容器=fake-hermes 骨架构建期
+  # 落地 @tenpay 官方插件 + supergateway stdio→HTTP 桥。设备身份 machine-id 与插件数据落卷持久,
+  # 容器重建不丢绑卡状态。仅内网可达(zeroclaw→http://weixinpay-mcp:8100/mcp),不出公网。
+  weixinpay-mcp:
+    build:
+      context: ../weixinpay-mcp
+      dockerfile: Dockerfile
+    container_name: weixinpay-mcp
+    restart: always
+    volumes:
+      - ./data/weixinpay:/wxdata                       # machine-id 持久(设备身份)
+      - ./data/weixinpay/plugin-data:/root/.hermes/plugin-data   # 绑卡状态/运行日志
+    networks:
+      - savvy-net
+
   # ============ hermes-agent (工作智能体引擎) ============
   # Python 长驻, hermes-workspace 容器池由 savvy-manager 拉起, 不在这里常驻
   # 工作智能体实际跑在 savvy-manager 拉起的 workspace 容器里 (2h 自睡 daemon)

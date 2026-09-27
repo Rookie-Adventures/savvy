@@ -121,7 +121,8 @@ export function AgentChat({ onClose }: AgentChatProps = {}) {
                     <MessageContent>
                       {displayText}
                       {payLinks.map((link) =>
-                        link.startsWith('weixin://') ? (
+                        link.startsWith('weixin://') ||
+                        link.includes('payapp.weixin.qq.com') ? (
                           <WechatQrCard
                             key={link}
                             codeUrl={link}

@@ -22,10 +22,10 @@ cp deploy/zeroclaw/IDENTITY.md "$ZDIR/.zeroclaw/agents/topup/workspace/IDENTITY.
 # distroless 容器以 uid 65534(nobody) 跑, bind mount 属主必须是它
 chown -R 65534:65534 "$ZDIR"
 
-echo "== 3. 起 savvy-mcp + zeroclaw =="
+echo "== 3. 起 savvy-mcp + zeroclaw + weixinpay-mcp =="
 cd deploy
-docker compose build savvy-mcp
-docker compose up -d savvy-mcp zeroclaw
+docker compose build savvy-mcp weixinpay-mcp
+docker compose up -d savvy-mcp zeroclaw weixinpay-mcp
 for i in $(seq 1 12); do
   [ "$(docker inspect -f '{{.State.Status}}' zeroclaw 2>/dev/null || echo none)" = running ] && break
   sleep 5

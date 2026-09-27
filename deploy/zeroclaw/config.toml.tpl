@@ -18,7 +18,8 @@ risk_profile = "topup"
 mcp_bundles = ["topup"]
 skill_bundles = ["topup"]
 
-# 闭合白名单:模型只见这 8 个 MCP 工具,http_request/shell/文件/浏览器全部不存在
+# 闭合白名单:模型只见这些 MCP 工具,http_request/shell/文件/浏览器全部不存在。
+# weixinpay 侧不放 feedback/self_update/api_level:更新与诊断不是对话内能力,防模型自改插件
 [risk_profiles.topup]
 level = "full"
 allowed_tools = [
@@ -30,6 +31,10 @@ allowed_tools = [
   "savvy__redeem_code",
   "savvy__apply_refund",
   "savvy__list_refunds",
+  "savvy__invoke_skill",
+  "weixinpay__weixinpay_register",
+  "weixinpay__weixinpay_pay",
+  "weixinpay__weixinpay_retry_pay",
 ]
 
 [mcp]
@@ -40,8 +45,13 @@ name = "savvy"
 transport = "http"
 url = "http://savvy-mcp:8000/mcp"
 
+[[mcp.servers]]
+name = "weixinpay"
+transport = "http"
+url = "http://weixinpay-mcp:8100/mcp"
+
 [mcp_bundles.topup]
-servers = ["savvy"]
+servers = ["savvy", "weixinpay"]
 
 [skill_bundles.topup]
 

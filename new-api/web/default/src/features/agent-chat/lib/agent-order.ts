@@ -37,3 +37,24 @@ export function parseAgentOrder(
     return null
   }
 }
+
+// 微信智能体单在下单时就已在服务端落库并预发 claim_token(随回复文本带回),
+// 前端只需从文本还原三件套,不走 alipay 那套 register 登记换 token 流程。
+export function parseWechatAgentOrder(text: string): {
+  outTradeNo: string
+  claimToken: string
+  claimUrl: string
+} | null {
+  const outTradeNo = text.match(/WXAGT\d{14}[A-Za-z0-9]{10}/)?.[0] ?? ''
+  const claimUrl =
+    Array.from(
+      text.matchAll(/https?:\/\/[^\s<>"'`)\]]+/g),
+      (m) => m[0]
+    ).find((u) => u.includes('claim_token=')) ?? ''
+  const claimToken =
+    claimUrl.match(/claim_token=([a-f0-9]{32})/)?.[1] ??
+    text.match(/\b[a-f0-9]{32}\b/)?.[0] ??
+    ''
+  if (!outTradeNo || !claimToken) return null
+  return { outTradeNo, claimToken, claimUrl }
+}

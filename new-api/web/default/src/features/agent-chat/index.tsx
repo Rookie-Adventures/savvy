@@ -29,6 +29,7 @@ import {
 import { Message, MessageContent } from '@/components/ai-elements/message'
 import { Loader } from '@/components/ai-elements/loader'
 import { PaymentCard } from './components/payment-card'
+import { WechatQrCard } from './components/wechat-qr-card'
 import { ChatHeader } from './components/chat-header'
 import { extractPayLinks, stripPayLinks } from './lib/pay-links'
 import { sendAgentMessage } from './api'
@@ -119,9 +120,17 @@ export function AgentChat({ onClose }: AgentChatProps = {}) {
                   >
                     <MessageContent>
                       {displayText}
-                      {payLinks.map((link) => (
-                        <PaymentCard key={link} link={link} />
-                      ))}
+                      {payLinks.map((link) =>
+                        link.startsWith('weixin://') ? (
+                          <WechatQrCard
+                            key={link}
+                            codeUrl={link}
+                            context={m.content}
+                          />
+                        ) : (
+                          <PaymentCard key={link} link={link} />
+                        )
+                      )}
                     </MessageContent>
                   </Message>
                 )

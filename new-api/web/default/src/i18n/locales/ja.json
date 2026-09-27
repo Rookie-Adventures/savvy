@@ -706,6 +706,8 @@
     "Payment received": "支払いを受け取りました",
     "Sign in or register to claim your top-up": "ログインまたは登録するとチャージを受け取れます",
     "Top-up credited to your account": "チャージが入金されました",
+    "Scan with WeChat to pay": "WeChatでQRコードをスキャンして支払い",
+    "Open claim page after payment": "支払い後に受け取りページを開く",
     "ChatCompletions -> Responses Compatibility": "ChatCompletions → レスポンス互換",
     "ChatGPT Subscription (Codex)": "ChatGPT Subscription (Codex)",
     "Check for updates": "更新を確認",

@@ -16,27 +16,36 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-const URL_RE = /https?:\/\/[^\s<>"')\]]+/g
+// 反引号必须排除:智能体常以 `url` 形式贴链接,脏尾字符会进二维码值/跳转 href
+const URL_RE = /https?:\/\/[^\s<>"'`)\]]+/g
+// 微信 Native 下单返回的 code_url,浏览器打不开,只能渲染成二维码扫码
+const WEIXIN_RE = /weixin:\/\/wxpay\/[^\s<>"'`)\]]+/g
 
 /**
  * Extract payment links from agent reply text.
- * ponytail: 只认包含 alipay 的 URL,漏判无害(退化为普通文本),误判会弹支付卡
+ * ponytail: 只认包含 alipay 的 URL 与 weixin://wxpay 前缀,漏判无害(退化为普通文本),误判会弹支付卡
  */
 export function extractPayLinks(text: string): string[] {
-  return Array.from(text.matchAll(URL_RE))
+  const alipay = Array.from(text.matchAll(URL_RE))
     .map((m) => m[0])
     .filter((u) => /alipay/i.test(u))
+  const wechat = [...text.matchAll(WEIXIN_RE)].map((m) => m[0])
+  return [...alipay, ...wechat]
 }
 
 /**
  * Strip payment links from text for display (card replaces the raw URL).
  * 剥掉链接后残留的空行/孤零标点一并收敛,避免气泡里剩一坨空白
+ * 微信单的 claim_url 一并剥掉——卡片里有可点版本,裸文本在气泡里点不动
  */
 export function stripPayLinks(text: string): string {
-  const stripped = text.replace(URL_RE, (u) =>
-    /alipay/i.test(u) ? '' : u
-  )
+  const stripped = text
+    .replace(URL_RE, (u) =>
+      /alipay/i.test(u) || u.includes('claim_token=') ? '' : u
+    )
+    .replace(WEIXIN_RE, '')
   return stripped
+    .replaceAll('``', '') // 剥掉反引号包裹的链接后残留的空对
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0)

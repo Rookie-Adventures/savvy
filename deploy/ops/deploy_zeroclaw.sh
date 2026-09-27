@@ -13,7 +13,8 @@ grep -q '^DEEPSEEK_API_KEY=' deploy/.env || { echo "FATAL: deploy/.env 缺 DEEPS
 
 echo "== 2. 渲染 zeroclaw 配置与身份适配层 =="
 DP_KEY=$(grep '^DEEPSEEK_API_KEY=' deploy/.env | cut -d= -f2-)
-ZDIR=deploy/data/zeroclaw
+# 绝对路径: 脚本后半段会 cd 进 deploy/,相对 $ZDIR 会失效
+ZDIR=/opt/savvy/deploy/data/zeroclaw
 mkdir -p "$ZDIR/.zeroclaw/agents/topup/workspace"
 sed "s|__DEEPSEEK_API_KEY__|$DP_KEY|g" deploy/zeroclaw/config.toml.tpl > "$ZDIR/.zeroclaw/config.toml"
 chmod 600 "$ZDIR/.zeroclaw/config.toml"

@@ -32,8 +32,9 @@ for i in $(seq 1 12); do
 done
 [ "$(docker inspect -f '{{.State.Status}}' zeroclaw)" = running ] || { echo "FATAL: zeroclaw 未常驻"; docker compose logs --tail 30 zeroclaw; exit 1; }
 
-echo "== 4. 安装技能进 bundle(幂等, 落 $ZDIR) =="
-# docker exec 绕过 ENTRYPOINT, distroless 里必须给完整二进制路径
+echo "== 4. 安装技能进 bundle(先清旧份保证与真源一致, 落 $ZDIR) =="
+# docker exec 绕过 ENTRYPOINT, distroless 里必须给完整二进制路径; skills install 不覆盖已存在目标
+rm -rf "$ZDIR/.zeroclaw/shared/skills/topup/savvy-quota-topup"
 docker compose exec -T zeroclaw /usr/local/bin/zeroclaw skills install /zeroclaw-data/skills-src/savvy-quota-topup --bundle topup
 docker compose exec -T zeroclaw /usr/local/bin/zeroclaw skills list || true
 chown -R 65534:65534 "$ZDIR"

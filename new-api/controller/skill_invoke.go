@@ -250,7 +250,14 @@ func handleSkillPayRetry(c *gin.Context, req SkillInvokeRequest, outTradeNo stri
 		respondSkillPayNotPaid(c, outTradeNo, state)
 		return
 	}
-	_ = model.MarkSkillPayOrderPaid(outTradeNo, transactionId)
+	// 付款人身份(下单 AppID 空间的 openid):查单是主来源,notify 补记兜底
+	payerOpenid := ""
+	if tx.Payer != nil && tx.Payer.Openid != nil {
+		payerOpenid = *tx.Payer.Openid
+	}
+	_ = model.MarkSkillPayOrderPaid(outTradeNo, transactionId, payerOpenid)
+	// notify 先于本行把单标成 paid 时 Mark 的条件更新会落空,这里补记(仅空值写入,幂等)
+	_ = model.BindSkillPayPayerOpenid(outTradeNo, payerOpenid)
 
 	// 实付金额（分→元）为入账依据，Agent 申报值不作数
 	paidFen := int64(0)
@@ -261,7 +268,7 @@ func handleSkillPayRetry(c *gin.Context, req SkillInvokeRequest, outTradeNo stri
 
 	var content string
 	if order.Kind == model.SkillPayKindTopUp {
-		content, err = fulfillSkillPayTopUp(c, outTradeNo, transactionId, paidYuan)
+		content, err = fulfillSkillPayTopUp(c, outTradeNo, transactionId, paidYuan, payerOpenid)
 	} else {
 		content, err = service.SkillPayFulfill(req.Query)
 	}
@@ -289,9 +296,33 @@ func handleSkillPayRetry(c *gin.Context, req SkillInvokeRequest, outTradeNo stri
 }
 
 // fulfillSkillPayTopUp 充值履约：实付金额建 TopUp(wechat_skillpay)。
-// 有登录态（服务号 webview）：直接入账；游客：发 claim_token，登录后认领入账。
-func fulfillSkillPayTopUp(c *gin.Context, outTradeNo, transactionId string, paidYuan float64) (string, error) {
+// 身份判定三级：① 请求带登录态（服务号 webview）→ 直接入账；② payer openid 命中
+// users.wechat_id（扫码登录体系同源，Native AppID 空间）→ 老客户零点击直入账；
+// ③ 都不命中 → 发 claim_token，登录/注册后认领入账（不自动注册，钱必须有人认领）。
+func fulfillSkillPayTopUp(c *gin.Context, outTradeNo, transactionId string, paidYuan float64, payerOpenid string) (string, error) {
 	userId := c.GetInt("id") // TryUserAuth：游客为 0
+	creditedVia := ""        // 直入账来源，供日志与回推决策
+	if userId <= 0 && payerOpenid != "" {
+		if uid, ok := model.GetUserIdByWeChatNativeOpenid(payerOpenid); ok {
+			userId = uid
+			creditedVia = "payer_openid"
+		}
+	}
+	// 额度换算预检(在 TopUp 落库前)：金额过小换算为 0 时不硬失败——
+	// 已入账路径报错会让 AI 无限重试(单号唯一索引卡履约)，降级为游客发认领。
+	amount := int64(0)
+	if userId > 0 {
+		group, gerr := model.GetUserGroup(userId, true)
+		if gerr != nil {
+			return "", fmt.Errorf("get user group: %w", gerr)
+		}
+		amount = agentQuotaAmountFromMoney(paidYuan, group)
+		if amount <= 0 {
+			logger.LogWarn(c, fmt.Sprintf("skillpay topup amount too small, fallback to claim: out_trade_no=%s user=%d money=%.2f", outTradeNo, userId, paidYuan))
+			userId = 0
+			creditedVia = ""
+		}
+	}
 	claimToken, err := newClaimToken()
 	if err != nil {
 		return "", fmt.Errorf("gen claim token: %w", err)
@@ -314,20 +345,16 @@ func fulfillSkillPayTopUp(c *gin.Context, outTradeNo, transactionId string, paid
 
 	claimURL := buildAgentClaimUrl(system_setting.ServerAddress, claimToken, outTradeNo)
 	if userId > 0 {
-		group, gerr := model.GetUserGroup(userId, true)
-		if gerr != nil {
-			return "", fmt.Errorf("get user group: %w", gerr)
-		}
-		amount := agentQuotaAmountFromMoney(paidYuan, group)
-		if amount <= 0 {
-			return "", fmt.Errorf("金额过小，换算额度为 0")
-		}
 		quotaToAdd := int(decimal.NewFromInt(amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
 		if err := model.IncreaseUserQuota(userId, quotaToAdd, true); err != nil {
 			return "", fmt.Errorf("increase quota: %w", err)
 		}
+		via := "登录态"
+		if creditedVia == "payer_openid" {
+			via = "付款人openid匹配"
+		}
 		model.RecordTopupLog(userId,
-			fmt.Sprintf("使用微信智能体充值成功，充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), paidYuan),
+			fmt.Sprintf("使用微信智能体充值成功(%s)，充值金额: %v，支付金额：%f", via, logger.LogQuota(quotaToAdd), paidYuan),
 			c.ClientIP(), model.PaymentMethodWechat, model.PaymentProviderWechatSkillPay)
 		return fmt.Sprintf("充值成功，到账额度: %v", logger.LogQuota(quotaToAdd)), nil
 	}
@@ -357,13 +384,25 @@ func SkillPayNotify(c *gin.Context) {
 			return fmt.Errorf("order not found")
 		}
 		if order.Fulfilled || order.Status == model.SkillPayStatusPaid {
+			// 已 paid 仍可能缺身份(查单先到但响应无 payer)：补记一次，仅空值写入
+			var early struct {
+				Payer struct {
+					Openid string `json:"openid"`
+				} `json:"payer"`
+			}
+			if common.Unmarshal([]byte(payload), &early) == nil {
+				_ = model.BindSkillPayPayerOpenid(tradeNo, early.Payer.Openid)
+			}
 			return nil // 幂等
 		}
 		var detail struct {
 			TransactionId string `json:"transaction_id"`
+			Payer         struct {
+				Openid string `json:"openid"`
+			} `json:"payer"`
 		}
 		_ = common.Unmarshal([]byte(payload), &detail)
-		return model.MarkSkillPayOrderPaid(tradeNo, detail.TransactionId)
+		return model.MarkSkillPayOrderPaid(tradeNo, detail.TransactionId, detail.Payer.Openid)
 	}
 	handleWxNotify(c, finalize)
 }

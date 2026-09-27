@@ -15,7 +15,8 @@ type SkillPayOrder struct {
 	Status        string  `json:"status" gorm:"type:varchar(20)"`                    // pending/paid/fulfilled/closed
 	Fulfilled     bool    `json:"fulfilled"`
 	TransactionId string  `json:"transaction_id" gorm:"type:varchar(64)"`
-	Content       string  `json:"content" gorm:"type:text"` // 付费内容（AI 问答结果 / 认领凭据）
+	PayerOpenid   string  `json:"payer_openid" gorm:"type:varchar(128);index"` // 付款人 Native-AppID 空间 openid(查单/回调解出),匹配 users.wechat_id 直入账
+	Content       string  `json:"content" gorm:"type:text"`                    // 付费内容（AI 问答结果 / 认领凭据）
 	CreateTime    int64   `json:"create_time"`
 }
 
@@ -49,10 +50,25 @@ func GetSkillPayOrderByTradeNo(tradeNo string) *SkillPayOrder {
 }
 
 // MarkSkillPayOrderPaid 回调/查单确认已支付：置 Status=paid 并记渠道交易号（幂等，已 paid/fulfilled 不降级）。
-func MarkSkillPayOrderPaid(tradeNo, transactionId string) error {
+// payerOpenid 非空才写入（查单与回调先后到达时，空值不得覆盖已存的付款人身份）。
+func MarkSkillPayOrderPaid(tradeNo, transactionId, payerOpenid string) error {
+	updates := map[string]interface{}{"status": SkillPayStatusPaid, "transaction_id": transactionId}
+	if payerOpenid != "" {
+		updates["payer_openid"] = payerOpenid
+	}
 	return DB.Model(&SkillPayOrder{}).
 		Where("out_trade_no = ? AND status = ?", tradeNo, SkillPayStatusPending).
-		Updates(map[string]interface{}{"status": SkillPayStatusPaid, "transaction_id": transactionId}).Error
+		Updates(updates).Error
+}
+
+// BindSkillPayPayerOpenid 补记付款人 openid（仅当原值为空；不覆盖已有身份）。
+func BindSkillPayPayerOpenid(tradeNo, payerOpenid string) error {
+	if tradeNo == "" || payerOpenid == "" {
+		return nil
+	}
+	return DB.Model(&SkillPayOrder{}).
+		Where("out_trade_no = ? AND payer_openid = ?", tradeNo, "").
+		Update("payer_openid", payerOpenid).Error
 }
 
 // MarkSkillPayOrderClosed 预下单失败关单。

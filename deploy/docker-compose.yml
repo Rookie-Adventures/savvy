@@ -171,6 +171,40 @@ services:
     networks:
       - savvy-net
 
+  # ============ ZeroClaw 智能体运行时 + savvy-mcp 工具层 (widget /api/user/agent/chat 后端) ============
+  # 取代百炼托管应用: new-api Go 侧经 ws://zeroclaw:42617/ws/chat 对话,
+  # ZeroClaw 只拿 8 个 savvy__* MCP 工具(闭合白名单), 由 savvy-mcp 落地调自家接口。
+  # 部署/技能安装/参数落库见 ops/deploy_zeroclaw.sh
+  savvy-mcp:
+    build:
+      context: ../savvy-mcp
+      dockerfile: Dockerfile
+    container_name: savvy-mcp
+    restart: always
+    environment:
+      # 容器内网直连 new-api, 不绕公网 HTTPS 一圈
+      - SAVVY_BASE_URL=http://new-api:3000
+      # 与 new-api 的 X-Agent-Token 同源: 复用本机 .env 里已有的值
+      - AGENT_TOPUP_TOKEN=${AGENT_TOPUP_TOKEN:-}
+      - TZ=Asia/Shanghai
+    networks:
+      - savvy-net
+    # 不开 ports: 仅 zeroclaw 容器经 http://savvy-mcp:8000/mcp 可达
+
+  zeroclaw:
+    # distroless 镜像: 无 shell/任何工具, 常驻靠自带 daemon CMD
+    image: ghcr.io/zeroclaw-labs/zeroclaw:v0.8.5
+    container_name: zeroclaw
+    restart: always
+    volumes:
+      - ./data/zeroclaw:/zeroclaw-data
+      # 技能真源只读挂载; 起容器后由 deploy_zeroclaw.sh 执行 skills install 落进数据目录
+      - ../skillhub-packages/savvy-quota-topup:/zeroclaw-data/skills-src/savvy-quota-topup:ro
+    ports:
+      - "127.0.0.1:42617:42617"   # 仅宿主回环, 供部署脚本探活; 公网/机A 不可达
+    networks:
+      - savvy-net
+
   # ============ hermes-agent (工作智能体引擎) ============
   # Python 长驻, hermes-workspace 容器池由 savvy-manager 拉起, 不在这里常驻
   # 工作智能体实际跑在 savvy-manager 拉起的 workspace 容器里 (2h 自睡 daemon)

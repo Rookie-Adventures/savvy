@@ -56,6 +56,8 @@ localStorage 续多轮（`agent-chat/index.tsx:51`）。配置/IDENTITY 改了�
 
 ## 限制 / 尾巴
 - 聊天历史被一次性清空（充值 widget 的一次性上下文，判定可弃）。留档 `sessions.poisoned-20260929030448.db` 可回滚。
+  旧浏览器 localStorage 里失效的 `session_id` 实测不会报错（用一个不存在的 id 发一轮 → HTTP 200 + 正常新建会话），
+  所以清洗对用户是"接着能用"，不需要前端配合。
 - weixinpay-mcp 容器仍在跑、绑卡状态保留，只是不再挂进自家 agent 的 prompt；X402 服务端能力
   （`/api/skill/invoke` 等）原样保留给第三方自带插件的 agent。
 - 模型仍可能编出别的假话（如"已第 5 次下单"）。本轮只堵"假付款入口"这一条最伤钱的。

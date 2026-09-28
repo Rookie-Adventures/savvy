@@ -139,6 +139,9 @@ func main() {
 	// Channel upstream model update check task
 	controller.StartChannelUpstreamModelUpdateTask()
 
+	// X402 SkillPay 已付款未履约的兜底恢复（查单补履约 + 超期关单）
+	controller.StartSkillPayRecoveryTask()
+
 	if common.IsMasterNode && constant.UpdateTask {
 		gopool.Go(func() {
 			controller.UpdateMidjourneyTaskBulk()

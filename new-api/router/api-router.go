@@ -32,6 +32,8 @@ func SetApiRouter(router *gin.Engine) {
 		// TryUserAuth 有登录态(服务号 webview)则充值单直接绑用户;notify 是微信服务器回调,必须在匿名层
 		apiRouter.POST("/skill/invoke", middleware.TryUserAuth(), anonymousRequestBodyLimit, controller.SkillInvoke)
 		apiRouter.POST("/skill/notify", anonymousRequestBodyLimit, controller.SkillPayNotify)
+		// 已付款但会话丢失的自助恢复入口：匿名 + Critical 限频，claim_token(128bit) 即凭证
+		apiRouter.GET("/skill/recover", middleware.CriticalRateLimit(), controller.SkillPayRecover)
 		apiRouter.GET("/uptime/status", controller.GetUptimeKumaStatus)
 		apiRouter.GET("/models", middleware.UserAuth(), controller.DashboardListModels)
 		apiRouter.GET("/status/test", middleware.AdminAuth(), controller.TestStatus)

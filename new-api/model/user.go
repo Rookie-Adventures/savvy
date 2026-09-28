@@ -864,6 +864,23 @@ func GetUserIdByMpOpenid(openid string) (int, bool) {
 	return bound.Id, true
 }
 
+// GetUserIdByWeChatNativeOpenid 按扫码登录体系(Native AppID 空间)的 openid 反查启用用户。
+// X402 查单/回调解出的 payer.openid 与该列同源(下单即用 WechatAppId),命中即可直入账。
+// 未找到/被禁用一律 (0,false)——禁用账号不得静默入账,回落 claim 链接。
+func GetUserIdByWeChatNativeOpenid(openid string) (int, bool) {
+	if openid == "" {
+		return 0, false
+	}
+	var bound User
+	if err := DB.Where(User{WeChatId: openid}).First(&bound).Error; err != nil {
+		return 0, false
+	}
+	if bound.Status != common.UserStatusEnabled {
+		return 0, false
+	}
+	return bound.Id, true
+}
+
 // BindMpOpenid 把服务号 openid 绑到用户(认领成功同事务外调用)。
 // 同 openid 换绑给新认领人 = 资金跟人走,微信本人优先于历史绑定。
 func BindMpOpenid(userId int, openid string) error {
@@ -871,6 +888,19 @@ func BindMpOpenid(userId int, openid string) error {
 		return errors.New("user id or openid is empty")
 	}
 	return DB.Model(&User{Id: userId}).Update("mp_openid", openid).Error
+}
+
+// GetUserMpOpenid 取用户的服务号 openid（未绑定返回空串）。
+// 用途：X402 付款人身份是 Native 空间 openid，要经用户换一手才能发服务号客服消息。
+func GetUserMpOpenid(userId int) string {
+	if userId <= 0 {
+		return ""
+	}
+	var u User
+	if err := DB.Select("mp_openid").Where("id = ?", userId).First(&u).Error; err != nil {
+		return ""
+	}
+	return u.MpOpenid
 }
 
 func (user *User) FillUserByDiscordId() error {

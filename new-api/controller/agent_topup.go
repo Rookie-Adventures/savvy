@@ -131,6 +131,18 @@ func AgentTopUpStatus(c *gin.Context) {
 		return
 	}
 	topUp := model.GetTopUpByClaimToken(token)
+	// X402 单在建单时就预生成了 claim_token，而 TopUp 行要到履约才存在：
+	// 用户手里只有链接、Agent 会话已丢时，轮询会打到「订单不存在」。这里就地补履约
+	// （查单为唯一付款事实），点开认领页即自愈，不必回对话、不必开工单。
+	if topUp == nil {
+		if so := model.GetSkillPayOrderByClaimToken(token); so != nil && !so.Fulfilled &&
+			time.Now().Unix()-so.CreateTime < 7200 { // 与下方 pending 轮询同款窗口，避免未付单被无限查单
+			if _, _, err := skillPayFulfillByQuery(c.Request.Context(), c.ClientIP(), so); err != nil {
+				common.SysError("skillpay claim-page fulfill failed: " + err.Error())
+			}
+			topUp = model.GetTopUpByClaimToken(token)
+		}
+	}
 	if topUp == nil || (topUp.PaymentProvider != model.PaymentProviderAlipayAgent &&
 		topUp.PaymentProvider != model.PaymentProviderWechatAgent &&
 		topUp.PaymentProvider != model.PaymentProviderWechatSkillPay) {

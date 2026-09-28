@@ -114,8 +114,9 @@ export function AgentChat({ onClose, claimToken, outTradeNo }: AgentChatProps = 
           {/* justify-end: 消息不足一屏时贴底,和满屏时的滚动锚点一致,否则顶部对齐会在
               气泡和输入框之间留一大片空洞(手机端看着像页面坏了) */}
           <ConversationContent className='flex min-h-full flex-col justify-end p-0'>
-            {/* 支付卡链接行的避让由滚动按钮自身负责(见下方 bottom 值),不用 pb 撑死空间 */}
-            <div className='mx-auto w-full max-w-3xl px-4 pt-6 pb-3'>
+            {/* pb 是悬浮"滚到底部"按钮的安全区(621e1123a9),否则最后一条消息的支付卡链接行会被它盖住。
+                贴底对齐后这段不再表现为空洞,而是气泡与输入框之间的呼吸区。 */}
+            <div className='mx-auto w-full max-w-3xl px-4 pt-6 pb-20'>
               {messages.map((m, i) => {
                 const payLinks =
                   m.role === 'assistant' ? extractPayLinks(m.content) : []

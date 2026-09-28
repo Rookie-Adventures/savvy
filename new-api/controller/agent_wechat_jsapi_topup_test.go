@@ -18,6 +18,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const agentJsapiTradeNo = "WXAGT20260928120000ABCDEFGHIJ"
+
 func newAgentJsapiTestEngine(t *testing.T, sessionOpenid string, userId int) *gin.Engine {
 	t.Helper()
 	r := gin.New()
@@ -52,6 +54,16 @@ func setupAgentJsapiTestDB(t *testing.T) {
 	})
 }
 
+// agent 已为该用户建好的 Native 待付单——前端只交得出它的订单号，金额从这里读。
+func seedPendingAgentOrder(t *testing.T, money float64) {
+	t.Helper()
+	require.NoError(t, model.DB.Create(&model.TopUp{
+		TradeNo: agentJsapiTradeNo, Money: money, Status: common.TopUpStatusPending,
+		PaymentMethod: model.PaymentMethodWechat, PaymentProvider: model.PaymentProviderWechatAgent,
+		CreateTime: 1, UserId: 0,
+	}).Error)
+}
+
 func postAgentJsapi(engine *gin.Engine, body string) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/user/agent/wechat/jsapi/topup", strings.NewReader(body))
@@ -60,30 +72,38 @@ func postAgentJsapi(engine *gin.Engine, body string) *httptest.ResponseRecorder 
 	return w
 }
 
+func countTopUps(t *testing.T) int64 {
+	t.Helper()
+	var n int64
+	require.NoError(t, model.DB.Model(&model.TopUp{}).Count(&n).Error)
+	return n
+}
+
 // 未走静默授权(session 无 openid)→ wechat_oauth_required，前端据此跳授权后重试。
 // 该契约对齐 RequestWechatJsapiPay，前端按它分支，改了就断。
 func TestCreateAgentJsapiTopUpRequiresOauth(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupAgentJsapiTestDB(t)
+	seedPendingAgentOrder(t, 1)
 
-	w := postAgentJsapi(newAgentJsapiTestEngine(t, "", 0), `{"amount_yuan":1}`)
+	w := postAgentJsapi(newAgentJsapiTestEngine(t, "", 0), `{"out_trade_no":"`+agentJsapiTradeNo+`"}`)
 	assert.Contains(t, w.Body.String(), "wechat_oauth_required")
+	assert.EqualValues(t, 1, countTopUps(t), "未授权时不得建单")
 }
 
-// 金额非法在取 openid 之前就拒，不产生订单。
-func TestCreateAgentJsapiTopUpRejectsBadAmount(t *testing.T) {
+// 订单号不存在(或不是本渠道的单)→ 拒，且绝不建单：金额只能来自服务端已落库的那张单，
+// 前端没有申报金额的权力。
+func TestCreateAgentJsapiTopUpRejectsUnknownOrder(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupAgentJsapiTestDB(t)
 
-	w := postAgentJsapi(newAgentJsapiTestEngine(t, "o-mp-payer", 0), `{"amount_yuan":0}`)
-	assert.Contains(t, w.Body.String(), "参数错误")
-	var count int64
-	require.NoError(t, model.DB.Model(&model.TopUp{}).Count(&count).Error)
-	assert.Zero(t, count, "参数被拒时不得建单")
+	w := postAgentJsapi(newAgentJsapiTestEngine(t, "o-mp-payer", 0), `{"out_trade_no":"WXAGT_NOPE"}`)
+	assert.Contains(t, w.Body.String(), "订单不存在")
+	assert.Zero(t, countTopUps(t))
 }
 
 // 钱必须进"付款那个微信号"所属的账户：openid 已绑 A、当前浏览器却登录着 B 时，
-// 订单归 A。否则 A 用微信付的款会记到 B 的账户上。
+// 新单归 A。否则 A 用微信付的款会记到 B 的账户上。
 // ponytail: 断言建单落库那一刻的 user_id——JSAPI 预下单在写库之后才发生且需真商户号，
 // 故此处预下单必失败、接口回"下单失败"，但归属判定已经钉死在订单行里。
 func TestCreateAgentJsapiTopUpPaysIntoOpenidAccountNotSessionUser(t *testing.T) {
@@ -99,11 +119,14 @@ func TestCreateAgentJsapiTopUpPaysIntoOpenidAccountNotSessionUser(t *testing.T) 
 		Status: common.UserStatusEnabled}
 	require.NoError(t, model.DB.Create(payer).Error)
 	require.NoError(t, model.DB.Create(bystander).Error)
+	seedPendingAgentOrder(t, 5)
 
-	w := postAgentJsapi(newAgentJsapiTestEngine(t, "o-mp-payer", 22), `{"amount_yuan":1}`)
+	w := postAgentJsapi(newAgentJsapiTestEngine(t, "o-mp-payer", 22),
+		`{"out_trade_no":"`+agentJsapiTradeNo+`"}`)
 	assert.Contains(t, w.Body.String(), "下单失败") // 假商户号，预下单必失败
 
 	var got model.TopUp
-	require.NoError(t, model.DB.Where("user_id <> 0").First(&got).Error)
+	require.NoError(t, model.DB.Where("trade_no <> ?", agentJsapiTradeNo).First(&got).Error)
 	assert.Equal(t, 11, got.UserId, "订单必须归付款微信号所属账户，而非当前登录态账户")
+	assert.InDelta(t, 5, got.Money, 1e-9, "金额必须取自原单，不是前端传入")
 }

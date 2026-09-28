@@ -21,8 +21,10 @@ import { useTranslation } from 'react-i18next'
 import { ExternalLink } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
+import { convertToWechatJsapiPay } from '../api'
 import { parseWechatAgentOrder } from '../lib/agent-order'
 import { readClaims, saveClaim } from '../lib/claim-storage'
+import { isWeChatBrowser, retryWechatJsapiOauth } from '../lib/wechat-env'
 import { ClaimCard } from './claim-card'
 
 type WechatQrCardProps = {
@@ -51,9 +53,36 @@ export function WechatQrCard({ codeUrl, context }: WechatQrCardProps) {
     return order
   })
   const [copied, setCopied] = useState(false)
+  const [paying, setPaying] = useState(false)
+  const [jsapiFailed, setJsapiFailed] = useState(false)
+  const [showQr, setShowQr] = useState(false)
   const isHttp = codeUrl.startsWith('http')
   // 微信内置浏览器认不出 weixin:// 的扫码路径:它没法扫自己屏幕上的码,私有 scheme 也点不开
-  const isWeChat = /MicroMessenger/i.test(navigator.userAgent)
+  const isWeChat = isWeChatBrowser()
+  // 微信内的正解:把这张 Native 单换成 JSAPI 单，直接弹微信支付面板(付款人=当前微信用户)
+  const canPayInWechat = !isHttp && isWeChat && Boolean(parsed?.outTradeNo)
+
+  const payInWechat = async () => {
+    if (!parsed?.outTradeNo) return
+    setPaying(true)
+    setJsapiFailed(false)
+    try {
+      const res = await convertToWechatJsapiPay(parsed.outTradeNo)
+      if (res.message === 'success' && res.data?.pay_url) {
+        window.location.href = res.data.pay_url
+        return
+      }
+      if (res.message === 'wechat_oauth_required') {
+        retryWechatJsapiOauth()
+        return
+      }
+      setJsapiFailed(true)
+    } catch {
+      setJsapiFailed(true)
+    } finally {
+      setPaying(false)
+    }
+  }
 
   const copyLink = () => {
     navigator.clipboard
@@ -74,14 +103,36 @@ export function WechatQrCard({ codeUrl, context }: WechatQrCardProps) {
   return (
     <div className='bg-card my-2 rounded-lg border p-4'>
       <p className='text-sm font-medium'>{t('Scan with WeChat to pay')}</p>
-      <div className='mt-3 flex justify-center'>
-        <div className='rounded-lg bg-white p-3'>
-          <QRCodeSVG value={codeUrl} size={180} />
+      {canPayInWechat && (
+        <div className='mt-3'>
+          <Button className='w-full' disabled={paying} onClick={() => void payInWechat()}>
+            {paying ? t('Preparing payment...') : t('Pay in WeChat')}
+          </Button>
+          {jsapiFailed && (
+            <p className='text-muted-foreground mt-2 text-xs'>
+              {t('Unable to start payment. Please try again later or contact support.')}
+            </p>
+          )}
         </div>
-      </div>
-      {/* 三合一交付:桌面扫码 / 手机与微信内点链接 / 复制粘贴兜底。
-          唯一的宿主判断是下面这条:weixin:// 在微信内既扫不了也点不开,不给出口就是死单。 */}
-      <div className='mt-3 flex items-center gap-2'>
+      )}
+      {/* 微信内已有"微信里付款"这条正解，二维码就退成换设备时的次要入口：
+          再摆一张大码、同时告诉用户"扫本机屏幕无效"是自相矛盾的。 */}
+      {canPayInWechat && !showQr ? (
+        <button
+          type='button'
+          className='text-muted-foreground mt-2 text-xs underline-offset-4 hover:underline'
+          onClick={() => setShowQr(true)}
+        >
+          {t('Show QR code to pay on another device')}
+        </button>
+      ) : (
+        <>
+          <div className='mt-3 flex justify-center'>
+            <div className='rounded-lg bg-white p-3'>
+              <QRCodeSVG value={codeUrl} size={180} />
+            </div>
+          </div>
+          <div className='mt-3 flex items-center gap-2'>
         <p className='text-muted-foreground min-w-0 flex-1 break-all text-[11px]'>
           {codeUrl}
         </p>
@@ -107,12 +158,14 @@ export function WechatQrCard({ codeUrl, context }: WechatQrCardProps) {
           {copied ? t('Copied') : t('Copy')}
         </Button>
       </div>
-      {!isHttp && isWeChat && (
+      {!isHttp && isWeChat && !canPayInWechat && (
         <p className='text-muted-foreground mt-2 text-xs leading-relaxed'>
           {t(
             'Copy this link and send it to any WeChat chat (e.g. File Transfer), then tap it to pay. Scanning on this phone will not work inside WeChat.'
           )}
         </p>
+      )}
+        </>
       )}
       {parsed?.claimUrl && (
         <a

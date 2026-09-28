@@ -16,11 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useEffect } from 'react'
 import { z } from 'zod'
 import { createFileRoute, redirect, useSearch } from '@tanstack/react-router'
 import { PublicLayout } from '@/components/layout'
 import { isSidebarModuleEnabled } from '@/lib/nav-modules'
 import { AgentChat } from '@/features/agent-chat'
+import { ensureWechatJsapiOpenid } from '@/features/agent-chat/lib/wechat-env'
 
 // 跨端认领入口: 智能体把 /agent?claim_token=<token> 发给用户,点开即挂载认领卡片。
 // out_trade_no 只作展示/去重键,可缺省。非法值由 zod 吃掉(退化成无参数),不报错——
@@ -46,6 +48,11 @@ function AgentPage() {
   const { claim_token: claimToken, out_trade_no: outTradeNo } = useSearch({
     from: '/agent',
   })
+  // 微信内进本页先静默换一次 openid(不弹授权框)，"在微信里付款"才有付款人身份。
+  // 只挂在独立页、不挂 widget：站点其他页面不该被一次跳转劫持。
+  useEffect(() => {
+    ensureWechatJsapiOpenid()
+  }, [])
   return (
     <PublicLayout showMainContainer={false}>
       {/* PublicHeader 是 fixed h-16(sm:h-20),用 mt 顶开而非 pt,高度相应扣减,底部留 2rem */}

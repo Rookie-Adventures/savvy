@@ -171,20 +171,24 @@ func tryCompleteWechatAgentByQuery(topUp *model.TopUp, clientIP string) {
 	}
 }
 
-// AgentJsapiTopUpRequest widget 在微信内自助下单的请求体。
+// AgentJsapiTopUpRequest widget 在微信内换 JSAPI 单只需交订单号——金额由服务端从那张
+// 已落库的 pending 单里读，前端没有申报金额的权力。
 type AgentJsapiTopUpRequest struct {
-	AmountYuan float64 `json:"amount_yuan"`
+	OutTradeNo string `json:"out_trade_no"`
 }
 
-// CreateAgentJsapiTopUp 微信内 widget 专用：用静默 OAuth 存进 session 的服务号 openid 走
-// JSAPI 下单，只回支付页 URL；付款人=当前微信用户，从根上避开 X402 Native 单
-// 「归属服务端绑定账号、别人打开报『请勿使用他人的支付链接』」的问题。
+// CreateAgentJsapiTopUp 微信内 widget 专用：把 agent 已建的 Native 单换成一张 JSAPI 单，
+// 用静默 OAuth 存进 session 的服务号 openid 下单，只回支付页 URL。付款人=当前微信用户，
+// 从根上避开 X402/Native 单「归属服务端绑定账号、别人打开报『请勿使用他人的支付链接』」。
 //
 // 与 /agent/wechat/topup/create 的分工：那条给服务端 agent（savvy-mcp 是服务器到服务器调用，
 // 拿不到用户 cookie，只能出 Native 扫码单）；这条由浏览器里的 widget 直接调，带自己的 session。
+//
+// 原 Native 单**不去标记失败**：用户真扫了它照样正常入账；没扫就 2 小时自动过期。
+// 反过来若置为 failed，notify 的 pending→success 翻转会被挡住，等于把付了钱的人锁在外面。
 func CreateAgentJsapiTopUp(c *gin.Context) {
 	var req AgentJsapiTopUpRequest
-	if err := c.ShouldBindJSON(&req); err != nil || req.AmountYuan <= 0 {
+	if err := c.ShouldBindJSON(&req); err != nil || req.OutTradeNo == "" {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
 		return
 	}
@@ -194,10 +198,19 @@ func CreateAgentJsapiTopUp(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "wechat_oauth_required", "data": nil})
 		return
 	}
-	data, err := CreateAgentMpJsapiTopUp(openid, req.AmountYuan, c.GetInt("id"))
+	order := model.GetTopUpByTradeNo(req.OutTradeNo)
+	if order == nil || order.PaymentProvider != model.PaymentProviderWechatAgent {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单不存在"})
+		return
+	}
+	if order.Status != common.TopUpStatusPending {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单已处理，请刷新查看到账"})
+		return
+	}
+	data, err := CreateAgentMpJsapiTopUp(openid, order.Money, c.GetInt("id"))
 	if err != nil {
-		logger.LogError(c.Request.Context(), fmt.Sprintf("agent jsapi topup failed: user=%d amount=%.2f err=%v",
-			c.GetInt("id"), req.AmountYuan, err))
+		logger.LogError(c.Request.Context(), fmt.Sprintf("agent jsapi topup failed: trade_no=%s user=%d err=%v",
+			req.OutTradeNo, c.GetInt("id"), err))
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "下单失败"})
 		return
 	}

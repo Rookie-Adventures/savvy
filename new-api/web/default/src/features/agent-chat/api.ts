@@ -43,7 +43,6 @@ export async function sendAgentMessage(
 }
 
 export type AgentTopUpResponse<T> = { message: string; data?: T }
-
 /** 登记 MCP 订单换认领凭据(游客可用,登录态自动绑单)。 */
 export async function registerAgentTopUp(outTradeNo: string) {
   const res = await api.post(
@@ -75,4 +74,23 @@ export async function claimAgentTopUp(claimToken: string) {
     { skipBusinessError: true } as Record<string, unknown>
   )
   return res.data as AgentTopUpResponse<{ amount: number }>
+}
+
+/**
+ * 微信内把 agent 建好的 Native 单换成一张 JSAPI 单，返回支付页 URL。
+ * 只交订单号——金额由服务端读原单，前端没有申报金额的权力。
+ * message=wechat_oauth_required 时调用方应跳静默授权后重试。
+ */
+export async function convertToWechatJsapiPay(outTradeNo: string) {
+  const res = await api.post(
+    '/api/user/agent/wechat/jsapi/topup',
+    { out_trade_no: outTradeNo },
+    { skipBusinessError: true } as Record<string, unknown>
+  )
+  return res.data as AgentTopUpResponse<{
+    pay_url: string
+    out_trade_no: string
+    claim_token: string
+    amount_yuan: number
+  }>
 }

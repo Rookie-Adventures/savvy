@@ -717,6 +717,7 @@
     "Top-up credited to your account": "充值已到账",
     "Scan with WeChat to pay": "用微信扫描二维码支付",
     "Open claim page after payment": "付款后打开认领页",
+    "Copy this link and send it to any WeChat chat (e.g. File Transfer), then tap it to pay. Scanning on this phone will not work inside WeChat.": "把这条链接复制后发到微信任意聊天（如「文件传输助手」），再点开即可付款；在微信里扫本机屏幕上的二维码无效。",
     "ChatCompletions -> Responses Compatibility": "ChatCompletions → 响应兼容",
     "ChatGPT Subscription (Codex)": "ChatGPT Subscription (Codex)",
     "Check for updates": "检查更新",

@@ -156,7 +156,8 @@ export function AgentChat({ onClose, claimToken, outTradeNo }: AgentChatProps = 
               )}
             </div>
           </ConversationContent>
-          <ConversationScrollButton />
+          {/* 实心底 + 阴影:outline 半透明会让支付卡链接文字从按钮背后透出来,看着脏 */}
+          <ConversationScrollButton className='bg-background shadow-md' />
         </Conversation>
       </div>
 

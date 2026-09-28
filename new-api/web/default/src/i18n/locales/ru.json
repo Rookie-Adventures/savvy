@@ -709,6 +709,7 @@
     "Top-up credited to your account": "Пополнение зачислено на ваш аккаунт",
     "Scan with WeChat to pay": "Отсканируйте QR-код в WeChat для оплаты",
     "Open claim page after payment": "После оплаты откройте страницу получения",
+    "Copy this link and send it to any WeChat chat (e.g. File Transfer), then tap it to pay. Scanning on this phone will not work inside WeChat.": "Скопируйте эту ссылку и отправьте её в любой чат WeChat (например, «Пересылка файлов»), затем откройте её, чтобы оплатить. Сканировать QR-код на этом телефоне внутри WeChat бесполезно.",
     "ChatCompletions -> Responses Compatibility": "Совместимость ChatCompletions → Ответы",
     "ChatGPT Subscription (Codex)": "ChatGPT Subscription (Codex)",
     "Check for updates": "Проверить обновления",

@@ -709,6 +709,7 @@
     "Top-up credited to your account": "チャージが入金されました",
     "Scan with WeChat to pay": "WeChatでQRコードをスキャンして支払い",
     "Open claim page after payment": "支払い後に受け取りページを開く",
+    "Copy this link and send it to any WeChat chat (e.g. File Transfer), then tap it to pay. Scanning on this phone will not work inside WeChat.": "このリンクをコピーして任意のWeChatチャット（例：ファイルアシスタント）に送信し、タップして支払いしてください。WeChat内でこの端末のQRコードをスキャンしても無効です。",
     "ChatCompletions -> Responses Compatibility": "ChatCompletions → レスポンス互換",
     "ChatGPT Subscription (Codex)": "ChatGPT Subscription (Codex)",
     "Check for updates": "更新を確認",

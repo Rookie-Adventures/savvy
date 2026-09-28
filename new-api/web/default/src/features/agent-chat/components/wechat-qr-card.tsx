@@ -52,6 +52,8 @@ export function WechatQrCard({ codeUrl, context }: WechatQrCardProps) {
   })
   const [copied, setCopied] = useState(false)
   const isHttp = codeUrl.startsWith('http')
+  // 微信内置浏览器认不出 weixin:// 的扫码路径:它没法扫自己屏幕上的码,私有 scheme 也点不开
+  const isWeChat = /MicroMessenger/i.test(navigator.userAgent)
 
   const copyLink = () => {
     navigator.clipboard
@@ -77,7 +79,8 @@ export function WechatQrCard({ codeUrl, context }: WechatQrCardProps) {
           <QRCodeSVG value={codeUrl} size={180} />
         </div>
       </div>
-      {/* 三合一交付:桌面扫码 / 手机与微信内点链接 / 复制粘贴兜底,不判断宿主环境 */}
+      {/* 三合一交付:桌面扫码 / 手机与微信内点链接 / 复制粘贴兜底。
+          唯一的宿主判断是下面这条:weixin:// 在微信内既扫不了也点不开,不给出口就是死单。 */}
       <div className='mt-3 flex items-center gap-2'>
         <p className='text-muted-foreground min-w-0 flex-1 break-all text-[11px]'>
           {codeUrl}
@@ -104,6 +107,13 @@ export function WechatQrCard({ codeUrl, context }: WechatQrCardProps) {
           {copied ? t('Copied') : t('Copy')}
         </Button>
       </div>
+      {!isHttp && isWeChat && (
+        <p className='text-muted-foreground mt-2 text-xs leading-relaxed'>
+          {t(
+            'Copy this link and send it to any WeChat chat (e.g. File Transfer), then tap it to pay. Scanning on this phone will not work inside WeChat.'
+          )}
+        </p>
+      )}
       {parsed?.claimUrl && (
         <a
           href={parsed.claimUrl}

@@ -43,7 +43,7 @@
 
 ## 待办 / 尾巴
 
-1. **商户平台配置**：JSAPI 支付授权目录目前只有 `https://scheng.net/`，而发起 `WeixinJSBridge` 的页面是 `https://scheng.net/api/mp/pay`，需追加 `https://scheng.net/api/`，且必须挂在**服务号 AppID**下。
+1. ~~**商户平台配置**：JSAPI 支付授权目录需追加 `https://scheng.net/api/`~~ **作废（同日查官方规则后撤回）**：官方「配置JSAPI支付授权目录」明确——**只配置到域名**（如 `https://scheng.net/`）时「只校验实际支付页面协议(https/http)和域名是否与配置的一致，**不校验域名后面的多级目录**」。我们商户号现有配置正是域名形式，**已覆盖 `/api/mp/pay` 等全部子路径，无需追加**。残余注意项：域名大小写敏感、必须以 `/` 结尾。另：授权目录配在**商户号**上，与 AppID 无关；AppID 的要求是"下单 appid 与 openid 同号"，属另一件事。
 2. **要让"对话内直入账"成真，二选一**（尚未决策）：
    - ① widget 在微信内**绕开 X402**，复用已有服务号 JSAPI 链路（`CreateAgentMpJsapiTopUp` → `/api/mp/pay`）。付款人=当前微信用户，天然同号，无新协议风险。**倾向此路。**
    - ② 真把 X402 接 JSAPI（`createJsapiOrder` + `pay_data.type='prepay_id'`）。**未验证前提**：SkillHub 预下单是否接受服务号 AppID 产生的 prepay_id（官方 FAQ 未涉及跨 AppID 限制）。若做，按铁律三 Go 侧与 `wechatpay-direct-v3` SDK 侧须同步改（SDK 现硬编码 `createNativeOrder`）。

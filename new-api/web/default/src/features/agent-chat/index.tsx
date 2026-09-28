@@ -31,6 +31,7 @@ import { Loader } from '@/components/ai-elements/loader'
 import { PaymentCard } from './components/payment-card'
 import { WechatQrCard } from './components/wechat-qr-card'
 import { ChatHeader } from './components/chat-header'
+import { ClaimBanner } from './components/claim-banner'
 import { extractPayLinks, stripPayLinks } from './lib/pay-links'
 import { sendAgentMessage } from './api'
 
@@ -42,12 +43,15 @@ type ChatMessage = {
 type AgentChatProps = {
   // 仅 widget 传入:头部栏渲染关闭按钮;独立页不传
   onClose?: () => void
+  // 仅独立页传入:URL 上的 /agent?claim_token= 跨端直达凭据
+  claimToken?: string
+  outTradeNo?: string
 }
 
 // 百炼云端会话 id,存 localStorage 续多轮(对齐 playground storage 范式)
 const SESSION_KEY = 'agent_chat_session_id'
 
-export function AgentChat({ onClose }: AgentChatProps = {}) {
+export function AgentChat({ onClose, claimToken, outTradeNo }: AgentChatProps = {}) {
   const { t } = useTranslation()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -103,22 +107,22 @@ export function AgentChat({ onClose }: AgentChatProps = {}) {
   return (
     <div className='relative flex size-full flex-col overflow-hidden'>
       <ChatHeader onClear={clearConversation} onClose={onClose} />
+      {/* 认领卡在标题条之下、消息流之上:它讲的是"这笔钱",跟着聊天走才不会像面板顶上多出一条游离横条 */}
+      <ClaimBanner claimToken={claimToken} outTradeNo={outTradeNo} />
       <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
         <Conversation className='flex-1'>
-          <ConversationContent className='p-0'>
-            {/* pb 留悬浮"滚到底部"按钮的安全区,否则最后一条消息的支付卡链接行会被它盖住 */}
-            <div className='mx-auto w-full max-w-3xl px-4 pt-6 pb-20'>
+          {/* justify-end: 消息不足一屏时贴底,和满屏时的滚动锚点一致,否则顶部对齐会在
+              气泡和输入框之间留一大片空洞(手机端看着像页面坏了) */}
+          <ConversationContent className='flex min-h-full flex-col justify-end p-0'>
+            {/* 支付卡链接行的避让由滚动按钮自身负责(见下方 bottom 值),不用 pb 撑死空间 */}
+            <div className='mx-auto w-full max-w-3xl px-4 pt-6 pb-3'>
               {messages.map((m, i) => {
                 const payLinks =
                   m.role === 'assistant' ? extractPayLinks(m.content) : []
                 const displayText =
                   payLinks.length > 0 ? stripPayLinks(m.content) : m.content
                 return (
-                  <Message
-                    key={i}
-                    from={m.role}
-                    className='group flex-row-reverse'
-                  >
+                  <Message key={i} from={m.role}>
                     <MessageContent>
                       {displayText}
                       {payLinks.map((link) =>

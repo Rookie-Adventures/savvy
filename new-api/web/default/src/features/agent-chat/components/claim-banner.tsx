@@ -17,6 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { ClaimCard } from './claim-card'
 import { mergeUrlClaim, readClaims, type ClaimRecord } from '../lib/claim-storage'
 
@@ -29,17 +31,38 @@ type ClaimBannerProps = {
 
 // 登录/注册回跳后聊天消息态已丢,未认领单由这里接力(sessionStorage 恢复)。
 // widget 浮窗与 /agent 独立页共用;挂载时读取,认领完成后下次挂载自动消失。
+// 多笔时折叠成一行:每笔都摊开一个大框会先吃掉聊天区高度(手机端被压成细条),
+// 而一排一模一样的灰字既没信息量也看不出该点哪个。
 export function ClaimBanner({ claimToken, outTradeNo }: ClaimBannerProps) {
+  const { t } = useTranslation()
   const [claims] = useState<ClaimRecord[]>(() => {
     if (claimToken) mergeUrlClaim(claimToken, outTradeNo)
     return readClaims().filter((r) => !r.done)
   })
+  const [expanded, setExpanded] = useState(false)
   if (claims.length === 0) return null
   return (
-    <div className='px-1'>
-      {claims.map((r) => (
-        <ClaimCard key={r.outTradeNo} outTradeNo={r.outTradeNo} token={r.token} />
-      ))}
+    <div className='px-4 pt-3'>
+      {claims.length > 1 && (
+        <button
+          type='button'
+          className='text-muted-foreground my-1 flex w-full items-center gap-1.5 rounded-lg px-2 py-1 text-xs hover:bg-muted'
+          onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+        >
+          {expanded ? (
+            <ChevronDown className='size-3.5' aria-hidden='true' />
+          ) : (
+            <ChevronRight className='size-3.5' aria-hidden='true' />
+          )}
+          {t('Unclaimed top-ups')}
+          <span className='ml-auto tabular-nums opacity-60'>{claims.length}</span>
+        </button>
+      )}
+      {(expanded || claims.length === 1) &&
+        claims.map((r) => (
+          <ClaimCard key={r.outTradeNo} outTradeNo={r.outTradeNo} token={r.token} />
+        ))}
     </div>
   )
 }

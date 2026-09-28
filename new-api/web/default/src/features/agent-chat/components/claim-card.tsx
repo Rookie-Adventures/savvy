@@ -86,14 +86,18 @@ export function ClaimCard({ outTradeNo, token }: ClaimCardProps) {
 
   if (phase === 'credited')
     return (
-      <div className='bg-card my-2 rounded-lg border p-4 text-sm'>
+      <div className='my-1 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs'>
+        <span className='bg-primary size-1.5 shrink-0 rounded-full' aria-hidden='true' />
         {t('Top-up credited to your account')}
       </div>
     )
   if (phase === 'waiting')
     return (
-      <div className='text-muted-foreground bg-card my-2 rounded-lg border p-4 text-sm'>
+      <div className='text-muted-foreground my-1 flex items-center gap-2 rounded-lg border border-dashed px-3 py-1.5 text-xs'>
+        <span className='bg-muted-foreground/50 size-1.5 shrink-0 animate-pulse rounded-full' aria-hidden='true' />
         {t('Waiting for payment confirmation...')}
+        {/* 多笔待认领时靠尾号区分,否则一排一模一样的灰字无从下手 */}
+        <span className='ml-auto shrink-0 opacity-60'>{outTradeNo.slice(-6)}</span>
       </div>
     )
   return (

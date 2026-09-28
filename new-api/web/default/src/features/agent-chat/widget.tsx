@@ -23,11 +23,10 @@ import { Button } from '@/components/ui/button'
 import { useStatus } from '@/hooks/use-status'
 import { isSidebarModuleEnabled } from '@/lib/nav-modules'
 import { AgentChat } from './index'
-import { ClaimBanner } from './components/claim-banner'
 
 // 全站右下角悬浮智能体入口。显隐复用原 /agent-chat 的模块开关(chat.agent_chat),
 // 语义从"侧边栏模块"变为"widget 显隐",配置键不动,免迁移。
-// 关闭按钮在聊天头部栏(ChatHeader),浮窗打开时每次挂载 ClaimBanner 恢复未认领单。
+// 关闭按钮在聊天头部栏(ChatHeader);未认领单的 ClaimBanner 由 AgentChat 内部挂载。
 export function AgentWidget(props: { onOpenChange?: (open: boolean) => void }) {
   const { t } = useTranslation()
   const { status } = useStatus()
@@ -55,9 +54,6 @@ export function AgentWidget(props: { onOpenChange?: (open: boolean) => void }) {
       </Button>
       {open && (
         <div className={`bg-background fixed z-50 flex h-[min(640px,80vh)] flex-col overflow-hidden rounded-xl border shadow-xl max-sm:right-4 max-sm:w-[min(420px,calc(100vw-2rem))] sm:right-[4.75rem] sm:bottom-4 sm:w-[min(420px,calc(100vw-6.75rem))] ${wecomFabOn ? 'max-sm:bottom-36' : 'max-sm:bottom-20'}`}>
-          <div className='overflow-y-auto'>
-            <ClaimBanner />
-          </div>
           <div className='min-h-0 flex-1'>
             <AgentChat onClose={() => setOpenState(false)} />
           </div>

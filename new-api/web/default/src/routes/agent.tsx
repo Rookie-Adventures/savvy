@@ -21,7 +21,6 @@ import { createFileRoute, redirect, useSearch } from '@tanstack/react-router'
 import { PublicLayout } from '@/components/layout'
 import { isSidebarModuleEnabled } from '@/lib/nav-modules'
 import { AgentChat } from '@/features/agent-chat'
-import { ClaimBanner } from '@/features/agent-chat/components/claim-banner'
 
 // 跨端认领入口: 智能体把 /agent?claim_token=<token> 发给用户,点开即挂载认领卡片。
 // out_trade_no 只作展示/去重键,可缺省。非法值由 zod 吃掉(退化成无参数),不报错——
@@ -50,10 +49,9 @@ function AgentPage() {
   return (
     <PublicLayout showMainContainer={false}>
       {/* PublicHeader 是 fixed h-16(sm:h-20),用 mt 顶开而非 pt,高度相应扣减,底部留 2rem */}
-      <div className='mx-auto mt-16 flex h-[calc(100dvh-6rem)] w-full max-w-3xl flex-col gap-2 px-4 pb-4 sm:mt-20 sm:h-[calc(100dvh-7rem)]'>
-        <ClaimBanner claimToken={claimToken} outTradeNo={outTradeNo} />
+      <div className='mx-auto mt-16 flex h-[calc(100dvh-6rem)] w-full max-w-3xl flex-col px-4 pb-4 sm:mt-20 sm:h-[calc(100dvh-7rem)]'>
         <div className='bg-background min-h-0 flex-1 overflow-hidden rounded-xl border shadow-sm'>
-          <AgentChat />
+          <AgentChat claimToken={claimToken} outTradeNo={outTradeNo} />
         </div>
       </div>
     </PublicLayout>

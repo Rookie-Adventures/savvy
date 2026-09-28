@@ -17,6 +17,7 @@ import (
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
@@ -168,4 +169,43 @@ func tryCompleteWechatAgentByQuery(topUp *model.TopUp, clientIP string) {
 	if cerr := completeAgentTopUp(fresh, float64(totalFen)/100, audit, clientIP, model.PaymentProviderWechatAgent); cerr != nil {
 		common.SysError("wechat agent topup query-complete failed: " + cerr.Error())
 	}
+}
+
+// AgentJsapiTopUpRequest widget 在微信内自助下单的请求体。
+type AgentJsapiTopUpRequest struct {
+	AmountYuan float64 `json:"amount_yuan"`
+}
+
+// CreateAgentJsapiTopUp 微信内 widget 专用：用静默 OAuth 存进 session 的服务号 openid 走
+// JSAPI 下单，只回支付页 URL；付款人=当前微信用户，从根上避开 X402 Native 单
+// 「归属服务端绑定账号、别人打开报『请勿使用他人的支付链接』」的问题。
+//
+// 与 /agent/wechat/topup/create 的分工：那条给服务端 agent（savvy-mcp 是服务器到服务器调用，
+// 拿不到用户 cookie，只能出 Native 扫码单）；这条由浏览器里的 widget 直接调，带自己的 session。
+func CreateAgentJsapiTopUp(c *gin.Context) {
+	var req AgentJsapiTopUpRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.AmountYuan <= 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
+		return
+	}
+	openid, _ := sessions.Default(c).Get(wechatJsapiOpenidSessionKey).(string)
+	if openid == "" {
+		// 对齐 RequestWechatJsapiPay 的既有约定：前端据此跳静默授权后重试
+		c.JSON(http.StatusOK, gin.H{"message": "wechat_oauth_required", "data": nil})
+		return
+	}
+	data, err := CreateAgentMpJsapiTopUp(openid, req.AmountYuan, c.GetInt("id"))
+	if err != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("agent jsapi topup failed: user=%d amount=%.2f err=%v",
+			c.GetInt("id"), req.AmountYuan, err))
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "下单失败"})
+		return
+	}
+	// 不回 appId/paySign 等调起参数：/api/mp/pay 页会凭 claim_token 自取，前端不需要碰
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{
+		"pay_url":      data["pay_url"],
+		"out_trade_no": data["out_trade_no"],
+		"claim_token":  data["claim_token"],
+		"amount_yuan":  data["amount_yuan"],
+	}})
 }

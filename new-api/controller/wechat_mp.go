@@ -133,7 +133,7 @@ func mpHandleMessage(ctx context.Context, openid, userText string) {
 			_ = service.SendCustomTextMessage(ctx, openid, "好的，请告诉我充值金额（例如：充值 50 元）。")
 			return
 		}
-		data, err := CreateAgentMpJsapiTopUp(openid, route.amount)
+		data, err := CreateAgentMpJsapiTopUp(openid, route.amount, 0)
 		if err != nil {
 			logger.LogError(ctx, fmt.Sprintf("mp jsapi topup failed: openid=%s err=%v", openid, err))
 			_ = service.SendCustomTextMessage(ctx, openid, "充值下单失败，请稍后重试或联系客服。")
@@ -222,7 +222,8 @@ func extractDays(text string) int {
 
 // CreateAgentMpJsapiTopUp agent 触发、带 openid 的 JSAPI 充值:建单 + JSAPI 预下单 + 返回 H5 支付页 URL。
 // 与服务号内原生体验对应:用户在服务号点图文→进 H5 页→WeixinJSBridge 调起支付 sheet。
-func CreateAgentMpJsapiTopUp(openid string, amountYuan float64) (map[string]any, error) {
+// sessionUserId 为浏览器侧登录态(游客传 0),仅在该微信尚未绑号时用来落绑定关系。
+func CreateAgentMpJsapiTopUp(openid string, amountYuan float64, sessionUserId int) (map[string]any, error) {
 	totalCents, ok := agentTopUpAmountCents(amountYuan)
 	if !ok {
 		return nil, fmt.Errorf("amount out of range")
@@ -236,10 +237,14 @@ func CreateAgentMpJsapiTopUp(openid string, amountYuan float64) (map[string]any,
 		return nil, err
 	}
 	outTradeNo := fmt.Sprintf("WXAGT%s%s", time.Now().Format("20060102150405"), common.GetRandomString(10))
-	userId := 0
-	// 该微信已绑账户(此前认领过)→ 直接开登录单,notify 命中现成自动入账路径,无需再认领
+	userId := sessionUserId
+	// 付款人由 openid 决定(JSAPI 只能由该微信号完成支付),所以 openid 已绑的账户**优先于**
+	// 当前登录态——否则 A 的微信付款会被记到 B 的账户上。
 	if uid, bound := model.GetUserIdByMpOpenid(openid); bound {
 		userId = uid
+	} else if userId != 0 {
+		// 首次遇到"已登录 + 本微信号":当场绑定,此人此后充值直接开登录单、无需再认领
+		_ = model.BindMpOpenid(userId, openid)
 	}
 	topUp := &model.TopUp{
 		UserId:          userId, // 0=服务号游客单,付款后凭 claim_token 认领并绑定

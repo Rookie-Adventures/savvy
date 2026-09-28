@@ -111,6 +111,8 @@ func SetApiRouter(router *gin.Engine) {
 			userRoute.POST("/agent/chat", middleware.TryUserAuth(), middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.AgentChat)
 			// ponytail: 微信智能体代触发原生充值(Native 扫码,无需 weixinpay 插件/AI 专属卡),回调复用 /wechat/notify
 			userRoute.POST("/agent/wechat/topup/create", middleware.TryUserAuth(), middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.CreateAgentWechatTopUp)
+			// 微信内 widget 凭 session 里的服务号 openid 自助下 JSAPI 单(付款人=当前微信用户)
+			userRoute.POST("/agent/wechat/jsapi/topup", middleware.TryUserAuth(), middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.CreateAgentJsapiTopUp)
 			userRoute.POST("/agent/topup/register", middleware.TryUserAuth(), middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.RegisterAgentTopUp)
 			// ponytail: status 是认领卡片 8s 轮询的只读接口(token 即凭据),Critical 档 20次/20min 会被轮询打爆(429),用 Global 档
 			userRoute.GET("/agent/topup/status", middleware.GlobalAPIRateLimit(), controller.AgentTopUpStatus)

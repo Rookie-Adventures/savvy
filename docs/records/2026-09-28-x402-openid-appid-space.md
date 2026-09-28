@@ -44,8 +44,32 @@
 ## 待办 / 尾巴
 
 1. ~~**商户平台配置**：JSAPI 支付授权目录需追加 `https://scheng.net/api/`~~ **作废（同日查官方规则后撤回）**：官方「配置JSAPI支付授权目录」明确——**只配置到域名**（如 `https://scheng.net/`）时「只校验实际支付页面协议(https/http)和域名是否与配置的一致，**不校验域名后面的多级目录**」。我们商户号现有配置正是域名形式，**已覆盖 `/api/mp/pay` 等全部子路径，无需追加**。残余注意项：域名大小写敏感、必须以 `/` 结尾。另：授权目录配在**商户号**上，与 AppID 无关；AppID 的要求是"下单 appid 与 openid 同号"，属另一件事。
-2. **要让"对话内直入账"成真，二选一**（尚未决策）：
-   - ① widget 在微信内**绕开 X402**，复用已有服务号 JSAPI 链路（`CreateAgentMpJsapiTopUp` → `/api/mp/pay`）。付款人=当前微信用户，天然同号，无新协议风险。**倾向此路。**
-   - ② 真把 X402 接 JSAPI（`createJsapiOrder` + `pay_data.type='prepay_id'`）。**未验证前提**：SkillHub 预下单是否接受服务号 AppID 产生的 prepay_id（官方 FAQ 未涉及跨 AppID 限制）。若做，按铁律三 Go 侧与 `wechatpay-direct-v3` SDK 侧须同步改（SDK 现硬编码 `createNativeOrder`）。
-3. **共享服务端 weixinpay 插件的定位**需明确：它对"客户自带 agent 客户端"的交付形态有效，对自家 widget 无效；是否从 zeroclaw `allowed_tools` 摘除待 ①/② 决策后定。
-4. 用户微信身份绑定链（扫码登录是否真在生产使用、`WeChatServerAddress` 代理配的是哪个 AppID）需独立核实——两列全 0 说明该链可能整体未被使用。
+2. ~~**要让"对话内直入账"成真，二选一（尚未决策）**~~ **已定案（2026-09-28 P1/P2 探针后）**：
+   - **① 采纳**：widget 在微信内**绕开 X402**，复用已有服务号 JSAPI 链路（`CreateAgentMpJsapiTopUp` → `/api/mp/pay`）。付款人=当前微信用户，天然同号，无未验证前提。
+   - **② 否决**：X402 接 JSAPI 在协议层可行（见 P1），但 **payment_code 的兑换只存在于受支持宿主的插件内部**（见 P2），自家网页无法自助兑换 → 走不通。`/api/skill/invoke` 与 X402 原样保留，服务第三方 agent。
+3. **共享服务端 weixinpay 插件的定位**需明确：它对"客户自带 agent 客户端"的交付形态有效，对自家 widget 无效；是否从 zeroclaw `allowed_tools` 摘除待 ① 落地后定。
+4. 用户微信身份绑定链（扫码登录是否真在生产使用、`WeChatServerAddress` 代理配的是哪个 AppID）需独立核实——两列全 0 说明该链可能整体未被使用。**① 落地时这条必须一并解决**：JSAPI 下单要有当前用户的服务号 openid。
+
+## P1 / P2 探针实测（含复现方法，免得下次重探）
+
+**P1 — SkillHub X402 预下单接受哪种 `pay_data.type`？结论：不拒 `prepay_id`，且不校验 value 真实性。**
+用官方 SDK 直接调预下单，两组都填**假值**：
+
+```
+对照组 code_url(假值)  => 接受, 拿到 payment_code(长度 36)
+P1  prepay_id (假值)   => 接受, 拿到 payment_code(长度 36)
+```
+
+推论：预下单只是"把传入字符串封装+签一张名"，**不向微信支付侧核单**。所以 `payment_code` **不能当作"该订单真实存在"的证据**；真正的校验发生在用户授权那一环。目前不构成漏洞（只有我们自己调），但写方案时别把它当凭证。
+
+**P2 — 我们自己的页面能不能兑换 payment_code？结论：不能。**
+拿假码直调官方 `weixinpay_pay`，返回 **「此模式暂不支持微信AI支付，请到电脑端使用」** —— 在校验支付码**之前**就被宿主/会话模式门禁拦下。工具签名亦注明 `agentSessionId` 由宿主自动注入"当前 CodeBuddy 会话 ID"。故兑换路径绑在受支持宿主 + 其会话/设备上，商户侧无可调用端点。
+
+**复现要点（省下次踩坑）**：
+- 配置来源是 **`/opt/savvy/deploy/.env`**，不是 options 表（options 表里 `skillpay`/`x402` 键数为 0）。键名：`SKILLPAY_DEVELOPER_ID` / `SKILLPAY_PUB_KEY_ID` / `SKILLPAY_SKILL_ID` / `SKILLPAY_SKILL_VERSION` / `SKILLPAY_PRIVATE_KEY_PATH`。
+- `SKILLPAY_PRIVATE_KEY_PATH` 存的是**容器内路径** `/secrets/skillpay-private.pem`，宿主机真身在 `/opt/savvy/secrets/skillpay-private.pem`。
+- **机B 宿主机没有 node**，要跑 Node 脚本得 `docker cp` 进 `weixinpay-mcp` 容器内执行（用完删掉临时文件）。
+- SDK 零依赖（`node>=14`），入口 `wechatpay-direct-v3/lib/x402-pay.js` 导出 `X402Preorder`；构造必填四项：`developerId / pubKeyId / privateKeyPath / skillId`（漏 `skillId` 会报 `CONFIG_MISSING`）；调法 `preorder(value, transport, payType)`，`payType ∈ {code_url, prepay_id, h5_url}`。
+- 官方插件包 `tenpay-weixinpay-ai-installer` 的 `dist/cli.mjs` 带 `/*__WECHATPAY_JS_ARMORED__*/` 字符串保护，`grep http` / base64 扫描都抽不到端点，别在这上面耗时间。
+- 插件日志 `deploy/data/weixinpay/plugin-data/weixinpay/logs/*.xlog` 是 **mars 加密格式**（文件头 `07 01 00 06`），`strings` 与 zlib 解帧均拿不到 URL，无密钥不可读。
+

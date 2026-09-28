@@ -104,6 +104,9 @@ func SetApiRouter(router *gin.Engine) {
 			// ponytail: JSAPI 静默授权回调在匿名层——微信浏览器跳转导航不携带 New-Api-User 头,
 			// 挂 selfRoute(UserAuth)必 401(09-15 实测);安全性靠 session 中的 state 校验
 			userRoute.GET("/wechat/jsapi/oauth/callback", controller.WechatJsapiOauthCallback)
+			// ponytail: 同一个 start 再开一条 GET——微信浏览器只能导航不能 POST,
+			// widget 侧(?redirect=1&next=/agent)必须走 GET 才能完成静默授权;回跳目标经 session 传递,不吃 URL
+			userRoute.GET("/wechat/jsapi/oauth/start", middleware.CriticalRateLimit(), controller.WechatJsapiOauthStart)
 			// ponytail: 智能体聊天/登记对游客开放(TryUserAuth 有登录态则绑 id),配额与限额在 controller 内区分
 			userRoute.POST("/agent/chat", middleware.TryUserAuth(), middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.AgentChat)
 			// ponytail: 微信智能体代触发原生充值(Native 扫码,无需 weixinpay 插件/AI 专属卡),回调复用 /wechat/notify

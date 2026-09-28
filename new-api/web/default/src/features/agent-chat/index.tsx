@@ -32,7 +32,11 @@ import { PaymentCard } from './components/payment-card'
 import { WechatQrCard } from './components/wechat-qr-card'
 import { ChatHeader } from './components/chat-header'
 import { ClaimBanner } from './components/claim-banner'
-import { extractPayLinks, stripPayLinks } from './lib/pay-links'
+import {
+  extractPayLinks,
+  stripAgentAuthLinks,
+  stripPayLinks,
+} from './lib/pay-links'
 import { sendAgentMessage } from './api'
 
 type ChatMessage = {
@@ -121,14 +125,17 @@ export function AgentChat({ onClose, claimToken, outTradeNo }: AgentChatProps = 
                 const payLinks =
                   m.role === 'assistant' ? extractPayLinks(m.content) : []
                 const displayText =
-                  payLinks.length > 0 ? stripPayLinks(m.content) : m.content
+                  m.role !== 'assistant'
+                    ? m.content
+                    : payLinks.length > 0
+                      ? stripPayLinks(m.content)
+                      : stripAgentAuthLinks(m.content)
                 return (
                   <Message key={i} from={m.role}>
                     <MessageContent>
                       {displayText}
                       {payLinks.map((link) =>
-                        link.startsWith('weixin://') ||
-                        link.includes('payapp.weixin.qq.com') ? (
+                        link.startsWith('weixin://') ? (
                           <WechatQrCard
                             key={link}
                             codeUrl={link}

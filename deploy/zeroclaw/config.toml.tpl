@@ -44,13 +44,16 @@ name = "savvy"
 transport = "http"
 url = "http://savvy-mcp:8000/mcp"
 
-[[mcp.servers]]
-name = "weixinpay"
-transport = "http"
-url = "http://weixinpay-mcp:8100/mcp"
+# 2026-09-29:weixinpay server 整块摘除(原先只在 allowed_tools 里摘工具,清单仍进 prompt)。
+# 实测摘工具后模型确实零调用,但会照抄旧会话里的 payapp 链接形状自己编 sid → 微信报"繁忙"。
+# 连工具形状都不给,才能让路径A在 prompt 层不存在。要恢复:解注释本块并在 bundle servers 加回。
+# [[mcp.servers]]
+# name = "weixinpay"
+# transport = "http"
+# url = "http://weixinpay-mcp:8100/mcp"
 
 [mcp_bundles.topup]
-servers = ["savvy", "weixinpay"]
+servers = ["savvy"]
 
 [skill_bundles.topup]
 

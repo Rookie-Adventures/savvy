@@ -20,18 +20,31 @@ For commercial licensing, please contact support@quantumnous.com
 const URL_RE = /https?:\/\/[^\s<>"'`)\]]+/g
 // 微信 Native 下单返回的 code_url,浏览器打不开,只能渲染成二维码扫码
 const WEIXIN_RE = /weixin:\/\/wxpay\/[^\s<>"'`)\]]+/g
+// 微信 AI 付(X402 路径A)授权页。本宿主不提供该路径,出现即幻觉,不可点也不该点
+const PAYAPP_RE = /https?:\/\/payapp\.weixin\.qq\.com[^\s<>"'`)\]]*/g
 
 /**
  * Extract payment links from agent reply text.
- * ponytail: 认三类——alipay 网关 URL、weixin://wxpay(Native code_url)、
- * payapp.weixin.qq.com(微信AI支付绑定/授权页)。漏判无害(退化为普通文本),误判会弹支付卡
+ * ponytail: 认两类——alipay 网关 URL、weixin://wxpay(Native code_url)。
+ * payapp 曾在此列(路径A),摘除后模型仍会照抄历史里的授权链接,故改为剥掉(见 stripAgentAuthLinks)
  */
 export function extractPayLinks(text: string): string[] {
   const https = [...text.matchAll(URL_RE)]
     .map((m) => m[0])
-    .filter((u) => /alipay/i.test(u) || u.includes('payapp.weixin.qq.com'))
+    .filter((u) => /alipay/i.test(u))
   const wechat = [...text.matchAll(WEIXIN_RE)].map((m) => m[0])
   return [...https, ...wechat]
+}
+
+/**
+ * 剥掉幻觉出来的 AI 付授权链接(连同被剥空的 markdown 链接),不留可点入口。
+ * 与 stripPayLinks 分开:这条对所有消息无条件生效,那条只在识别到支付卡时跑(会收敛空行,
+ * 不该动普通正文的缩进与换行)。
+ */
+export function stripAgentAuthLinks(text: string): string {
+  return text
+    .replaceAll(PAYAPP_RE, '')
+    .replaceAll(/\[[^\]]*\]\(\s*\)/g, '')
 }
 
 /**
@@ -42,9 +55,10 @@ export function extractPayLinks(text: string): string[] {
 export function stripPayLinks(text: string): string {
   const stripped = text
     .replace(URL_RE, (u) =>
-      /alipay/i.test(u) || u.includes('claim_token=') || u.includes('payapp.weixin.qq.com') ? '' : u
+      /alipay/i.test(u) || u.includes('claim_token=') ? '' : u
     )
     .replace(WEIXIN_RE, '')
+    .replace(PAYAPP_RE, '')
   return stripped
     .replaceAll('``', '') // 剥掉反引号包裹的链接后残留的空对
     .replace(/\[[^\]]*\]\(\s*\)/g, '') // markdown 链接被剥成 [text]() 后清掉

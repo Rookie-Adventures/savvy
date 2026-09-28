@@ -864,8 +864,13 @@ func GetUserIdByMpOpenid(openid string) (int, bool) {
 	return bound.Id, true
 }
 
-// GetUserIdByWeChatNativeOpenid 按扫码登录体系(Native AppID 空间)的 openid 反查启用用户。
-// X402 查单/回调解出的 payer.openid 与该列同源(下单即用 WechatAppId),命中即可直入账。
+// GetUserIdByWeChatNativeOpenid 按 wechat_id 列反查启用用户，用于 X402 付款人直入账。
+//
+// ⚠️ 前提尚未成立：本函数假定 wechat_id 与 Native 下单(WechatAppId)产出的 payer.openid
+// 同 AppID 空间，但我们**扫码登录绑的是服务号 AppID(WechatMpAppId)**，openid 按 AppID 隔离、
+// 两空间值永不相等；X402 现走 Native 老号下单，故在 X402 路径上此函数结构性不会命中
+// （2026-09-28 实测：users.wechat_id / mp_openid 两列均 0 条）。未接上同号支付路径前，
+// 不要把它当作已生效能力写进方案。详见 AGENTS.md 铁律三「openid 空间铁律」。
 // 未找到/被禁用一律 (0,false)——禁用账号不得静默入账,回落 claim 链接。
 func GetUserIdByWeChatNativeOpenid(openid string) (int, bool) {
 	if openid == "" {

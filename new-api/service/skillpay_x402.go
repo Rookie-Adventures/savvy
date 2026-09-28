@@ -64,7 +64,9 @@ func BuildSkillPayL2Json(skillId, skillVersion, payType, orderValue string) (str
 				"value": orderValue,
 			},
 		}},
-		"expires_at": fmt.Sprintf("%d", time.Now().Unix()+900),
+		// 官方建议留余量（上限 900s，模板取 14 分钟）：用满 900s 时签名串里的 timestamp
+		// 与平台时钟稍偏差就直接判过期，用户那一单白下。
+		"expires_at": fmt.Sprintf("%d", time.Now().Unix()+14*60),
 	}
 	b, err := common.Marshal(l2)
 	if err != nil {

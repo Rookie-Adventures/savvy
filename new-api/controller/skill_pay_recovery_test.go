@@ -267,7 +267,7 @@ func TestRespondSkillPay402CarriesClaimUrl(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/api/skill/invoke", nil)
-	respondSkillPay402(c, "code-1", "WX402_X", "0.10", "Savvy 额度充值", "https://savvy.test/agent?claim_token=abc")
+	respondSkillPay402(c, "code-1", "WX402_X", 10, "Savvy 额度充值", "https://savvy.test/agent?claim_token=abc")
 
 	assert.Equal(t, http.StatusPaymentRequired, w.Code)
 	assert.Equal(t, "code-1", w.Header().Get("WeixinPay-Required"))
@@ -275,12 +275,21 @@ func TestRespondSkillPay402CarriesClaimUrl(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &out))
 	assert.Equal(t, "https://savvy.test/agent?claim_token=abc", out["claim_url"])
 	assert.NotNil(t, out["claim_hint"])
+	// 双通道契约(官方模板 skill-paid v3.1.1 emit_pay_required_dict)：顶层冗余两键，
+	// 只读 body 顶层的老版 agent 才拉得起支付；amount 是「分」整数，元字符串会差 100 倍。
+	assert.Equal(t, "code-1", out["WeixinPay-Required"])
+	assert.NotEmpty(t, out["prompt"])
+	nested, _ := out["WeixinPay"].(map[string]any)
+	require.NotNil(t, nested)
+	assert.Equal(t, "code-1", nested["WeixinPay-Required"])
+	assert.EqualValues(t, 10, out["amount"])
+	assert.Contains(t, out["message"], "¥0.10", "给人看的金额仍按元")
 
 	// qa 单没有认领链接，不能凭空冒出一个 key
 	w2 := httptest.NewRecorder()
 	c2, _ := gin.CreateTestContext(w2)
 	c2.Request = httptest.NewRequest(http.MethodPost, "/api/skill/invoke", nil)
-	respondSkillPay402(c2, "code-2", "WX402_Y", "0.10", "本次 AI 问答", "")
+	respondSkillPay402(c2, "code-2", "WX402_Y", 10, "本次 AI 问答", "")
 	var out2 map[string]any
 	require.NoError(t, json.Unmarshal(w2.Body.Bytes(), &out2))
 	_, has := out2["claim_url"]

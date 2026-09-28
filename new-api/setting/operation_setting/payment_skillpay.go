@@ -54,6 +54,17 @@ func InitSkillPayFromEnv() {
 	SkillPayPrivateKeyPEM = envPEM("SKILLPAY_PRIVATE_KEY", "SKILLPAY_PRIVATE_KEY_PATH")
 	SkillPayRelayToken = envStr("SKILLPAY_RELAY_TOKEN", "")
 	SkillPayRelayModel = envStr("SKILLPAY_RELAY_MODEL", "")
+	// skill_id 只接受 SkillHub 发布的 slug。2026-09-29 实测我们曾把发布用 Token（bt_ 前缀）填在这里，
+	// 它会被写进 L2 参与签名并发往预下单端点——凭据形状即拒绝，宁可让 /api/skill/invoke 回 503。
+	if looksLikeSkillHubCredential(SkillPaySkillId) {
+		SkillPaySkillId = ""
+	}
+}
+
+// looksLikeSkillHubCredential SkillHub 的三类凭据前缀（发布 Token / 商户号 / 公钥 ID）。
+// 官方口径：只有 slug 是公开配置项，这三样一律不得当配置写进技能或签名载荷。
+func looksLikeSkillHubCredential(v string) bool {
+	return strings.HasPrefix(v, "bt_") || strings.HasPrefix(v, "sh-") || strings.HasPrefix(v, "PUB_KEY_")
 }
 
 // —— 本包内的小工具（不引 common，避免依赖方向复杂化）——

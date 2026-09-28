@@ -64,20 +64,27 @@ func respondSkillPayCreateLimited(c *gin.Context) {
 }
 
 // respondSkillPay402 统一 402 响应：Header（支付码+订单号）+ Body（WeixinPay 提示块，兼容只读 body 的 Agent）。
+// 双通道口径对齐官方模板（skill-paid v3.1.1 `emit_pay_required_dict`）：嵌套 `WeixinPay` 块之外，
+// 顶层再冗余一份 `WeixinPay-Required` + `prompt`——只读 body 顶层的老版 agent 识别不到支付码就根本拉不起支付。
+// amountFen 单位是「分」（官方 checklist 明确整数分）；写成"元"字符串会让 agent 侧对账差 100 倍。
 // claimURL 非空时一并给出：充值单的认领凭据在**建单时**就预生成，链接先交到用户手上，
 // 这样"付完款但 Agent 换了会话/丢了 payment_code"不再等于钱没人能领（详见 SkillPayOrder.ClaimToken）。
-func respondSkillPay402(c *gin.Context, paymentCode, outTradeNo, amountYuan, title, claimURL string) {
+func respondSkillPay402(c *gin.Context, paymentCode, outTradeNo string, amountFen int64, title, claimURL string) {
+	amountYuan := fmt.Sprintf("%.2f", float64(amountFen)/100)
+	prompt := "本次使用微信支付，请将 WeixinPay-Required 的值作为 paymentCode 交给 weixinpay_pay，以向用户申请支付授权。"
 	c.Header("WeixinPay-Required", paymentCode)
 	c.Header("X-Out-Trade-No", outTradeNo)
 	body := gin.H{
-		"code":    "PAYMENT_REQUIRED",
-		"message": fmt.Sprintf("%s需要支付 ¥%s", title, amountYuan),
+		"code":               "PAYMENT_REQUIRED",
+		"message":            fmt.Sprintf("%s需要支付 ¥%s", title, amountYuan),
+		"WeixinPay-Required": paymentCode,
+		"prompt":             prompt,
 		"WeixinPay": gin.H{
 			"WeixinPay-Required": paymentCode,
-			"prompt":             "本次使用微信支付，请将 WeixinPay-Required 的值作为 paymentCode 交给 weixinpay_pay，以向用户申请支付授权。",
+			"prompt":             prompt,
 		},
 		"out_trade_no": outTradeNo,
-		"amount":       amountYuan,
+		"amount":       amountFen,
 		"currency":     "CNY",
 	}
 	if claimURL != "" {
@@ -201,7 +208,7 @@ func handleSkillPayQAFirstRequest(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": "DB_FAIL", "message": "订单落库失败"})
 		return
 	}
-	respondSkillPay402(c, paymentCode, outTradeNo, fmt.Sprintf("%.2f", float64(operation_setting.SkillPayPriceFen)/100), "本次 AI 问答", "")
+	respondSkillPay402(c, paymentCode, outTradeNo, int64(operation_setting.SkillPayPriceFen), "本次 AI 问答", "")
 }
 
 // handleSkillPayTopUpFirstRequest 场景 topup-一：服务包充值首请求 → 402（金额智能体申报）。
@@ -255,7 +262,7 @@ func handleSkillPayTopUpFirstRequest(c *gin.Context, amountYuan float64) {
 		return
 	}
 	claimURL := buildAgentClaimUrl(system_setting.ServerAddress, claimToken, outTradeNo)
-	respondSkillPay402(c, paymentCode, outTradeNo, fmt.Sprintf("%.2f", float64(totalFen)/100), "Savvy 额度充值", claimURL)
+	respondSkillPay402(c, paymentCode, outTradeNo, totalFen, "Savvy 额度充值", claimURL)
 }
 
 // handleSkillPayRetry 场景二：支付后重试 → 查单 → 按 kind 履约（幂等）。
@@ -265,23 +272,30 @@ func handleSkillPayRetry(c *gin.Context, req SkillInvokeRequest, outTradeNo stri
 		c.JSON(http.StatusNotFound, gin.H{"code": "ORDER_NOT_FOUND", "message": "订单不存在"})
 		return
 	}
-	// ponytail: 付款码校验必须在幂等缓存之前——否则拿到订单号的人能直接取走已履约内容。
-	// out_trade_no 尾部虽有随机串，但订单号会出现在日志/代理链路里，不能当作凭证本身。
-	if !verifySkillPayCode(order.PaymentCode, c.GetHeader("WeixinPay-Required")) {
+	// ponytail: 付款码不是"能不能重试"的门票，而是"能不能免查单走缓存"的门票。
+	// 官方模板生成的 agent 在场景二只带 X-Out-Trade-No（skill-paid v3.1.1 handle_invoke），
+	// 硬要码 = 第三方 agent 付了钱取不到货；但订单号会出现在日志/代理链路里，也不能当凭证。
+	// 折中：码错仍拒（防猜），无码则不缓存命中、一律实查渠道，由微信侧 trade_state 裁定。
+	presented := c.GetHeader("WeixinPay-Required")
+	codeOK := presented != "" && verifySkillPayCode(order.PaymentCode, presented)
+	if presented != "" && !codeOK {
 		logger.LogError(c, fmt.Sprintf("skillpay retry with invalid payment code: out_trade_no=%s", outTradeNo))
-		c.JSON(http.StatusUnauthorized, gin.H{"code": "PAYMENT_CODE_INVALID", "message": "缺少或错误的 WeixinPay-Required"})
+		c.JSON(http.StatusUnauthorized, gin.H{"code": "PAYMENT_CODE_INVALID", "message": "WeixinPay-Required 不正确"})
 		return
 	}
+	paidAlready := order.Status == model.SkillPayStatusPaid || order.Status == model.SkillPayStatusFulfilled
 	LockOrder(outTradeNo)
 	defer UnlockOrder(outTradeNo)
 
 	// 幂等：已履约直接回缓存
-	if content, ok := model.GetSkillPayOrderFulfilledContent(outTradeNo); ok {
-		c.JSON(http.StatusOK, gin.H{
-			"code": "SUCCESS", "message": "付费内容获取成功",
-			"out_trade_no": outTradeNo, "content": content, "already_fulfilled": true,
-		})
-		return
+	if codeOK || paidAlready {
+		if content, ok := model.GetSkillPayOrderFulfilledContent(outTradeNo); ok {
+			c.JSON(http.StatusOK, gin.H{
+				"code": "SUCCESS", "message": "付费内容获取成功",
+				"out_trade_no": outTradeNo, "content": content, "already_fulfilled": true,
+			})
+			return
+		}
 	}
 
 	tx, err := wechatQueryOrderFn(outTradeNo)

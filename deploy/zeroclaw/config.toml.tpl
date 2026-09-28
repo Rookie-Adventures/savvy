@@ -20,6 +20,9 @@ skill_bundles = ["topup"]
 
 # 闭合白名单:模型只见这些 MCP 工具,http_request/shell/文件/浏览器全部不存在。
 # weixinpay 侧不放 feedback/self_update/api_level:更新与诊断不是对话内能力,防模型自改插件
+# 2026-09-29:摘除 weixinpay__* 与 savvy__invoke_skill——共享容器里插件的设备身份=唯一绑定人,
+# 授权链接归属他,其他微信用户打开必报「请勿使用他人的支付链接」;留着等于给模型一条走不通的半路。
+# X402 服务端能力(/api/skill/invoke 等)原样保留,服务第三方自带插件的 agent;要恢复只删本注释下三行。
 [risk_profiles.topup]
 level = "full"
 allowed_tools = [
@@ -31,10 +34,6 @@ allowed_tools = [
   "savvy__redeem_code",
   "savvy__apply_refund",
   "savvy__list_refunds",
-  "savvy__invoke_skill",
-  "weixinpay__weixinpay_register",
-  "weixinpay__weixinpay_pay",
-  "weixinpay__weixinpay_retry_pay",
 ]
 
 [mcp]

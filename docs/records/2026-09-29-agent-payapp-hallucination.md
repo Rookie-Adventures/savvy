@@ -48,12 +48,16 @@ localStorage 续多轮（`agent-chat/index.tsx:51`）。配置/IDENTITY 改了�
 - 前端：`bun run typecheck` 中 agent-chat 零报错（仓库存量错误在 auth/api.ts、billing-history-dialog，与本次无关）；
   `bun run build` 通过；一次性脚本跑真函数——幻觉文本 → 支付卡 `[]`、展示文本不含 payapp；
   真路径 B 文本 → `weixin://` 卡与 claim_url 行为不变。
-- 部署后待回收：新会话里连续说"充值 0.1 元"，trace 应当每轮都有 `tool_calls` 且链接来自本次工具返回；
-  `/api/skill/invoke` 与 weixinpay `tools/call` 继续保持 0。
+- 部署后实测（机B 03:04 清洗会话 → 03:06 新会话真跑一轮 `充值 0.1 元`）：
+  - 生效 config：weixinpay `[[mcp.servers]]` 为注释态，`servers = ["savvy"]`；
+  - 回复含 `weixin://wxpay/bizpayurl?pr=…` 与真 claim_url，**不含 payapp**；
+  - 该单确实落库：`WXAGT20260929030613s1Z0… | wechat_agent | user_id=0 | pending | 0.1`（grounded，不是编的）；
+  - 清洗后 weixinpay `tools/call` = 0、`/api/skill/invoke` = 0；trace `iteration: 2`（先调工具再作答）。
 
 ## 限制 / 尾巴
-- 聊天历史被一次性清空（充值 widget 的一次性上下文，判定可弃）。
+- 聊天历史被一次性清空（充值 widget 的一次性上下文，判定可弃）。留档 `sessions.poisoned-20260929030448.db` 可回滚。
 - weixinpay-mcp 容器仍在跑、绑卡状态保留，只是不再挂进自家 agent 的 prompt；X402 服务端能力
   （`/api/skill/invoke` 等）原样保留给第三方自带插件的 agent。
 - 模型仍可能编出别的假话（如"已第 5 次下单"）。本轮只堵"假付款入口"这一条最伤钱的。
+- 新会话那轮回复开头冒了英文 `Order created ✅` 再接中文——IDENTITY 的语言规则没完全压住，待观察。
 - 未修的小缺陷：旧卡片上「微信里付款」按钮对已不可付的单仍然可点，2-4ms 内失败。

@@ -1,1 +1,372 @@
-cGFja2FnZSBtYWluCgppbXBvcnQgKAoJImJ5dGVzIgoJImNvbnRleHQiCgkiZW1iZWQiCgkiZXJyb3JzIgoJImZtdCIKCSJsb2ciCgkibmV0L2h0dHAiCgkib3MiCgkib3Mvc2lnbmFsIgoJInN0cmNvbnYiCgkic3RyaW5ncyIKCSJzeXNjYWxsIgoJInRpbWUiCgoJImdpdGh1Yi5jb20vUXVhbnR1bU5vdXMvbmV3LWFwaS9jb21tb24iCgkiZ2l0aHViLmNvbS9RdWFudHVtTm91cy9uZXctYXBpL2NvbnN0YW50IgoJImdpdGh1Yi5jb20vUXVhbnR1bU5vdXMvbmV3LWFwaS9jb250cm9sbGVyIgoJImdpdGh1Yi5jb20vUXVhbnR1bU5vdXMvbmV3LWFwaS9pMThuIgoJImdpdGh1Yi5jb20vUXVhbnR1bU5vdXMvbmV3LWFwaS9sb2dnZXIiCgkiZ2l0aHViLmNvbS9RdWFudHVtTm91cy9uZXctYXBpL21pZGRsZXdhcmUiCgkiZ2l0aHViLmNvbS9RdWFudHVtTm91cy9uZXctYXBpL21vZGVsIgoJImdpdGh1Yi5jb20vUXVhbnR1bU5vdXMvbmV3LWFwaS9vYXV0aCIKCXBlcmZtZXRyaWNzICJnaXRodWIuY29tL1F1YW50dW1Ob3VzL25ldy1hcGkvcGtnL3BlcmZfbWV0cmljcyIKCSJnaXRodWIuY29tL1F1YW50dW1Ob3VzL25ldy1hcGkvcmVsYXkiCgkiZ2l0aHViLmNvbS9RdWFudHVtTm91cy9uZXctYXBpL3JvdXRlciIKCSJnaXRodWIuY29tL1F1YW50dW1Ob3VzL25ldy1hcGkvc2VydmljZSIKCV8gImdpdGh1Yi5jb20vUXVhbnR1bU5vdXMvbmV3LWFwaS9zZXR0aW5nL3BlcmZvcm1hbmNlX3NldHRpbmciCgkiZ2l0aHViLmNvbS9RdWFudHVtTm91cy9uZXctYXBpL3NldHRpbmcvb3BlcmF0aW9uX3NldHRpbmciCgkiZ2l0aHViLmNvbS9RdWFudHVtTm91cy9uZXctYXBpL3NldHRpbmcvcmF0aW9fc2V0dGluZyIKCgkiZ2l0aHViLmNvbS9ieXRlZGFuY2UvZ29wa2cvdXRpbC9nb3Bvb2wiCgkiZ2l0aHViLmNvbS9naW4tY29udHJpYi9zZXNzaW9ucyIKCSJnaXRodWIuY29tL2dpbi1jb250cmliL3Nlc3Npb25zL2Nvb2tpZSIKCSJnaXRodWIuY29tL2dpbi1nb25pYy9naW4iCgkiZ2l0aHViLmNvbS9qb2hvL2dvZG90ZW52IgoKCV8gIm5ldC9odHRwL3Bwcm9mIgopCgovL2dvOmVtYmVkIHdlYi9kZWZhdWx0L2Rpc3QKdmFyIGJ1aWxkRlMgZW1iZWQuRlMKCi8vZ286ZW1iZWQgd2ViL2RlZmF1bHQvZGlzdC9pbmRleC5odG1sCnZhciBpbmRleFBhZ2UgW11ieXRlCgovL2dvOmVtYmVkIHdlYi9jbGFzc2ljL2Rpc3QKdmFyIGNsYXNzaWNCdWlsZEZTIGVtYmVkLkZTCgovL2dvOmVtYmVkIHdlYi9jbGFzc2ljL2Rpc3QvaW5kZXguaHRtbAp2YXIgY2xhc3NpY0luZGV4UGFnZSBbXWJ5dGUKCmZ1bmMgbWFpbigpIHsKCXN0YXJ0VGltZSA6PSB0aW1lLk5vdygpCgoJZXJyIDo9IEluaXRSZXNvdXJjZXMoKQoJaWYgZXJyICE9IG5pbCB7CgkJY29tbW9uLkZhdGFsTG9nKCJmYWlsZWQgdG8gaW5pdGlhbGl6ZSByZXNvdXJjZXM6ICIgKyBlcnIuRXJyb3IoKSkKCQlyZXR1cm4KCX0KCgljb21tb24uU3lzTG9nKCJOZXcgQVBJICIgKyBjb21tb24uVmVyc2lvbiArICIgc3RhcnRlZCIpCglpZiBvcy5HZXRlbnYoIkdJTl9NT0RFIikgIT0gImRlYnVnIiB7CgkJZ2luLlNldE1vZGUoZ2luLlJlbGVhc2VNb2RlKQoJfQoJaWYgY29tbW9uLkRlYnVnRW5hYmxlZCB7CgkJY29tbW9uLlN5c0xvZygicnVubmluZyBpbiBkZWJ1ZyBtb2RlIikKCX0KCglkZWZlciBmdW5jKCkgewoJCWVyciA6PSBtb2RlbC5DbG9zZURCKCkKCQlpZiBlcnIgIT0gbmlsIHsKCQkJY29tbW9uLkZhdGFsTG9nKCJmYWlsZWQgdG8gY2xvc2UgZGF0YWJhc2U6ICIgKyBlcnIuRXJyb3IoKSkKCQl9Cgl9KCkKCglpZiBjb21tb24uUmVkaXNFbmFibGVkIHsKCQkvLyBmb3IgY29tcGF0aWJpbGl0eSB3aXRoIG9sZCB2ZXJzaW9ucwoJCWNvbW1vbi5NZW1vcnlDYWNoZUVuYWJsZWQgPSB0cnVlCgl9CglpZiBjb21tb24uTWVtb3J5Q2FjaGVFbmFibGVkIHsKCQljb21tb24uU3lzTG9nKCJtZW1vcnkgY2FjaGUgZW5hYmxlZCIpCgkJY29tbW9uLlN5c0xvZyhmbXQuU3ByaW50Zigic3luYyBmcmVxdWVuY3k6ICVkIHNlY29uZHMiLCBjb21tb24uU3luY0ZyZXF1ZW5jeSkpCgoJCS8vIEFkZCBwYW5pYyByZWNvdmVyeSBhbmQgcmV0cnkgZm9yIEluaXRDaGFubmVsQ2FjaGUKCQlmdW5jKCkgewoJCQlkZWZlciBmdW5jKCkgewoJCQkJaWYgciA6PSByZWNvdmVyKCk7IHIgIT0gbmlsIHsKCQkJCQljb21tb24uU3lzTG9nKGZtdC5TcHJpbnRmKCJJbml0Q2hhbm5lbENhY2hlIHBhbmljOiAldiwgcmV0cnlpbmcgb25jZSIsIHIpKQoJCQkJCS8vIFJldHJ5IG9uY2UKCQkJCQlfLCBfLCBmaXhFcnIgOj0gbW9kZWwuRml4QWJpbGl0eSgpCgkJCQkJaWYgZml4RXJyICE9IG5pbCB7CgkJCQkJCWNvbW1vbi5GYXRhbExvZyhmbXQuU3ByaW50ZigiSW5pdENoYW5uZWxDYWNoZSBmYWlsZWQ6ICVzIiwgZml4RXJyLkVycm9yKCkpKQoJCQkJCX0KCQkJCX0KCQkJfSgpCgkJCW1vZGVsLkluaXRDaGFubmVsQ2FjaGUoKQoJCX0oKQoKCQlnbyBtb2RlbC5TeW5jQ2hhbm5lbENhY2hlKGNvbW1vbi5TeW5jRnJlcXVlbmN5KQoJfQoKCS8vIOeDreabtOaWsOmFjee9rgoJZ28gbW9kZWwuU3luY09wdGlvbnMoY29tbW9uLlN5bmNGcmVxdWVuY3kpCgoJLy8g5pWw5o2u55yL5p2/CglnbyBtb2RlbC5VcGRhdGVRdW90YURhdGEoKQoKCWlmIG9zLkdldGVudigiQ0hBTk5FTF9VUERBVEVfRlJFUVVFTkNZIikgIT0gIiIgewoJCWZyZXF1ZW5jeSwgZXJyIDo9IHN0cmNvbnYuQXRvaShvcy5HZXRlbnYoIkNIQU5ORUxfVVBEQVRFX0ZSRVFVRU5DWSIpKQoJCWlmIGVyciAhPSBuaWwgewoJCQljb21tb24uRmF0YWxMb2coImZhaWxlZCB0byBwYXJzZSBDSEFOTkVMX1VQREFURV9GUkVRVUVOQ1k6ICIgKyBlcnIuRXJyb3IoKSkKCQl9CgkJZ28gY29udHJvbGxlci5BdXRvbWF0aWNhbGx5VXBkYXRlQ2hhbm5lbHMoZnJlcXVlbmN5KQoJfQoKCWdvIGNvbnRyb2xsZXIuQXV0b21hdGljYWxseVRlc3RDaGFubmVscygpCgoJLy8gQ29kZXggY3JlZGVudGlhbCBhdXRvLXJlZnJlc2ggY2hlY2sgZXZlcnkgMTAgbWludXRlcywgcmVmcmVzaCB3aGVuIGV4cGlyZXMgd2l0aGluIDEgZGF5CglzZXJ2aWNlLlN0YXJ0Q29kZXhDcmVkZW50aWFsQXV0b1JlZnJlc2hUYXNrKCkKCgkvLyBTdWJzY3JpcHRpb24gcXVvdGEgcmVzZXQgdGFzayAoZGFpbHkvd2Vla2x5L21vbnRobHkvY3VzdG9tKQoJc2VydmljZS5TdGFydFN1YnNjcmlwdGlvblF1b3RhUmVzZXRUYXNrKCkKCgkvLyBQZXJzaXN0ZW50IHN5c3RlbSBtYWludGVuYW5jZSB0YXNrIHJ1bm5lcgoJc2VydmljZS5TdGFydFN5c3RlbVRhc2tSdW5uZXIoKQoKCS8vIFdpcmUgdGFzayBwb2xsaW5nIGFkYXB0b3IgZmFjdG9yeSAoYnJlYWtzIHNlcnZpY2UgLT4gcmVsYXkgaW1wb3J0IGN5Y2xlKQoJc2VydmljZS5HZXRUYXNrQWRhcHRvckZ1bmMgPSBmdW5jKHBsYXRmb3JtIGNvbnN0YW50LlRhc2tQbGF0Zm9ybSkgc2VydmljZS5UYXNrUG9sbGluZ0FkYXB0b3IgewoJCWEgOj0gcmVsYXkuR2V0VGFza0FkYXB0b3IocGxhdGZvcm0pCgkJaWYgYSA9PSBuaWwgewoJCQlyZXR1cm4gbmlsCgkJfQoJCXJldHVybiBhCgl9CgoJLy8gQ2hhbm5lbCB1cHN0cmVhbSBtb2RlbCB1cGRhdGUgY2hlY2sgdGFzawoJY29udHJvbGxlci5TdGFydENoYW5uZWxVcHN0cmVhbU1vZGVsVXBkYXRlVGFzaygpCgoJLy8gWDQwMiBTa2lsbFBheSDlt7Lku5jmrL7mnKrlsaXnuqbnmoTlhZzlupXmgaLlpI3vvIjmn6XljZXooaXlsaXnuqYgKyDotoXmnJ/lhbPljZXvvIkKCWNvbnRyb2xsZXIuU3RhcnRTa2lsbFBheVJlY292ZXJ5VGFzaygpCgoJaWYgY29tbW9uLklzTWFzdGVyTm9kZSAmJiBjb25zdGFudC5VcGRhdGVUYXNrIHsKCQlnb3Bvb2wuR28oZnVuYygpIHsKCQkJY29udHJvbGxlci5VcGRhdGVNaWRqb3VybmV5VGFza0J1bGsoKQoJCX0pCgkJZ29wb29sLkdvKGZ1bmMoKSB7CgkJCWNvbnRyb2xsZXIuVXBkYXRlVGFza0J1bGsoKQoJCX0pCgl9CglpZiBvcy5HZXRlbnYoIkJBVENIX1VQREFURV9FTkFCTEVEIikgPT0gInRydWUiIHsKCQljb21tb24uQmF0Y2hVcGRhdGVFbmFibGVkID0gdHJ1ZQoJCWNvbW1vbi5TeXNMb2coImJhdGNoIHVwZGF0ZSBlbmFibGVkIHdpdGggaW50ZXJ2YWwgIiArIHN0cmNvbnYuSXRvYShjb21tb24uQmF0Y2hVcGRhdGVJbnRlcnZhbCkgKyAicyIpCgkJbW9kZWwuSW5pdEJhdGNoVXBkYXRlcigpCgl9CgoJaWYgb3MuR2V0ZW52KCJFTkFCTEVfUFBST0YiKSA9PSAidHJ1ZSIgewoJCWdvcG9vbC5HbyhmdW5jKCkgewoJCQlsb2cuUHJpbnRsbihodHRwLkxpc3RlbkFuZFNlcnZlKCIwLjAuMC4wOjgwMDUiLCBuaWwpKQoJCX0pCgkJZ28gY29tbW9uLk1vbml0b3IoKQoJCWNvbW1vbi5TeXNMb2coInBwcm9mIGVuYWJsZWQiKQoJfQoKCWVyciA9IGNvbW1vbi5TdGFydFB5cm9TY29wZSgpCglpZiBlcnIgIT0gbmlsIHsKCQljb21tb24uU3lzRXJyb3IoZm10LlNwcmludGYoInN0YXJ0IHB5cm9zY29wZSBlcnJvciA6ICV2IiwgZXJyKSkKCX0KCgkvLyBJbml0aWFsaXplIEhUVFAgc2VydmVyCglzZXJ2ZXIgOj0gZ2luLk5ldygpCglzZXJ2ZXIuVXNlKGdpbi5DdXN0b21SZWNvdmVyeShmdW5jKGMgKmdpbi5Db250ZXh0LCBlcnIgYW55KSB7CgkJY29tbW9uLlN5c0xvZyhmbXQuU3ByaW50ZigicGFuaWMgZGV0ZWN0ZWQ6ICV2IiwgZXJyKSkKCQljLkpTT04oaHR0cC5TdGF0dXNJbnRlcm5hbFNlcnZlckVycm9yLCBnaW4uSHsKCQkJImVycm9yIjogZ2luLkh7CgkJCQkibWVzc2FnZSI6IGZtdC5TcHJpbnRmKCJQYW5pYyBkZXRlY3RlZCwgZXJyb3I6ICV2LiBQbGVhc2Ugc3VibWl0IGEgaXNzdWUgaGVyZTogaHR0cHM6Ly9naXRodWIuY29tL0NhbGNpdW0tSW9uL25ldy1hcGkiLCBlcnIpLAoJCQkJInR5cGUiOiAgICAibmV3X2FwaV9wYW5pYyIsCgkJCX0sCgkJfSkKCX0pKQoJLy8gVGhpcyB3aWxsIGNhdXNlIFNTRSBub3QgdG8gd29yayEhIQoJLy9zZXJ2ZXIuVXNlKGd6aXAuR3ppcChnemlwLkRlZmF1bHRDb21wcmVzc2lvbikpCglzZXJ2ZXIuVXNlKG1pZGRsZXdhcmUuUmVxdWVzdElkKCkpCglzZXJ2ZXIuVXNlKG1pZGRsZXdhcmUuVmVyc2lvbigpKQoJc2VydmVyLlVzZShtaWRkbGV3YXJlLkkxOG4oKSkKCW1pZGRsZXdhcmUuU2V0VXBMb2dnZXIoc2VydmVyKQoJLy8gSW5pdGlhbGl6ZSBzZXNzaW9uIHN0b3JlCglzdG9yZSA6PSBjb29raWUuTmV3U3RvcmUoW11ieXRlKGNvbW1vbi5TZXNzaW9uU2VjcmV0KSkKCXN0b3JlLk9wdGlvbnMoc2Vzc2lvbnMuT3B0aW9uc3sKCQlQYXRoOiAgICAgIi8iLAoJCU1heEFnZTogICAyNTkyMDAwLCAvLyAzMCBkYXlzCgkJSHR0cE9ubHk6IHRydWUsCgkJU2VjdXJlOiAgIGNvbW1vbi5TZXNzaW9uQ29va2llU2VjdXJlLAoJCVNhbWVTaXRlOiBodHRwLlNhbWVTaXRlU3RyaWN0TW9kZSwKCX0pCglzZXJ2ZXIuVXNlKHNlc3Npb25zLlNlc3Npb25zKCJzZXNzaW9uIiwgc3RvcmUpKQoKCUluamVjdFVtYW1pQW5hbHl0aWNzKCkKCUluamVjdEdvb2dsZUFuYWx5dGljcygpCgoJLy8g6K6+572u6Lev55SxCglyb3V0ZXIuU2V0Um91dGVyKHNlcnZlciwgcm91dGVyLlRoZW1lQXNzZXRzewoJCURlZmF1bHRCdWlsZEZTOiAgIGJ1aWxkRlMsCgkJRGVmYXVsdEluZGV4UGFnZTogaW5kZXhQYWdlLAoJCUNsYXNzaWNCdWlsZEZTOiAgIGNsYXNzaWNCdWlsZEZTLAoJCUNsYXNzaWNJbmRleFBhZ2U6IGNsYXNzaWNJbmRleFBhZ2UsCgl9KQoJdmFyIHBvcnQgPSBvcy5HZXRlbnYoIlBPUlQiKQoJaWYgcG9ydCA9PSAiIiB7CgkJcG9ydCA9IHN0cmNvbnYuSXRvYSgqY29tbW9uLlBvcnQpCgl9CgoJc3J2IDo9ICZodHRwLlNlcnZlcnsKCQlBZGRyOiAgICAiOiIgKyBwb3J0LAoJCUhhbmRsZXI6IHNlcnZlciwKCX0KCglnbyBmdW5jKCkgewoJCWlmIGVyciA6PSBzcnYuTGlzdGVuQW5kU2VydmUoKTsgZXJyICE9IG5pbCAmJiAhZXJyb3JzLklzKGVyciwgaHR0cC5FcnJTZXJ2ZXJDbG9zZWQpIHsKCQkJY29tbW9uLkZhdGFsTG9nKCJmYWlsZWQgdG8gc3RhcnQgSFRUUCBzZXJ2ZXI6ICIgKyBlcnIuRXJyb3IoKSkKCQl9Cgl9KCkKCgl0aW1lLlNsZWVwKDEwMCAqIHRpbWUuTWlsbGlzZWNvbmQpCgoJY29tbW9uLkxvZ1N0YXJ0dXBTdWNjZXNzKHN0YXJ0VGltZSwgcG9ydCkKCglxdWl0IDo9IG1ha2UoY2hhbiBvcy5TaWduYWwsIDEpCglzaWduYWwuTm90aWZ5KHF1aXQsIHN5c2NhbGwuU0lHSU5ULCBzeXNjYWxsLlNJR1RFUk0pCglzaWcgOj0gPC1xdWl0Cgljb21tb24uU3lzTG9nKGZtdC5TcHJpbnRmKCJyZWNlaXZlZCBzaWduYWw6ICV2LCBzaHV0dGluZyBkb3duLi4uIiwgc2lnKSkKCgkvLyBTU0Ugc3RyZWFtcyBtYXkgcnVuIGZvciBtaW51dGVzOyBnaXZlIHRoZW0gdGltZSB0byBmaW5pc2ggYmVmb3JlIGZvcmNlZCBleGl0CglzaHV0ZG93blRpbWVvdXQgOj0gdGltZS5EdXJhdGlvbihjb21tb24uR2V0RW52T3JEZWZhdWx0KCJTSFVURE9XTl9USU1FT1VUX1NFQ09ORFMiLCAxMjApKSAqIHRpbWUuU2Vjb25kCgljdHgsIGNhbmNlbCA6PSBjb250ZXh0LldpdGhUaW1lb3V0KGNvbnRleHQuQmFja2dyb3VuZCgpLCBzaHV0ZG93blRpbWVvdXQpCglkZWZlciBjYW5jZWwoKQoJaWYgZXJyIDo9IHNydi5TaHV0ZG93bihjdHgpOyBlcnIgIT0gbmlsIHsKCQljb21tb24uU3lzRXJyb3IoZm10LlNwcmludGYoInNlcnZlciBmb3JjZWQgdG8gc2h1dGRvd246ICV2IiwgZXJyKSkKCX0KCS8vIOWGheWtmOS4reeahOeci+adv+aVsOaNruS/neWtmOWFpeW6k++8jOmBv+WFjemHjeWQr+S4ouWkseacquiQveW6k+aVsOaNriAoaXNzdWUgIzU2NzkpCglpZiBjb21tb24uRGF0YUV4cG9ydEVuYWJsZWQgewoJCW1vZGVsLlNhdmVRdW90YURhdGFDYWNoZSgpCgl9Cgljb21tb24uU3lzTG9nKCJzZXJ2ZXIgZXhpdGVkIikKfQoKZnVuYyBJbmplY3RVbWFtaUFuYWx5dGljcygpIHsKCWFuYWx5dGljc0luamVjdEJ1aWxkZXIgOj0gJnN0cmluZ3MuQnVpbGRlcnt9CglpZiBvcy5HZXRlbnYoIlVNQU1JX1dFQlNJVEVfSUQiKSAhPSAiIiB7CgkJdW1hbWlTaXRlSUQgOj0gb3MuR2V0ZW52KCJVTUFNSV9XRUJTSVRFX0lEIikKCQl1bWFtaVNjcmlwdFVSTCA6PSBvcy5HZXRlbnYoIlVNQU1JX1NDUklQVF9VUkwiKQoJCWlmIHVtYW1pU2NyaXB0VVJMID09ICIiIHsKCQkJdW1hbWlTY3JpcHRVUkwgPSAiaHR0cHM6Ly9hbmFseXRpY3MudW1hbWkuaXMvc2NyaXB0LmpzIgoJCX0KCQlhbmFseXRpY3NJbmplY3RCdWlsZGVyLldyaXRlU3RyaW5nKCI8c2NyaXB0IGRlZmVyIHNyYz1cIiIpCgkJYW5hbHl0aWNzSW5qZWN0QnVpbGRlci5Xcml0ZVN0cmluZyh1bWFtaVNjcmlwdFVSTCkKCQlhbmFseXRpY3NJbmplY3RCdWlsZGVyLldyaXRlU3RyaW5nKCJcIiBkYXRhLXdlYnNpdGUtaWQ9XCIiKQoJCWFuYWx5dGljc0luamVjdEJ1aWxkZXIuV3JpdGVTdHJpbmcodW1hbWlTaXRlSUQpCgkJYW5hbHl0aWNzSW5qZWN0QnVpbGRlci5Xcml0ZVN0cmluZygiXCI+PC9zY3JpcHQ+IikKCX0KCWFuYWx5dGljc0luamVjdEJ1aWxkZXIuV3JpdGVTdHJpbmcoIjwhLS1VbWFtaSBRdWFudHVtTm91cy0tPlxuIikKCWFuYWx5dGljc0luamVjdCA6PSBbXWJ5dGUoYW5hbHl0aWNzSW5qZWN0QnVpbGRlci5TdHJpbmcoKSkKCXBsYWNlaG9sZGVyIDo9IFtdYnl0ZSgiPCEtLXVtYW1pLS0+XG4iKQoJaW5kZXhQYWdlID0gYnl0ZXMuUmVwbGFjZUFsbChpbmRleFBhZ2UsIHBsYWNlaG9sZGVyLCBhbmFseXRpY3NJbmplY3QpCgljbGFzc2ljSW5kZXhQYWdlID0gYnl0ZXMuUmVwbGFjZUFsbChjbGFzc2ljSW5kZXhQYWdlLCBwbGFjZWhvbGRlciwgYW5hbHl0aWNzSW5qZWN0KQp9CgpmdW5jIEluamVjdEdvb2dsZUFuYWx5dGljcygpIHsKCWFuYWx5dGljc0luamVjdEJ1aWxkZXIgOj0gJnN0cmluZ3MuQnVpbGRlcnt9CglpZiBvcy5HZXRlbnYoIkdPT0dMRV9BTkFMWVRJQ1NfSUQiKSAhPSAiIiB7CgkJZ2FJRCA6PSBvcy5HZXRlbnYoIkdPT0dMRV9BTkFMWVRJQ1NfSUQiKQoJCS8vIEdvb2dsZSBBbmFseXRpY3MgNCAoZ3RhZy5qcykKCQlhbmFseXRpY3NJbmplY3RCdWlsZGVyLldyaXRlU3RyaW5nKCI8c2NyaXB0IGFzeW5jIHNyYz1cImh0dHBzOi8vd3d3Lmdvb2dsZXRhZ21hbmFnZXIuY29tL2d0YWcvanM/aWQ9IikKCQlhbmFseXRpY3NJbmplY3RCdWlsZGVyLldyaXRlU3RyaW5nKGdhSUQpCgkJYW5hbHl0aWNzSW5qZWN0QnVpbGRlci5Xcml0ZVN0cmluZygiXCI+PC9zY3JpcHQ+IikKCQlhbmFseXRpY3NJbmplY3RCdWlsZGVyLldyaXRlU3RyaW5nKCI8c2NyaXB0PiIpCgkJYW5hbHl0aWNzSW5qZWN0QnVpbGRlci5Xcml0ZVN0cmluZygid2luZG93LmRhdGFMYXllciA9IHdpbmRvdy5kYXRhTGF5ZXIgfHwgW107IikKCQlhbmFseXRpY3NJbmplY3RCdWlsZGVyLldyaXRlU3RyaW5nKCJmdW5jdGlvbiBndGFnKCl7ZGF0YUxheWVyLnB1c2goYXJndW1lbnRzKTt9IikKCQlhbmFseXRpY3NJbmplY3RCdWlsZGVyLldyaXRlU3RyaW5nKCJndGFnKCdqcycsIG5ldyBEYXRlKCkpOyIpCgkJYW5hbHl0aWNzSW5qZWN0QnVpbGRlci5Xcml0ZVN0cmluZygiZ3RhZygnY29uZmlnJywgJyIpCgkJYW5hbHl0aWNzSW5qZWN0QnVpbGRlci5Xcml0ZVN0cmluZyhnYUlEKQoJCWFuYWx5dGljc0luamVjdEJ1aWxkZXIuV3JpdGVTdHJpbmcoIicpOyIpCgkJYW5hbHl0aWNzSW5qZWN0QnVpbGRlci5Xcml0ZVN0cmluZygiPC9zY3JpcHQ+IikKCX0KCWFuYWx5dGljc0luamVjdEJ1aWxkZXIuV3JpdGVTdHJpbmcoIjwhLS1Hb29nbGUgQW5hbHl0aWNzIFF1YW50dW1Ob3VzLS0+XG4iKQoJYW5hbHl0aWNzSW5qZWN0IDo9IFtdYnl0ZShhbmFseXRpY3NJbmplY3RCdWlsZGVyLlN0cmluZygpKQoJcGxhY2Vob2xkZXIgOj0gW11ieXRlKCI8IS0tR29vZ2xlIEFuYWx5dGljcy0tPlxuIikKCWluZGV4UGFnZSA9IGJ5dGVzLlJlcGxhY2VBbGwoaW5kZXhQYWdlLCBwbGFjZWhvbGRlciwgYW5hbHl0aWNzSW5qZWN0KQoJY2xhc3NpY0luZGV4UGFnZSA9IGJ5dGVzLlJlcGxhY2VBbGwoY2xhc3NpY0luZGV4UGFnZSwgcGxhY2Vob2xkZXIsIGFuYWx5dGljc0luamVjdCkKfQoKZnVuYyBJbml0UmVzb3VyY2VzKCkgZXJyb3IgewoJLy8gSW5pdGlhbGl6ZSByZXNvdXJjZXMgaGVyZSBpZiBuZWVkZWQKCS8vIFRoaXMgaXMgYSBwbGFjZWhvbGRlciBmdW5jdGlvbiBmb3IgZnV0dXJlIHJlc291cmNlIGluaXRpYWxpemF0aW9uCgllcnIgOj0gZ29kb3RlbnYuTG9hZCgiLmVudiIpCglpZiBlcnIgIT0gbmlsIHsKCQlpZiBjb21tb24uRGVidWdFbmFibGVkIHsKCQkJY29tbW9uLlN5c0xvZygiTm8gLmVudiBmaWxlIGZvdW5kLCB1c2luZyBkZWZhdWx0IGVudmlyb25tZW50IHZhcmlhYmxlcy4gSWYgbmVlZGVkLCBwbGVhc2UgY3JlYXRlIGEgLmVudiBmaWxlIGFuZCBzZXQgdGhlIHJlbGV2YW50IHZhcmlhYmxlcy4iKQoJCX0KCX0KCgkvLyDliqDovb3njq/looPlj5jph48KCWNvbW1vbi5Jbml0RW52KCkKCS8vIFNraWxsUGF5KOW+ruS/oSBBZ2VudCBQYXkgWDQwMinphY3nva7vvJouZW52IOW3suWKoOi9ve+8jOatpOWkhOijhei9vSBTS0lMTFBBWV8qIOeOr+Wig+WPmOmHjwoJb3BlcmF0aW9uX3NldHRpbmcuSW5pdFNraWxsUGF5RnJvbUVudigpCgoJbG9nZ2VyLlNldHVwTG9nZ2VyKCkKCgkvLyBJbml0aWFsaXplIG1vZGVsIHNldHRpbmdzCglyYXRpb19zZXR0aW5nLkluaXRSYXRpb1NldHRpbmdzKCkKCglzZXJ2aWNlLkluaXRIdHRwQ2xpZW50KCkKCglzZXJ2aWNlLkluaXRUb2tlbkVuY29kZXJzKCkKCgkvLyBJbml0aWFsaXplIFNRTCBEYXRhYmFzZQoJZXJyID0gbW9kZWwuSW5pdERCKCkKCWlmIGVyciAhPSBuaWwgewoJCWNvbW1vbi5GYXRhbExvZygiZmFpbGVkIHRvIGluaXRpYWxpemUgZGF0YWJhc2U6ICIgKyBlcnIuRXJyb3IoKSkKCQlyZXR1cm4gZXJyCgl9CgoJbW9kZWwuQ2hlY2tTZXR1cCgpCgoJLy8gSW5pdGlhbGl6ZSBvcHRpb25zLCBzaG91bGQgYWZ0ZXIgbW9kZWwuSW5pdERCKCkKCW1vZGVsLkluaXRPcHRpb25NYXAoKQoKCS8vIOa4heeQhuaXp+eahOejgeebmOe8k+WtmOaWh+S7tgoJY29tbW9uLkNsZWFudXBPbGRDYWNoZUZpbGVzKCkKCgkvLyDliJ3lp4vljJbmqKHlnosKCW1vZGVsLkdldFByaWNpbmcoKQoKCS8vIEluaXRpYWxpemUgU1FMIERhdGFiYXNlCgllcnIgPSBtb2RlbC5Jbml0TG9nREIoKQoJaWYgZXJyICE9IG5pbCB7CgkJcmV0dXJuIGVycgoJfQoKCS8vIEluaXRpYWxpemUgUmVkaXMKCWVyciA9IGNvbW1vbi5Jbml0UmVkaXNDbGllbnQoKQoJaWYgZXJyICE9IG5pbCB7CgkJcmV0dXJuIGVycgoJfQoKCXBlcmZtZXRyaWNzLkluaXQoKQoKCS8vIOWQr+WKqOezu+e7n+ebkeaOpwoJY29tbW9uLlN0YXJ0U3lzdGVtTW9uaXRvcigpCgoJLy8gSW5pdGlhbGl6ZSBpMThuCgllcnIgPSBpMThuLkluaXQoKQoJaWYgZXJyICE9IG5pbCB7CgkJY29tbW9uLlN5c0Vycm9yKCJmYWlsZWQgdG8gaW5pdGlhbGl6ZSBpMThuOiAiICsgZXJyLkVycm9yKCkpCgkJLy8gRG9uJ3QgcmV0dXJuIGVycm9yLCBpMThuIGlzIG5vdCBjcml0aWNhbAoJfSBlbHNlIHsKCQljb21tb24uU3lzTG9nKCJpMThuIGluaXRpYWxpemVkIHdpdGggbGFuZ3VhZ2VzOiAiICsgc3RyaW5ncy5Kb2luKGkxOG4uU3VwcG9ydGVkTGFuZ3VhZ2VzKCksICIsICIpKQoJfQoJLy8gUmVnaXN0ZXIgdXNlciBsYW5ndWFnZSBsb2FkZXIgZm9yIGxhenkgbG9hZGluZwoJaTE4bi5TZXRVc2VyTGFuZ0xvYWRlcihtb2RlbC5HZXRVc2VyTGFuZ3VhZ2UpCgoJLy8gTG9hZCBjdXN0b20gT0F1dGggcHJvdmlkZXJzIGZyb20gZGF0YWJhc2UKCWVyciA9IG9hdXRoLkxvYWRDdXN0b21Qcm92aWRlcnMoKQoJaWYgZXJyICE9IG5pbCB7CgkJY29tbW9uLlN5c0Vycm9yKCJmYWlsZWQgdG8gbG9hZCBjdXN0b20gT0F1dGggcHJvdmlkZXJzOiAiICsgZXJyLkVycm9yKCkpCgkJLy8gRG9uJ3QgcmV0dXJuIGVycm9yLCBjdXN0b20gT0F1dGggaXMgbm90IGNyaXRpY2FsCgl9CgoJcmV0dXJuIG5pbAp9Cg==
+package main
+
+import (
+	"bytes"
+	"context"
+	"embed"
+	"errors"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+
+	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
+	"github.com/QuantumNous/new-api/controller"
+	"github.com/QuantumNous/new-api/i18n"
+	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/middleware"
+	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/oauth"
+	perfmetrics "github.com/QuantumNous/new-api/pkg/perf_metrics"
+	"github.com/QuantumNous/new-api/relay"
+	"github.com/QuantumNous/new-api/router"
+	"github.com/QuantumNous/new-api/service"
+	_ "github.com/QuantumNous/new-api/setting/performance_setting"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
+
+	"github.com/bytedance/gopkg/util/gopool"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+
+	_ "net/http/pprof"
+)
+
+//go:embed web/default/dist
+var buildFS embed.FS
+
+//go:embed web/default/dist/index.html
+var indexPage []byte
+
+//go:embed web/classic/dist
+var classicBuildFS embed.FS
+
+//go:embed web/classic/dist/index.html
+var classicIndexPage []byte
+
+func main() {
+	startTime := time.Now()
+
+	err := InitResources()
+	if err != nil {
+		common.FatalLog("failed to initialize resources: " + err.Error())
+		return
+	}
+
+	common.SysLog("New API " + common.Version + " started")
+	if os.Getenv("GIN_MODE") != "debug" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+	if common.DebugEnabled {
+		common.SysLog("running in debug mode")
+	}
+
+	defer func() {
+		err := model.CloseDB()
+		if err != nil {
+			common.FatalLog("failed to close database: " + err.Error())
+		}
+	}()
+
+	if common.RedisEnabled {
+		// for compatibility with old versions
+		common.MemoryCacheEnabled = true
+	}
+	if common.MemoryCacheEnabled {
+		common.SysLog("memory cache enabled")
+		common.SysLog(fmt.Sprintf("sync frequency: %d seconds", common.SyncFrequency))
+
+		// Add panic recovery and retry for InitChannelCache
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					common.SysLog(fmt.Sprintf("InitChannelCache panic: %v, retrying once", r))
+					// Retry once
+					_, _, fixErr := model.FixAbility()
+					if fixErr != nil {
+						common.FatalLog(fmt.Sprintf("InitChannelCache failed: %s", fixErr.Error()))
+					}
+				}
+			}()
+			model.InitChannelCache()
+		}()
+
+		go model.SyncChannelCache(common.SyncFrequency)
+	}
+
+	// 热更新配置
+	go model.SyncOptions(common.SyncFrequency)
+
+	// 数据看板
+	go model.UpdateQuotaData()
+
+	if os.Getenv("CHANNEL_UPDATE_FREQUENCY") != "" {
+		frequency, err := strconv.Atoi(os.Getenv("CHANNEL_UPDATE_FREQUENCY"))
+		if err != nil {
+			common.FatalLog("failed to parse CHANNEL_UPDATE_FREQUENCY: " + err.Error())
+		}
+		go controller.AutomaticallyUpdateChannels(frequency)
+	}
+
+	go controller.AutomaticallyTestChannels()
+
+	// Codex credential auto-refresh check every 10 minutes, refresh when expires within 1 day
+	service.StartCodexCredentialAutoRefreshTask()
+
+	// Subscription quota reset task (daily/weekly/monthly/custom)
+	service.StartSubscriptionQuotaResetTask()
+
+	// Persistent system maintenance task runner
+	service.StartSystemTaskRunner()
+
+	// Wire task polling adaptor factory (breaks service -> relay import cycle)
+	service.GetTaskAdaptorFunc = func(platform constant.TaskPlatform) service.TaskPollingAdaptor {
+		a := relay.GetTaskAdaptor(platform)
+		if a == nil {
+			return nil
+		}
+		return a
+	}
+
+	// Channel upstream model update check task
+	controller.StartChannelUpstreamModelUpdateTask()
+
+	// X402 SkillPay 已付款未履约的兜底恢复（查单补履约 + 超期关单）
+	controller.StartSkillPayRecoveryTask()
+
+	if common.IsMasterNode && constant.UpdateTask {
+		gopool.Go(func() {
+			controller.UpdateMidjourneyTaskBulk()
+		})
+		gopool.Go(func() {
+			controller.UpdateTaskBulk()
+		})
+	}
+	if os.Getenv("BATCH_UPDATE_ENABLED") == "true" {
+		common.BatchUpdateEnabled = true
+		common.SysLog("batch update enabled with interval " + strconv.Itoa(common.BatchUpdateInterval) + "s")
+		model.InitBatchUpdater()
+	}
+
+	if os.Getenv("ENABLE_PPROF") == "true" {
+		gopool.Go(func() {
+			log.Println(http.ListenAndServe("0.0.0.0:8005", nil))
+		})
+		go common.Monitor()
+		common.SysLog("pprof enabled")
+	}
+
+	err = common.StartPyroScope()
+	if err != nil {
+		common.SysError(fmt.Sprintf("start pyroscope error : %v", err))
+	}
+
+	// Initialize HTTP server
+	server := gin.New()
+	server.Use(gin.CustomRecovery(func(c *gin.Context, err any) {
+		common.SysLog(fmt.Sprintf("panic detected: %v", err))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": gin.H{
+				"message": fmt.Sprintf("Panic detected, error: %v. Please submit a issue here: https://github.com/Calcium-Ion/new-api", err),
+				"type":    "new_api_panic",
+			},
+		})
+	}))
+	// This will cause SSE not to work!!!
+	//server.Use(gzip.Gzip(gzip.DefaultCompression))
+	server.Use(middleware.RequestId())
+	server.Use(middleware.Version())
+	server.Use(middleware.I18n())
+	middleware.SetUpLogger(server)
+	// Initialize session store
+	store := cookie.NewStore([]byte(common.SessionSecret))
+	store.Options(sessions.Options{
+		Path:     "/",
+		MaxAge:   2592000, // 30 days
+		HttpOnly: true,
+		Secure:   common.SessionCookieSecure,
+		SameSite: http.SameSiteStrictMode,
+	})
+	server.Use(sessions.Sessions("session", store))
+
+	InjectUmamiAnalytics()
+	InjectGoogleAnalytics()
+
+	// 设置路由
+	router.SetRouter(server, router.ThemeAssets{
+		DefaultBuildFS:   buildFS,
+		DefaultIndexPage: indexPage,
+		ClassicBuildFS:   classicBuildFS,
+		ClassicIndexPage: classicIndexPage,
+	})
+	var port = os.Getenv("PORT")
+	if port == "" {
+		port = strconv.Itoa(*common.Port)
+	}
+
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: server,
+	}
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			common.FatalLog("failed to start HTTP server: " + err.Error())
+		}
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+
+	common.LogStartupSuccess(startTime, port)
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-quit
+	common.SysLog(fmt.Sprintf("received signal: %v, shutting down...", sig))
+
+	// SSE streams may run for minutes; give them time to finish before forced exit
+	shutdownTimeout := time.Duration(common.GetEnvOrDefault("SHUTDOWN_TIMEOUT_SECONDS", 120)) * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		common.SysError(fmt.Sprintf("server forced to shutdown: %v", err))
+	}
+	// 内存中的看板数据保存入库，避免重启丢失未落库数据 (issue #5679)
+	if common.DataExportEnabled {
+		model.SaveQuotaDataCache()
+	}
+	common.SysLog("server exited")
+}
+
+func InjectUmamiAnalytics() {
+	analyticsInjectBuilder := &strings.Builder{}
+	if os.Getenv("UMAMI_WEBSITE_ID") != "" {
+		umamiSiteID := os.Getenv("UMAMI_WEBSITE_ID")
+		umamiScriptURL := os.Getenv("UMAMI_SCRIPT_URL")
+		if umamiScriptURL == "" {
+			umamiScriptURL = "https://analytics.umami.is/script.js"
+		}
+		analyticsInjectBuilder.WriteString("<script defer src=\"")
+		analyticsInjectBuilder.WriteString(umamiScriptURL)
+		analyticsInjectBuilder.WriteString("\" data-website-id=\"")
+		analyticsInjectBuilder.WriteString(umamiSiteID)
+		analyticsInjectBuilder.WriteString("\"></script>")
+	}
+	analyticsInjectBuilder.WriteString("<!--Umami QuantumNous-->\n")
+	analyticsInject := []byte(analyticsInjectBuilder.String())
+	placeholder := []byte("<!--umami-->\n")
+	indexPage = bytes.ReplaceAll(indexPage, placeholder, analyticsInject)
+	classicIndexPage = bytes.ReplaceAll(classicIndexPage, placeholder, analyticsInject)
+}
+
+func InjectGoogleAnalytics() {
+	analyticsInjectBuilder := &strings.Builder{}
+	if os.Getenv("GOOGLE_ANALYTICS_ID") != "" {
+		gaID := os.Getenv("GOOGLE_ANALYTICS_ID")
+		// Google Analytics 4 (gtag.js)
+		analyticsInjectBuilder.WriteString("<script async src=\"https://www.googletagmanager.com/gtag/js?id=")
+		analyticsInjectBuilder.WriteString(gaID)
+		analyticsInjectBuilder.WriteString("\"></script>")
+		analyticsInjectBuilder.WriteString("<script>")
+		analyticsInjectBuilder.WriteString("window.dataLayer = window.dataLayer || [];")
+		analyticsInjectBuilder.WriteString("function gtag(){dataLayer.push(arguments);}")
+		analyticsInjectBuilder.WriteString("gtag('js', new Date());")
+		analyticsInjectBuilder.WriteString("gtag('config', '")
+		analyticsInjectBuilder.WriteString(gaID)
+		analyticsInjectBuilder.WriteString("');")
+		analyticsInjectBuilder.WriteString("</script>")
+	}
+	analyticsInjectBuilder.WriteString("<!--Google Analytics QuantumNous-->\n")
+	analyticsInject := []byte(analyticsInjectBuilder.String())
+	placeholder := []byte("<!--Google Analytics-->\n")
+	indexPage = bytes.ReplaceAll(indexPage, placeholder, analyticsInject)
+	classicIndexPage = bytes.ReplaceAll(classicIndexPage, placeholder, analyticsInject)
+}
+
+func InitResources() error {
+	// Initialize resources here if needed
+	// This is a placeholder function for future resource initialization
+	err := godotenv.Load(".env")
+	if err != nil {
+		if common.DebugEnabled {
+			common.SysLog("No .env file found, using default environment variables. If needed, please create a .env file and set the relevant variables.")
+		}
+	}
+
+	// 加载环境变量
+	common.InitEnv()
+	// SkillPay(微信 Agent Pay X402)配置：.env 已加载，此处装载 SKILLPAY_* 环境变量
+	operation_setting.InitSkillPayFromEnv()
+
+	logger.SetupLogger()
+
+	// Initialize model settings
+	ratio_setting.InitRatioSettings()
+
+	service.InitHttpClient()
+
+	service.InitTokenEncoders()
+
+	// Initialize SQL Database
+	err = model.InitDB()
+	if err != nil {
+		common.FatalLog("failed to initialize database: " + err.Error())
+		return err
+	}
+
+	model.CheckSetup()
+
+	// Initialize options, should after model.InitDB()
+	model.InitOptionMap()
+
+	// 清理旧的磁盘缓存文件
+	common.CleanupOldCacheFiles()
+
+	// 初始化模型
+	model.GetPricing()
+
+	// Initialize SQL Database
+	err = model.InitLogDB()
+	if err != nil {
+		return err
+	}
+
+	// Initialize Redis
+	err = common.InitRedisClient()
+	if err != nil {
+		return err
+	}
+
+	perfmetrics.Init()
+
+	// 启动系统监控
+	common.StartSystemMonitor()
+
+	// Initialize i18n
+	err = i18n.Init()
+	if err != nil {
+		common.SysError("failed to initialize i18n: " + err.Error())
+		// Don't return error, i18n is not critical
+	} else {
+		common.SysLog("i18n initialized with languages: " + strings.Join(i18n.SupportedLanguages(), ", "))
+	}
+	// Register user language loader for lazy loading
+	i18n.SetUserLangLoader(model.GetUserLanguage)
+
+	// Load custom OAuth providers from database
+	err = oauth.LoadCustomProviders()
+	if err != nil {
+		common.SysError("failed to load custom OAuth providers: " + err.Error())
+		// Don't return error, custom OAuth is not critical
+	}
+
+	return nil
+}

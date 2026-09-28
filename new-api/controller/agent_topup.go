@@ -1,1 +1,314 @@
-cGFja2FnZSBjb250cm9sbGVyCgppbXBvcnQgKAoJImNvbnRleHQiCgkiY3J5cHRvL3JhbmQiCgkiZW5jb2RpbmcvaGV4IgoJImZtdCIKCSJuZXQvaHR0cCIKCSJzdHJjb252IgoJInN0cmluZ3MiCgkidGltZSIKCgkiZ2l0aHViLmNvbS9RdWFudHVtTm91cy9uZXctYXBpL2NvbW1vbiIKCSJnaXRodWIuY29tL1F1YW50dW1Ob3VzL25ldy1hcGkvbG9nZ2VyIgoJImdpdGh1Yi5jb20vUXVhbnR1bU5vdXMvbmV3LWFwaS9tb2RlbCIKCSJnaXRodWIuY29tL1F1YW50dW1Ob3VzL25ldy1hcGkvc2V0dGluZy9vcGVyYXRpb25fc2V0dGluZyIKCSJnaXRodWIuY29tL1F1YW50dW1Ob3VzL25ldy1hcGkvc2V0dGluZy9zeXN0ZW1fc2V0dGluZyIKCSJnaXRodWIuY29tL2dpbi1nb25pYy9naW4iCgkiZ2l0aHViLmNvbS9zaG9wc3ByaW5nL2RlY2ltYWwiCgkiZ2l0aHViLmNvbS9zbWFydHdhbGxlL2FsaXBheS92MyIKKQoKLy8gYWdlbnRRdW90YUFtb3VudEZyb21Nb25leSDmmK8gZ2V0UGF5TW9uZXkg55qE6YCG6L+Q566XOiDlrp7ku5ggUk1CIOKGkiDpop3luqbljZXkvY3mlbDph4/jgIIKLy8gcG9ueXRhaWw6IOS4jeWllyBBbW91bnREaXNjb3VudCjpgqPmmK/pooTorr7ph5Hpop3moaPkvY3nmoTkv4PplIAs5pm66IO95L2T6K6i5Y2V6YeR6aKd5Lu75oSPLOaXoOaho+S9jeWPr+mFjSnjgIIKLy8g6L+U5Zue5Y2V5L2N5LiOIFRvcFVwLkFtb3VudCDor63kuYnkuIDoh7Q6IOmdniBUT0tFTlMg5bGV56S6ID0gVVNEIOaVtOaVsDsgVE9LRU5TIOWxleekuiA9IHRva2VuIOaVsCwKLy8g5L+d6K+B6K6k6aKGL+WFpei0puWkhCBxdW90YVRvQWRkID0gQW1vdW50ICogUXVvdGFQZXJVbml0IOS4jueOsOaciSBBbGlwYXlOb3RpZnkg5ZCM5p6E44CCCmZ1bmMgYWdlbnRRdW90YUFtb3VudEZyb21Nb25leShtb25leSBmbG9hdDY0LCBncm91cCBzdHJpbmcpIGludDY0IHsKCWRNb25leSA6PSBkZWNpbWFsLk5ld0Zyb21GbG9hdChtb25leSkKCXJhdGlvIDo9IGNvbW1vbi5HZXRUb3B1cEdyb3VwUmF0aW8oZ3JvdXApCglpZiByYXRpbyA9PSAwIHsKCQlyYXRpbyA9IDEKCX0KCS8vIFByaWNlIOiiq+ivr+mFjeS4uiAwIOaXtiBkZWNpbWFsLkRpdiDkvJogcGFuaWMs5LiOIHJhdGlvIOWQjOasvuWFnOW6lQoJcHJpY2UgOj0gb3BlcmF0aW9uX3NldHRpbmcuUHJpY2UKCWlmIHByaWNlID09IDAgewoJCXByaWNlID0gMQoJfQoJdXNkIDo9IGRNb25leS5EaXYoZGVjaW1hbC5OZXdGcm9tRmxvYXQocHJpY2UpKS4KCQlEaXYoZGVjaW1hbC5OZXdGcm9tRmxvYXQocmF0aW8pKQoJaWYgb3BlcmF0aW9uX3NldHRpbmcuR2V0UXVvdGFEaXNwbGF5VHlwZSgpID09IG9wZXJhdGlvbl9zZXR0aW5nLlF1b3RhRGlzcGxheVR5cGVUb2tlbnMgewoJCXJldHVybiB1c2QuTXVsKGRlY2ltYWwuTmV3RnJvbUZsb2F0KGNvbW1vbi5RdW90YVBlclVuaXQpKS5JbnRQYXJ0KCkKCX0KCXJldHVybiB1c2QuUm91bmQoMCkuSW50UGFydCgpCn0KCi8vIG5ld0NsYWltVG9rZW4g55Sf5oiQIDEyOC1iaXQg6ZqP5py66K6k6aKG5Yet5o2uKGhleCAzMiDlrZfnrKYp44CCCi8vIOS4jeeUqCBjb21tb24uR2V0UmFuZG9tU3RyaW5nOiDorqTpooblh63mja7mmK/pkrHnmoTpkqXljJks5b+F6aG7IGNyeXB0by9yYW5k44CCCmZ1bmMgbmV3Q2xhaW1Ub2tlbigpIChzdHJpbmcsIGVycm9yKSB7CglidWYgOj0gbWFrZShbXWJ5dGUsIDE2KQoJaWYgXywgZXJyIDo9IHJhbmQuUmVhZChidWYpOyBlcnIgIT0gbmlsIHsKCQlyZXR1cm4gIiIsIGVycgoJfQoJcmV0dXJuIGhleC5FbmNvZGVUb1N0cmluZyhidWYpLCBuaWwKfQoKLy8g5ri45a6i6IGK5aSpIElQIOmZkOmineOAguWkjeeUqCBjb21tb24uSW5NZW1vcnlSYXRlTGltaXRlcijmu5Hliqjnqpflj6Mr5a6a5pe25reY5rGwKSxob3VyL2RheSDlkITkuIDlrp7kvos7Ci8vIOWMv+WQjeWFrOe9keerr+eCuSzoh6rnoJQgbWFwIOaXoOa3mOaxsOS8muaXoOeVjOWinumVvyhyZXZpZXcgSS0xKeOAggp2YXIgKAoJZ3Vlc3RDaGF0SG91ckxpbWl0ZXIgY29tbW9uLkluTWVtb3J5UmF0ZUxpbWl0ZXIKCWd1ZXN0Q2hhdERheUxpbWl0ZXIgIGNvbW1vbi5Jbk1lbW9yeVJhdGVMaW1pdGVyCikKCmZ1bmMgaW5pdCgpIHsKCXJlc2V0R3Vlc3RDaGF0TGltaXRlcigpCn0KCmZ1bmMgcmVzZXRHdWVzdENoYXRMaW1pdGVyKCkgewoJZ3Vlc3RDaGF0SG91ckxpbWl0ZXIgPSBjb21tb24uSW5NZW1vcnlSYXRlTGltaXRlcnt9CglndWVzdENoYXRIb3VyTGltaXRlci5Jbml0KHRpbWUuSG91cikKCWd1ZXN0Q2hhdERheUxpbWl0ZXIgPSBjb21tb24uSW5NZW1vcnlSYXRlTGltaXRlcnt9CglndWVzdENoYXREYXlMaW1pdGVyLkluaXQoMjQgKiB0aW1lLkhvdXIpCn0KCmZ1bmMgYWxsb3dHdWVzdENoYXQoaXAgc3RyaW5nKSBib29sIHsKCWhvdXJMaW1pdCwgZGF5TGltaXQgOj0gb3BlcmF0aW9uX3NldHRpbmcuQWdlbnRHdWVzdENoYXRIb3VyTGltaXQsIG9wZXJhdGlvbl9zZXR0aW5nLkFnZW50R3Vlc3RDaGF0RGF5TGltaXQKCWlmIGhvdXJMaW1pdCA8PSAwIHsKCQlob3VyTGltaXQgPSAxMAoJfQoJaWYgZGF5TGltaXQgPD0gMCB7CgkJZGF5TGltaXQgPSA1MAoJfQoJaWYgIWd1ZXN0Q2hhdEhvdXJMaW1pdGVyLlJlcXVlc3QoaXAsIGhvdXJMaW1pdCwgMzYwMCkgewoJCXJldHVybiBmYWxzZQoJfQoJcmV0dXJuIGd1ZXN0Q2hhdERheUxpbWl0ZXIuUmVxdWVzdChpcCwgZGF5TGltaXQsIDg2NDAwKQp9CgovLyBSZWdpc3RlckFnZW50VG9wVXAg5ri45a6iL+eUqOaIt+S4i+WNleWQjueZu+iusCBNQ1Ag6K6i5Y2VLOWPkeaUvuiupOmihuWHreaNruOAggovLyDph5Hpop3mraTml7blj6rmmK8i55Sz5oql5YC8IijmnaXoh6rmlK/ku5jpk77mjqUpLOWFpei0puS7pSBjb21wbGV0ZUFnZW50VG9wVXAg55qE5pSv5LuY5a6d5L6n6YeR6aKd5Li65YeG44CCCmZ1bmMgUmVnaXN0ZXJBZ2VudFRvcFVwKGMgKmdpbi5Db250ZXh0KSB7Cgl2YXIgcmVxIHN0cnVjdCB7CgkJT3V0VHJhZGVObyBzdHJpbmcgYGpzb246Im91dF90cmFkZV9ubyJgCgl9CglpZiBlcnIgOj0gYy5TaG91bGRCaW5kSlNPTigmcmVxKTsgZXJyICE9IG5pbCB8fAoJCXN0cmluZ3MuVHJpbVNwYWNlKHJlcS5PdXRUcmFkZU5vKSA9PSAiIiB8fCBsZW4ocmVxLk91dFRyYWRlTm8pID4gNjQgewoJCWMuSlNPTihodHRwLlN0YXR1c09LLCBnaW4uSHsibWVzc2FnZSI6ICJlcnJvciIsICJkYXRhIjogIuWPguaVsOmUmeivryJ9KQoJCXJldHVybgoJfQoJb3V0VHJhZGVObyA6PSBzdHJpbmdzLlRyaW1TcGFjZShyZXEuT3V0VHJhZGVObykKCWlmIG1vZGVsLkdldFRvcFVwQnlUcmFkZU5vKG91dFRyYWRlTm8pICE9IG5pbCB7CgkJYy5KU09OKGh0dHAuU3RhdHVzT0ssIGdpbi5IeyJtZXNzYWdlIjogImVycm9yIiwgImRhdGEiOiAi6K6i5Y2V5bey55m76K6wIn0pCgkJcmV0dXJuCgl9Cgl0b2tlbiwgZXJyIDo9IG5ld0NsYWltVG9rZW4oKQoJaWYgZXJyICE9IG5pbCB7CgkJYy5KU09OKGh0dHAuU3RhdHVzT0ssIGdpbi5IeyJtZXNzYWdlIjogImVycm9yIiwgImRhdGEiOiAi55m76K6w5aSx6LSlIn0pCgkJcmV0dXJuCgl9Cgl0b3BVcCA6PSAmbW9kZWwuVG9wVXB7CgkJVXNlcklkOiAgICAgICAgICBjLkdldEludCgiaWQiKSwgLy8g5ri45a6i5Li6IDAs6K6k6aKG5pe25YaN57uRCgkJVHJhZGVObzogICAgICAgICBvdXRUcmFkZU5vLAoJCUNsYWltVG9rZW46ICAgICAgdG9rZW4sCgkJUGF5bWVudE1ldGhvZDogICBtb2RlbC5QYXltZW50TWV0aG9kQWxpcGF5LAoJCVBheW1lbnRQcm92aWRlcjogbW9kZWwuUGF5bWVudFByb3ZpZGVyQWxpcGF5QWdlbnQsCgkJQ3JlYXRlVGltZTogICAgICB0aW1lLk5vdygpLlVuaXgoKSwKCQlTdGF0dXM6ICAgICAgICAgIGNvbW1vbi5Ub3BVcFN0YXR1c1BlbmRpbmcsCgl9CglpZiBlcnIgOj0gdG9wVXAuSW5zZXJ0KCk7IGVyciAhPSBuaWwgewoJCWMuSlNPTihodHRwLlN0YXR1c09LLCBnaW4uSHsibWVzc2FnZSI6ICJlcnJvciIsICJkYXRhIjogIueZu+iusOWksei0pSJ9KQoJCXJldHVybgoJfQoJYy5KU09OKGh0dHAuU3RhdHVzT0ssIGdpbi5IeyJtZXNzYWdlIjogInN1Y2Nlc3MiLCAiZGF0YSI6IGdpbi5IeyJjbGFpbV90b2tlbiI6IHRva2VufX0pCn0KCi8vIEFnZW50VG9wVXBTdGF0dXMg5YetIGNsYWltX3Rva2VuIOafpeiuouWNleeKtuaAgTtwZW5kaW5nIOi2hei/hyAxMCDnp5Lml7bpobrmiYvlkJHmlK/ku5jlrp3mn6XljZUKLy8gKOWFnOW6lemAmumBkzog55m+54K8IE1DUCDoi6XphY3kuI3kuoYgQVBfTk9USUZZX1VSTCzliLDotKbmhJ/nn6XlhajpnaDov5nph4wp44CCdG9rZW4g5Y2z5Yet5o2uLOaXoOmcgOeZu+W9leOAggpmdW5jIEFnZW50VG9wVXBTdGF0dXMoYyAqZ2luLkNvbnRleHQpIHsKCXRva2VuIDo9IHN0cmluZ3MuVHJpbVNwYWNlKGMuUXVlcnkoImNsYWltX3Rva2VuIikpCglpZiBsZW4odG9rZW4pICE9IDMyIHsKCQljLkpTT04oaHR0cC5TdGF0dXNPSywgZ2luLkh7Im1lc3NhZ2UiOiAiZXJyb3IiLCAiZGF0YSI6ICLlj4LmlbDplJnor68ifSkKCQlyZXR1cm4KCX0KCXRvcFVwIDo9IG1vZGVsLkdldFRvcFVwQnlDbGFpbVRva2VuKHRva2VuKQoJLy8gWDQwMiDljZXlnKjlu7rljZXml7blsLHpooTnlJ/miJDkuoYgY2xhaW1fdG9rZW7vvIzogIwgVG9wVXAg6KGM6KaB5Yiw5bGl57qm5omN5a2Y5Zyo77yaCgkvLyDnlKjmiLfmiYvph4zlj6rmnInpk77mjqXjgIFBZ2VudCDkvJror53lt7LkuKLml7bvvIzova7or6LkvJrmiZPliLDjgIzorqLljZXkuI3lrZjlnKjjgI3jgILov5nph4zlsLHlnLDooaXlsaXnuqYKCS8vIO+8iOafpeWNleS4uuWUr+S4gOS7mOasvuS6i+Wunu+8ie+8jOeCueW8gOiupOmihumhteWNs+iHquaEiO+8jOS4jeW/heWbnuWvueivneOAgeS4jeW/heW8gOW3peWNleOAggoJaWYgdG9wVXAgPT0gbmlsIHsKCQlpZiBzbyA6PSBtb2RlbC5HZXRTa2lsbFBheU9yZGVyQnlDbGFpbVRva2VuKHRva2VuKTsgc28gIT0gbmlsICYmICFzby5GdWxmaWxsZWQgJiYKCQkJdGltZS5Ob3coKS5Vbml4KCktc28uQ3JlYXRlVGltZSA8IDcyMDAgeyAvLyDkuI7kuIvmlrkgcGVuZGluZyDova7or6LlkIzmrL7nqpflj6PvvIzpgb/lhY3mnKrku5jljZXooqvml6DpmZDmn6XljZUKCQkJaWYgXywgXywgZXJyIDo9IHNraWxsUGF5RnVsZmlsbEJ5UXVlcnkoYy5SZXF1ZXN0LkNvbnRleHQoKSwgYy5DbGllbnRJUCgpLCBzbyk7IGVyciAhPSBuaWwgewoJCQkJY29tbW9uLlN5c0Vycm9yKCJza2lsbHBheSBjbGFpbS1wYWdlIGZ1bGZpbGwgZmFpbGVkOiAiICsgZXJyLkVycm9yKCkpCgkJCX0KCQkJdG9wVXAgPSBtb2RlbC5HZXRUb3BVcEJ5Q2xhaW1Ub2tlbih0b2tlbikKCQl9Cgl9CglpZiB0b3BVcCA9PSBuaWwgfHwgKHRvcFVwLlBheW1lbnRQcm92aWRlciAhPSBtb2RlbC5QYXltZW50UHJvdmlkZXJBbGlwYXlBZ2VudCAmJgoJCXRvcFVwLlBheW1lbnRQcm92aWRlciAhPSBtb2RlbC5QYXltZW50UHJvdmlkZXJXZWNoYXRBZ2VudCAmJgoJCXRvcFVwLlBheW1lbnRQcm92aWRlciAhPSBtb2RlbC5QYXltZW50UHJvdmlkZXJXZWNoYXRTa2lsbFBheSkgewoJCWMuSlNPTihodHRwLlN0YXR1c09LLCBnaW4uSHsibWVzc2FnZSI6ICJlcnJvciIsICJkYXRhIjogIuiuouWNleS4jeWtmOWcqCJ9KQoJCXJldHVybgoJfQoJLy8g5p+l5Y2V5YWc5bqV6ZmQIDIg5bCP5pe256qX5Y+jOiDmlK/ku5jlrp3orqLljZXmnKzouqvmnInmnInmlYjmnJ8s6YG/5YWN6ZW/5pyf5oyC552AIHdpZGdldCDnmoQgcGVuZGluZyDljZXooqvml6DpmZDova7or6Lmn6XljZUKCWlmIHRvcFVwLlN0YXR1cyA9PSBjb21tb24uVG9wVXBTdGF0dXNQZW5kaW5nICYmCgkJdGltZS5Ob3coKS5Vbml4KCktdG9wVXAuQ3JlYXRlVGltZSA+IDEwICYmCgkJdGltZS5Ob3coKS5Vbml4KCktdG9wVXAuQ3JlYXRlVGltZSA8IDcyMDAgewoJCXN3aXRjaCB0b3BVcC5QYXltZW50UHJvdmlkZXIgewoJCWNhc2UgbW9kZWwuUGF5bWVudFByb3ZpZGVyQWxpcGF5QWdlbnQ6CgkJCXRyeUNvbXBsZXRlQWdlbnRUb3BVcEJ5UXVlcnkodG9wVXAsIGMuQ2xpZW50SVAoKSkKCQljYXNlIG1vZGVsLlBheW1lbnRQcm92aWRlcldlY2hhdEFnZW50OgoJCQl0cnlDb21wbGV0ZVdlY2hhdEFnZW50QnlRdWVyeSh0b3BVcCwgYy5DbGllbnRJUCgpKQoJCX0KCQl0b3BVcCA9IG1vZGVsLkdldFRvcFVwQnlDbGFpbVRva2VuKHRva2VuKQoJCWlmIHRvcFVwID09IG5pbCB7CgkJCWMuSlNPTihodHRwLlN0YXR1c09LLCBnaW4uSHsibWVzc2FnZSI6ICJlcnJvciIsICJkYXRhIjogIuiuouWNleS4jeWtmOWcqCJ9KQoJCQlyZXR1cm4KCQl9Cgl9CgljLkpTT04oaHR0cC5TdGF0dXNPSywgZ2luLkh7Im1lc3NhZ2UiOiAic3VjY2VzcyIsICJkYXRhIjogZ2luLkh7CgkJInN0YXR1cyI6IHRvcFVwLlN0YXR1cywKCQkibW9uZXkiOiAgdG9wVXAuTW9uZXksCgkJLy8gY2xhaW1lZCDor63kuYkgPSAi5bey5YWl6LSmIuiAjOmdniLlt7Lnu5HnlKjmiLciOiDnmbvlvZXljZXnmbvorrDljbPnu5EgdXNlcl9pZCwKCQkvLyDkuI3liqDmlK/ku5jpl6jmp5vkvJrorqnliY3nq6/lnKjmnKrku5jmrL7ml7bor6/mmL4i5bey5Yiw6LSmIijnu4jlrqEgSS0xKQoJCSJjbGFpbWVkIjogdG9wVXAuVXNlcklkICE9IDAgJiYgdG9wVXAuU3RhdHVzID09IGNvbW1vbi5Ub3BVcFN0YXR1c1N1Y2Nlc3MsCgl9fSkKfQoKLy8gdHJ5Q29tcGxldGVBZ2VudFRvcFVwQnlRdWVyeSDnlKjnq5nngrnnjrDmnInmlK/ku5jlrp0gY2xpZW50IOaMiSBvdXRfdHJhZGVfbm8g5p+l5Y2V44CCCi8vIOWJjeaPkCjpqozor4HpobkgVjApOiBNQ1Ag6K6i5Y2V5LiO56uZ54K55pSv5LuY6YWN572u5ZCMIEFQUElE44CC5p+l5LiN5YiwL+WHuumUmemdmem7mOi/lOWbnizkuIvmrKHova7or6Llho3or5XjgIIKZnVuYyB0cnlDb21wbGV0ZUFnZW50VG9wVXBCeVF1ZXJ5KHRvcFVwICptb2RlbC5Ub3BVcCwgY2xpZW50SVAgc3RyaW5nKSB7CgljbGkgOj0gR2V0QWxpcGF5Q2xpZW50KCkKCWlmIGNsaSA9PSBuaWwgewoJCXJldHVybgoJfQoJdmFyIHEgPSBhbGlwYXkuVHJhZGVRdWVyeXt9CglxLk91dFRyYWRlTm8gPSB0b3BVcC5UcmFkZU5vCglyc3AsIGVyciA6PSBjbGkuVHJhZGVRdWVyeShjb250ZXh0LkJhY2tncm91bmQoKSwgcSkKCWlmIGVyciAhPSBuaWwgfHwgcnNwID09IG5pbCB8fCByc3AuQ29kZSAhPSBhbGlwYXkuQ29kZVN1Y2Nlc3MgewoJCXJldHVybgoJfQoJaWYgcnNwLlRyYWRlU3RhdHVzICE9ICJUUkFERV9TVUNDRVNTIiAmJiByc3AuVHJhZGVTdGF0dXMgIT0gIlRSQURFX0ZJTklTSEVEIiB7CgkJcmV0dXJuCgl9Cgltb25leSwgcGVyciA6PSBzdHJjb252LlBhcnNlRmxvYXQoc3RyaW5nKHJzcC5Ub3RhbEFtb3VudCksIDY0KQoJaWYgcGVyciAhPSBuaWwgfHwgbW9uZXkgPD0gMCB7CgkJcmV0dXJuCgl9CglMb2NrT3JkZXIodG9wVXAuVHJhZGVObykKCWRlZmVyIFVubG9ja09yZGVyKHRvcFVwLlRyYWRlTm8pCglmcmVzaCA6PSBtb2RlbC5HZXRUb3BVcEJ5VHJhZGVObyh0b3BVcC5UcmFkZU5vKQoJaWYgZnJlc2ggPT0gbmlsIHx8IGZyZXNoLlN0YXR1cyAhPSBjb21tb24uVG9wVXBTdGF0dXNQZW5kaW5nIHsKCQlyZXR1cm4KCX0KCWlmIGNlcnIgOj0gY29tcGxldGVBZ2VudFRvcFVwKGZyZXNoLCBtb25leSwgYWxpcGF5QXVkaXRGcm9tUXVlcnkocnNwKSwgY2xpZW50SVAsIG1vZGVsLlBheW1lbnRQcm92aWRlckFsaXBheUFnZW50KTsgY2VyciAhPSBuaWwgewoJCWNvbW1vbi5TeXNFcnJvcigiYWdlbnQgdG9wdXAgcXVlcnktY29tcGxldGUgZmFpbGVkOiAiICsgY2Vyci5FcnJvcigpKQoJfQp9Cgp0eXBlIGFnZW50Q2xhaW1Db2RlIGludAoKY29uc3QgKAoJYWdlbnRDbGFpbU9LIGFnZW50Q2xhaW1Db2RlID0gaW90YQoJYWdlbnRDbGFpbUFscmVhZHlNaW5lCglhZ2VudENsYWltVGFrZW4KCWFnZW50Q2xhaW1Ob3RQYWlkCglhZ2VudENsYWltTm90QWdlbnRPcmRlcgopCgovLyBhZ2VudENsYWltRGVjaXNpb24g57qv5Ye95pWw5Yik5a6a5Y+v5ZCm6K6k6aKGKOS4jeeisCBEQik75YiG57uEL+mbtumHkemineajgOafpeWcqCBoYW5kbGVyIOWGheWBmuOAggpmdW5jIGFnZW50Q2xhaW1EZWNpc2lvbih0b3BVcCAqbW9kZWwuVG9wVXAsIHVzZXJJZCBpbnQpIGFnZW50Q2xhaW1Db2RlIHsKCS8vIOS4ieS4quaZuuiDveS9k+a4oOmBk+WFseeUqOiupOmihumTvui3rzogYWxpcGF5X2FnZW50KOeZvueCvC/mlK/ku5jlrp0pICsgd2VjaGF0X3NraWxscGF5KOW+ruS/oSBYNDAyKSArIHdlY2hhdF9hZ2VudCjlvq7kv6Hljp/nlJ/ku6Pop6blj5EpCglpZiB0b3BVcC5QYXltZW50UHJvdmlkZXIgIT0gbW9kZWwuUGF5bWVudFByb3ZpZGVyQWxpcGF5QWdlbnQgJiYKCQl0b3BVcC5QYXltZW50UHJvdmlkZXIgIT0gbW9kZWwuUGF5bWVudFByb3ZpZGVyV2VjaGF0U2tpbGxQYXkgJiYKCQl0b3BVcC5QYXltZW50UHJvdmlkZXIgIT0gbW9kZWwuUGF5bWVudFByb3ZpZGVyV2VjaGF0QWdlbnQgewoJCXJldHVybiBhZ2VudENsYWltTm90QWdlbnRPcmRlcgoJfQoJaWYgdG9wVXAuU3RhdHVzICE9IGNvbW1vbi5Ub3BVcFN0YXR1c1N1Y2Nlc3MgewoJCXJldHVybiBhZ2VudENsYWltTm90UGFpZAoJfQoJaWYgdG9wVXAuVXNlcklkID09IHVzZXJJZCB7CgkJcmV0dXJuIGFnZW50Q2xhaW1BbHJlYWR5TWluZQoJfQoJaWYgdG9wVXAuVXNlcklkICE9IDAgewoJCXJldHVybiBhZ2VudENsYWltVGFrZW4KCX0KCXJldHVybiBhZ2VudENsYWltT0sKfQoKLy8gQ2xhaW1BZ2VudFRvcFVwIOa4uOWuouaUr+S7mOWQjueZu+W9lS/ms6jlhows5YetIGNsYWltX3Rva2VuIOaKiuW3suaUr+S7mOiuouWNlee7keWIsOiHquW3seWQjeS4i+W5tuWFpei0puOAggpmdW5jIENsYWltQWdlbnRUb3BVcChjICpnaW4uQ29udGV4dCkgewoJdmFyIHJlcSBzdHJ1Y3QgewoJCUNsYWltVG9rZW4gc3RyaW5nIGBqc29uOiJjbGFpbV90b2tlbiJgCgl9CglpZiBlcnIgOj0gYy5TaG91bGRCaW5kSlNPTigmcmVxKTsgZXJyICE9IG5pbCB8fCBsZW4oc3RyaW5ncy5UcmltU3BhY2UocmVxLkNsYWltVG9rZW4pKSAhPSAzMiB7CgkJYy5KU09OKGh0dHAuU3RhdHVzT0ssIGdpbi5IeyJtZXNzYWdlIjogImVycm9yIiwgImRhdGEiOiAi5Y+C5pWw6ZSZ6K+vIn0pCgkJcmV0dXJuCgl9Cgl0b3BVcCA6PSBtb2RlbC5HZXRUb3BVcEJ5Q2xhaW1Ub2tlbihzdHJpbmdzLlRyaW1TcGFjZShyZXEuQ2xhaW1Ub2tlbikpCglpZiB0b3BVcCA9PSBuaWwgewoJCWMuSlNPTihodHRwLlN0YXR1c09LLCBnaW4uSHsibWVzc2FnZSI6ICJlcnJvciIsICJkYXRhIjogIuiuouWNleS4jeWtmOWcqCJ9KQoJCXJldHVybgoJfQoJdXNlcklkIDo9IGMuR2V0SW50KCJpZCIpCglMb2NrT3JkZXIodG9wVXAuVHJhZGVObykKCWRlZmVyIFVubG9ja09yZGVyKHRvcFVwLlRyYWRlTm8pCglmcmVzaCA6PSBtb2RlbC5HZXRUb3BVcEJ5VHJhZGVObyh0b3BVcC5UcmFkZU5vKQoJaWYgZnJlc2ggPT0gbmlsIHsKCQljLkpTT04oaHR0cC5TdGF0dXNPSywgZ2luLkh7Im1lc3NhZ2UiOiAiZXJyb3IiLCAiZGF0YSI6ICLorqLljZXkuI3lrZjlnKgifSkKCQlyZXR1cm4KCX0KCXN3aXRjaCBhZ2VudENsYWltRGVjaXNpb24oZnJlc2gsIHVzZXJJZCkgewoJY2FzZSBhZ2VudENsYWltQWxyZWFkeU1pbmU6CgkJYy5KU09OKGh0dHAuU3RhdHVzT0ssIGdpbi5IeyJtZXNzYWdlIjogInN1Y2Nlc3MiLCAiZGF0YSI6IGdpbi5IeyJhbW91bnQiOiBmcmVzaC5BbW91bnR9fSkKCQlyZXR1cm4KCWNhc2UgYWdlbnRDbGFpbU9LOgoJZGVmYXVsdDoKCQljLkpTT04oaHR0cC5TdGF0dXNPSywgZ2luLkh7Im1lc3NhZ2UiOiAiZXJyb3IiLCAiZGF0YSI6ICLorqLljZXlvZPliY3kuI3lj6/orqTpooYifSkKCQlyZXR1cm4KCX0KCWdyb3VwLCBlcnIgOj0gbW9kZWwuR2V0VXNlckdyb3VwKHVzZXJJZCwgdHJ1ZSkKCWlmIGVyciAhPSBuaWwgewoJCWMuSlNPTihodHRwLlN0YXR1c09LLCBnaW4uSHsibWVzc2FnZSI6ICJlcnJvciIsICJkYXRhIjogIuiOt+WPlueUqOaIt+WIhue7hOWksei0pSJ9KQoJCXJldHVybgoJfQoJYW1vdW50IDo9IGFnZW50UXVvdGFBbW91bnRGcm9tTW9uZXkoZnJlc2guTW9uZXksIGdyb3VwKQoJaWYgYW1vdW50IDw9IDAgewoJCWMuSlNPTihodHRwLlN0YXR1c09LLCBnaW4uSHsibWVzc2FnZSI6ICJlcnJvciIsICJkYXRhIjogIuiuouWNleW9k+WJjeS4jeWPr+iupOmihiJ9KQoJCXJldHVybgoJfQoJZnJlc2guVXNlcklkID0gdXNlcklkCglmcmVzaC5BbW91bnQgPSBhbW91bnQKCXF1b3RhVG9BZGQgOj0gaW50KGRlY2ltYWwuTmV3RnJvbUludChmcmVzaC5BbW91bnQpLk11bChkZWNpbWFsLk5ld0Zyb21GbG9hdChjb21tb24uUXVvdGFQZXJVbml0KSkuSW50UGFydCgpKQoJaWYgZXJyIDo9IGZyZXNoLlVwZGF0ZSgpOyBlcnIgIT0gbmlsIHsKCQljLkpTT04oaHR0cC5TdGF0dXNPSywgZ2luLkh7Im1lc3NhZ2UiOiAiZXJyb3IiLCAiZGF0YSI6ICLorqTpooblpLHotKUifSkKCQlyZXR1cm4KCX0KCWlmIGVyciA6PSBtb2RlbC5JbmNyZWFzZVVzZXJRdW90YSh1c2VySWQsIHF1b3RhVG9BZGQsIHRydWUpOyBlcnIgIT0gbmlsIHsKCQkvLyBwb255dGFpbDog5LiOIEFsaXBheU5vdGlmeSDlkIzmrL4gbGF0ZW50IG1vbmV5IGxlYWsoVXBkYXRlIOW3sue7keeUqOaItyzliqDpop3lpLHotKXpkrHlnKjljZXkuIrkuI3lnKjotKbkuIop44CCCgkJLy8gICDkurrlt6XlhZzlupU6IHRvcHVwcyDooaggc3RhdHVzPXN1Y2Nlc3Mg5LiUIHVzZXJfaWQ+MCDkvYbml6DlhaXotKbml6Xlv5fnmoQs5a6i5pyN5oyJIE1vbmV5IOihpeOAggoJCWMuSlNPTihodHRwLlN0YXR1c09LLCBnaW4uSHsibWVzc2FnZSI6ICJlcnJvciIsICJkYXRhIjogIuWFpei0puWksei0pe+8jOivt+iBlOezu+WuouacjSJ9KQoJCXJldHVybgoJfQoJaWYgbW9kZWwuU3VibWl0T3JkZXJFdmlkZW5jZUZuICE9IG5pbCB7CgkJZ28gZnVuYyhpbiBtb2RlbC5TdWJtaXRPcmRlckV2aWRlbmNlSW5wdXQpIHsKCQkJaWYgZXJyIDo9IG1vZGVsLlN1Ym1pdE9yZGVyRXZpZGVuY2VGbihpbik7IGVyciAhPSBuaWwgewoJCQkJY29tbW9uLlN5c0Vycm9yKCJhbnRjaGFpbiBldmlkZW5jZSBzdWJtaXQgZmFpbGVkOiAiICsgZXJyLkVycm9yKCkpCgkJCX0KCQl9KG1vZGVsLkJ1aWxkVG9wdXBFdmlkZW5jZShmcmVzaCkpCgl9Cgltb2RlbC5SZWNvcmRUb3B1cExvZyh1c2VySWQsCgkJZm10LlNwcmludGYoIuS9v+eUqOaZuuiDveS9k+aUr+S7mOWuneWFheWAvOaIkOWKn++8iOiupOmihu+8ie+8jOWFheWAvOmHkeminTogJXbvvIzmlK/ku5jph5Hpop3vvJolZiIsIGxvZ2dlci5Mb2dRdW90YShxdW90YVRvQWRkKSwgZnJlc2guTW9uZXkpLAoJCWMuQ2xpZW50SVAoKSwgZnJlc2guUGF5bWVudE1ldGhvZCwgbW9kZWwuUGF5bWVudE1ldGhvZEFsaXBheSkKCS8vIOiupOmihuWNs+e7keWumjrmnI3liqHlj7cgSlNBUEkg5Y2V5ZyoIG5vdGlmeSDph4zlt7Lmiorku5jmrL7kurogb3BlbmlkIOWtmOi/myBQYXllcklkLAoJLy8g5ZCM5LiA5b6u5L+h55qE5Lq65q2k5ZCO5YWF5YC855u05o6l5byA55m75b2V5Y2VLOS4jeWGjemcgOimgeiupOmihuOAgue7keWumuWksei0peS4jeW9seWTjeacrOeslOWFpei0puOAggoJaWYgZnJlc2guUGF5bWVudFByb3ZpZGVyID09IG1vZGVsLlBheW1lbnRQcm92aWRlcldlY2hhdEFnZW50ICYmIGZyZXNoLlBheWVySWQgIT0gIiIgewoJCWlmIGVyciA6PSBtb2RlbC5CaW5kTXBPcGVuaWQodXNlcklkLCBmcmVzaC5QYXllcklkKTsgZXJyICE9IG5pbCB7CgkJCWNvbW1vbi5TeXNFcnJvcigiY2xhaW0gYmluZCBtcCBvcGVuaWQgZmFpbGVkOiAiICsgZXJyLkVycm9yKCkpCgkJfQoJfQoJLy8g6L+Q6JCl57G7OiDorqTpoobmiJDlip/lkI7lkYror4nku5bkuIvkuIDmraXljrvlk6oo55yL5L2Z6aKdL+eUqOmHjyks5Yir6K6p55So5oi35a+5552A5LiA5Y+l5oiQ5Yqf5o+Q56S65Y+R5ZGGCgljLkpTT04oaHR0cC5TdGF0dXNPSywgZ2luLkh7Im1lc3NhZ2UiOiAic3VjY2VzcyIsICJkYXRhIjogZ2luLkh7CgkJImFtb3VudCI6ICAgZnJlc2guQW1vdW50LAoJCSJuZXh0X3VybCI6IHN0cmluZ3MuVHJpbVN1ZmZpeChzeXN0ZW1fc2V0dGluZy5TZXJ2ZXJBZGRyZXNzLCAiLyIpICsgIi93YWxsZXQiLAoJfX0pCn0K
+package controller
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/system_setting"
+	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
+	"github.com/smartwalle/alipay/v3"
+)
+
+// agentQuotaAmountFromMoney 是 getPayMoney 的逆运算: 实付 RMB → 额度单位数量。
+// ponytail: 不套 AmountDiscount(那是预设金额档位的促销,智能体订单金额任意,无档位可配)。
+// 返回单位与 TopUp.Amount 语义一致: 非 TOKENS 展示 = USD 整数; TOKENS 展示 = token 数,
+// 保证认领/入账处 quotaToAdd = Amount * QuotaPerUnit 与现有 AlipayNotify 同构。
+func agentQuotaAmountFromMoney(money float64, group string) int64 {
+	dMoney := decimal.NewFromFloat(money)
+	ratio := common.GetTopupGroupRatio(group)
+	if ratio == 0 {
+		ratio = 1
+	}
+	// Price 被误配为 0 时 decimal.Div 会 panic,与 ratio 同款兜底
+	price := operation_setting.Price
+	if price == 0 {
+		price = 1
+	}
+	usd := dMoney.Div(decimal.NewFromFloat(price)).
+		Div(decimal.NewFromFloat(ratio))
+	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
+		return usd.Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart()
+	}
+	return usd.Round(0).IntPart()
+}
+
+// newClaimToken 生成 128-bit 随机认领凭据(hex 32 字符)。
+// 不用 common.GetRandomString: 认领凭据是钱的钥匙,必须 crypto/rand。
+func newClaimToken() (string, error) {
+	buf := make([]byte, 16)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(buf), nil
+}
+
+// 游客聊天 IP 限额。复用 common.InMemoryRateLimiter(滑动窗口+定时淘汰),hour/day 各一实例;
+// 匿名公网端点,自研 map 无淘汰会无界增长(review I-1)。
+var (
+	guestChatHourLimiter common.InMemoryRateLimiter
+	guestChatDayLimiter  common.InMemoryRateLimiter
+)
+
+func init() {
+	resetGuestChatLimiter()
+}
+
+func resetGuestChatLimiter() {
+	guestChatHourLimiter = common.InMemoryRateLimiter{}
+	guestChatHourLimiter.Init(time.Hour)
+	guestChatDayLimiter = common.InMemoryRateLimiter{}
+	guestChatDayLimiter.Init(24 * time.Hour)
+}
+
+func allowGuestChat(ip string) bool {
+	hourLimit, dayLimit := operation_setting.AgentGuestChatHourLimit, operation_setting.AgentGuestChatDayLimit
+	if hourLimit <= 0 {
+		hourLimit = 10
+	}
+	if dayLimit <= 0 {
+		dayLimit = 50
+	}
+	if !guestChatHourLimiter.Request(ip, hourLimit, 3600) {
+		return false
+	}
+	return guestChatDayLimiter.Request(ip, dayLimit, 86400)
+}
+
+// RegisterAgentTopUp 游客/用户下单后登记 MCP 订单,发放认领凭据。
+// 金额此时只是"申报值"(来自支付链接),入账以 completeAgentTopUp 的支付宝侧金额为准。
+func RegisterAgentTopUp(c *gin.Context) {
+	var req struct {
+		OutTradeNo string `json:"out_trade_no"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil ||
+		strings.TrimSpace(req.OutTradeNo) == "" || len(req.OutTradeNo) > 64 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
+		return
+	}
+	outTradeNo := strings.TrimSpace(req.OutTradeNo)
+	if model.GetTopUpByTradeNo(outTradeNo) != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单已登记"})
+		return
+	}
+	token, err := newClaimToken()
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "登记失败"})
+		return
+	}
+	topUp := &model.TopUp{
+		UserId:          c.GetInt("id"), // 游客为 0,认领时再绑
+		TradeNo:         outTradeNo,
+		ClaimToken:      token,
+		PaymentMethod:   model.PaymentMethodAlipay,
+		PaymentProvider: model.PaymentProviderAlipayAgent,
+		CreateTime:      time.Now().Unix(),
+		Status:          common.TopUpStatusPending,
+	}
+	if err := topUp.Insert(); err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "登记失败"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"claim_token": token}})
+}
+
+// AgentTopUpStatus 凭 claim_token 查订单状态;pending 超过 10 秒时顺手向支付宝查单
+// (兜底通道: 百炼 MCP 若配不了 AP_NOTIFY_URL,到账感知全靠这里)。token 即凭据,无需登录。
+func AgentTopUpStatus(c *gin.Context) {
+	token := strings.TrimSpace(c.Query("claim_token"))
+	if len(token) != 32 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
+		return
+	}
+	topUp := model.GetTopUpByClaimToken(token)
+	// X402 单在建单时就预生成了 claim_token，而 TopUp 行要到履约才存在：
+	// 用户手里只有链接、Agent 会话已丢时，轮询会打到「订单不存在」。这里就地补履约
+	// （查单为唯一付款事实），点开认领页即自愈，不必回对话、不必开工单。
+	if topUp == nil {
+		if so := model.GetSkillPayOrderByClaimToken(token); so != nil && !so.Fulfilled &&
+			time.Now().Unix()-so.CreateTime < 7200 { // 与下方 pending 轮询同款窗口，避免未付单被无限查单
+			if _, _, err := skillPayFulfillByQuery(c.Request.Context(), c.ClientIP(), so); err != nil {
+				common.SysError("skillpay claim-page fulfill failed: " + err.Error())
+			}
+			topUp = model.GetTopUpByClaimToken(token)
+		}
+	}
+	if topUp == nil || (topUp.PaymentProvider != model.PaymentProviderAlipayAgent &&
+		topUp.PaymentProvider != model.PaymentProviderWechatAgent &&
+		topUp.PaymentProvider != model.PaymentProviderWechatSkillPay) {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单不存在"})
+		return
+	}
+	// 查单兜底限 2 小时窗口: 支付宝订单本身有有效期,避免长期挂着 widget 的 pending 单被无限轮询查单
+	if topUp.Status == common.TopUpStatusPending &&
+		time.Now().Unix()-topUp.CreateTime > 10 &&
+		time.Now().Unix()-topUp.CreateTime < 7200 {
+		switch topUp.PaymentProvider {
+		case model.PaymentProviderAlipayAgent:
+			tryCompleteAgentTopUpByQuery(topUp, c.ClientIP())
+		case model.PaymentProviderWechatAgent:
+			tryCompleteWechatAgentByQuery(topUp, c.ClientIP())
+		}
+		topUp = model.GetTopUpByClaimToken(token)
+		if topUp == nil {
+			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单不存在"})
+			return
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{
+		"status": topUp.Status,
+		"money":  topUp.Money,
+		// claimed 语义 = "已入账"而非"已绑用户": 登录单登记即绑 user_id,
+		// 不加支付门槛会让前端在未付款时误显"已到账"(终审 I-1)
+		"claimed": topUp.UserId != 0 && topUp.Status == common.TopUpStatusSuccess,
+	}})
+}
+
+// tryCompleteAgentTopUpByQuery 用站点现有支付宝 client 按 out_trade_no 查单。
+// 前提(验证项 V0): MCP 订单与站点支付配置同 APPID。查不到/出错静默返回,下次轮询再试。
+func tryCompleteAgentTopUpByQuery(topUp *model.TopUp, clientIP string) {
+	cli := GetAlipayClient()
+	if cli == nil {
+		return
+	}
+	var q = alipay.TradeQuery{}
+	q.OutTradeNo = topUp.TradeNo
+	rsp, err := cli.TradeQuery(context.Background(), q)
+	if err != nil || rsp == nil || rsp.Code != alipay.CodeSuccess {
+		return
+	}
+	if rsp.TradeStatus != "TRADE_SUCCESS" && rsp.TradeStatus != "TRADE_FINISHED" {
+		return
+	}
+	money, perr := strconv.ParseFloat(string(rsp.TotalAmount), 64)
+	if perr != nil || money <= 0 {
+		return
+	}
+	LockOrder(topUp.TradeNo)
+	defer UnlockOrder(topUp.TradeNo)
+	fresh := model.GetTopUpByTradeNo(topUp.TradeNo)
+	if fresh == nil || fresh.Status != common.TopUpStatusPending {
+		return
+	}
+	if cerr := completeAgentTopUp(fresh, money, alipayAuditFromQuery(rsp), clientIP, model.PaymentProviderAlipayAgent); cerr != nil {
+		common.SysError("agent topup query-complete failed: " + cerr.Error())
+	}
+}
+
+type agentClaimCode int
+
+const (
+	agentClaimOK agentClaimCode = iota
+	agentClaimAlreadyMine
+	agentClaimTaken
+	agentClaimNotPaid
+	agentClaimNotAgentOrder
+)
+
+// agentClaimDecision 纯函数判定可否认领(不碰 DB);分组/零金额检查在 handler 内做。
+func agentClaimDecision(topUp *model.TopUp, userId int) agentClaimCode {
+	// 三个智能体渠道共用认领链路: alipay_agent(百炼/支付宝) + wechat_skillpay(微信 X402) + wechat_agent(微信原生代触发)
+	if topUp.PaymentProvider != model.PaymentProviderAlipayAgent &&
+		topUp.PaymentProvider != model.PaymentProviderWechatSkillPay &&
+		topUp.PaymentProvider != model.PaymentProviderWechatAgent {
+		return agentClaimNotAgentOrder
+	}
+	if topUp.Status != common.TopUpStatusSuccess {
+		return agentClaimNotPaid
+	}
+	if topUp.UserId == userId {
+		return agentClaimAlreadyMine
+	}
+	if topUp.UserId != 0 {
+		return agentClaimTaken
+	}
+	return agentClaimOK
+}
+
+// ClaimAgentTopUp 游客支付后登录/注册,凭 claim_token 把已支付订单绑到自己名下并入账。
+func ClaimAgentTopUp(c *gin.Context) {
+	var req struct {
+		ClaimToken string `json:"claim_token"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || len(strings.TrimSpace(req.ClaimToken)) != 32 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
+		return
+	}
+	topUp := model.GetTopUpByClaimToken(strings.TrimSpace(req.ClaimToken))
+	if topUp == nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单不存在"})
+		return
+	}
+	userId := c.GetInt("id")
+	LockOrder(topUp.TradeNo)
+	defer UnlockOrder(topUp.TradeNo)
+	fresh := model.GetTopUpByTradeNo(topUp.TradeNo)
+	if fresh == nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单不存在"})
+		return
+	}
+	switch agentClaimDecision(fresh, userId) {
+	case agentClaimAlreadyMine:
+		c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"amount": fresh.Amount}})
+		return
+	case agentClaimOK:
+	default:
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单当前不可认领"})
+		return
+	}
+	group, err := model.GetUserGroup(userId, true)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
+		return
+	}
+	amount := agentQuotaAmountFromMoney(fresh.Money, group)
+	if amount <= 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单当前不可认领"})
+		return
+	}
+	fresh.UserId = userId
+	fresh.Amount = amount
+	quotaToAdd := int(decimal.NewFromInt(fresh.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
+	if err := fresh.Update(); err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "认领失败"})
+		return
+	}
+	if err := model.IncreaseUserQuota(userId, quotaToAdd, true); err != nil {
+		// ponytail: 与 AlipayNotify 同款 latent money leak(Update 已绑用户,加额失败钱在单上不在账上)。
+		//   人工兜底: topups 表 status=success 且 user_id>0 但无入账日志的,客服按 Money 补。
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "入账失败，请联系客服"})
+		return
+	}
+	if model.SubmitOrderEvidenceFn != nil {
+		go func(in model.SubmitOrderEvidenceInput) {
+			if err := model.SubmitOrderEvidenceFn(in); err != nil {
+				common.SysError("antchain evidence submit failed: " + err.Error())
+			}
+		}(model.BuildTopupEvidence(fresh))
+	}
+	model.RecordTopupLog(userId,
+		fmt.Sprintf("使用智能体支付宝充值成功（认领），充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), fresh.Money),
+		c.ClientIP(), fresh.PaymentMethod, model.PaymentMethodAlipay)
+	// 认领即绑定:服务号 JSAPI 单在 notify 里已把付款人 openid 存进 PayerId,
+	// 同一微信的人此后充值直接开登录单,不再需要认领。绑定失败不影响本笔入账。
+	if fresh.PaymentProvider == model.PaymentProviderWechatAgent && fresh.PayerId != "" {
+		if err := model.BindMpOpenid(userId, fresh.PayerId); err != nil {
+			common.SysError("claim bind mp openid failed: " + err.Error())
+		}
+	}
+	// 运营类: 认领成功后告诉他下一步去哪(看余额/用量),别让用户对着一句成功提示发呆
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{
+		"amount":   fresh.Amount,
+		"next_url": strings.TrimSuffix(system_setting.ServerAddress, "/") + "/wallet",
+	}})
+}

@@ -48,6 +48,13 @@
   X402 单的后台 sweep 停摆也只影响提醒推送。
 - 无码重试每次多打一次微信查单，属预期成本。
 
+### 机B 部署实测（0474c4ad0，21:18 +0800 重启 new-api/zeroclaw）
+- bundle 内 `SKILL.md` = `version: 2.2.0`；
+- `POST /api/skill/invoke` → `503 SKILLPAY_DISABLED`（守门生效，也证明跑的是新二进制）；
+- 新会话对话「我要充值 0.1 元」→ 回复带真 `weixin://wxpay/bizpayurl?pr=…` 与认领链接，**不含 payapp**，
+  同时落库 `WXAGT20260929212316… | wechat_agent | user_id=0 | pending` → 路径 B 完好；
+- 待办回收动作：后台取到真 slug 后改 `deploy/.env` 的 `SKILLPAY_SKILL_ID` 并重启 new-api，路径 A 才会恢复。
+
 ## 待办（需要人去后台拿/做的事，见本文件末节清单）
 - `SKILLPAY_SKILL_ID` 换成后台确认的 slug；`SKILLPAY_SKILL_VERSION` 与发布版本对齐（现在钉 1.0.0，技能 2.2.0）。
 - `bt_` Token 轮换（它已在我们容器 env 和签名串里待过）。

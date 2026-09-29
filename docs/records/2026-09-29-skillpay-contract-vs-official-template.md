@@ -55,12 +55,28 @@
   同时落库 `WXAGT20260929212316… | wechat_agent | user_id=0 | pending` → 路径 B 完好；
 - 待办回收动作：后台取到真 slug 后改 `deploy/.env` 的 `SKILLPAY_SKILL_ID` 并重启 new-api，路径 A 才会恢复。
 
+### slug 已回填并端到端验通（同日 22:14 +0800）
+用户确认收费那条 Pay Skill 的 slug = `savvy-quota-topup`（与真源 frontmatter 一致，无需改包）。
+`deploy/.env` 改 `SKILLPAY_SKILL_ID=savvy-quota-topup`、`SKILLPAY_SKILL_VERSION=2.2.0`（改前 `.env.bak-<ts>` 留档），
+`docker compose up -d --force-recreate new-api`（**restart 不吃新 env，必须 recreate**）。实测：
+
+| 请求 | 结果 |
+|---|---|
+| 首请求 `{action:topup, amount_yuan:1}` | **402** + `WeixinPay-Required` 为平台返回的真 UUID、body 顶层与嵌套同值、`amount:100`（分）、带 `claim_url` |
+| 只带 `X-Out-Trade-No`（官方模板姿势，未付款） | **402 `PAYMENT_NOT_COMPLETED` / `trade_state:NOTPAY`** —— 不再 401，且实查了渠道 |
+| 带错误码 | **401 `PAYMENT_CODE_INVALID`** —— 猜码仍拒 |
+| 带正确码（未付款） | 402 NOTPAY（走查单） |
+
+结论：平台**接受 slug 形态的 `skill_id`** 并正常签发 `payment_code`，签名/密钥链路无需改动。
+`bt_` Token 用户决定暂不轮换（已知风险：它曾出现在容器 env 与签名载荷里）。
+
 ## 待办（需要人去后台拿/做的事，见本文件末节清单）
-- `SKILLPAY_SKILL_ID` 换成后台确认的 slug；`SKILLPAY_SKILL_VERSION` 与发布版本对齐（现在钉 1.0.0，技能 2.2.0）。
-- `bt_` Token 轮换（它已在我们容器 env 和签名串里待过）。
+- ~~`SKILLPAY_SKILL_ID` 换成后台确认的 slug；版本对齐~~ 已完成，见上节实测。
+- `bt_` Token 轮换：用户决定**暂不做**（2026-09-29 拍板），风险已知并留档。
 - `product_id` 目前每次随机（官方要求固定且与后台定价一致）——等后台确认商品口径再改。
-- SkillHub 的 `pricing` 只给了 `mode: per_call` + 固定 `price`；我们是"用户自定金额充值"，
-  这一形态平台是否支持，必须先问清再往 frontmatter 里填数，不能编一个价。
+- ~~SkillHub 的 `pricing` 是否支持"金额由 agent 传入"~~ 用户确认**支持**，故 frontmatter 不写死 `pricing.price`。
+- 未做：以第三方 agent 宿主（装了 weixinpay 插件）视角跑一次真机闭环（充值→授权→付款→到账）。
+  本轮只验到服务端签发 `payment_code` 与重试矩阵。
 
 ## 去哪里拿这些（速查）
 | 要拿的东西 | 在哪 | 备注 |

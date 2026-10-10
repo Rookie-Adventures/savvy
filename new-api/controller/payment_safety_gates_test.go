@@ -232,3 +232,32 @@ func TestCompleteSubscriptionOrder_IdempotentOnReplay(t *testing.T) {
 	assert.Contains(t, after.ProviderPayload, `"replay":0`,
 		"ProviderPayload must be from the first completion, not overwritten by replays")
 }
+
+// TestAlipayWebPayURL_SetsOrderTimeout 锁住两条网站支付下单分支都必须带 timeout_express。
+// 缺这个字段时支付宝侧订单永不过期:用户几天后仍能付一张我们早已当废单的订单。
+func TestAlipayWebPayURL_SetsOrderTimeout(t *testing.T) {
+	// ponytail: TradePagePay/TradeWapPay 内部只走 BuildURL 本地拼串+签名,不发网络请求,
+	// 所以这个 client 缺支付宝公钥(验签用)不影响下单构串。
+	cli := newAlipayClientWithUnverifiableSign(t)
+
+	for _, tc := range []struct {
+		name string
+		wap  bool
+	}{
+		{"pc page pay", false},
+		{"mobile wap pay", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			u, err := alipayWebPayURL(cli, "栗橙科技-STARTER套餐", "to-timeout-1", "9.90",
+				"https://example.com/notify", "https://example.com/return", tc.wap)
+			require.NoError(t, err)
+			require.NotNil(t, u)
+
+			bizContent := u.Query().Get("biz_content")
+			require.NotEmpty(t, bizContent, "BuildURL must emit biz_content")
+			// ponytail: 写死 "30m" 而非引用常量——改时限是钱路径上的决定,必须显式过测试。
+			assert.Contains(t, bizContent, `"timeout_express":"30m"`,
+				"下单必须带最晚付款时限,否则支付宝侧订单永不过期")
+		})
+	}
+}

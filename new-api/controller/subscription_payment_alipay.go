@@ -66,6 +66,13 @@ func isMobileClient(c *gin.Context) bool {
 		strings.Contains(ua, "iPhone") || strings.Contains(ua, "iPad")
 }
 
+// alipayOrderTimeout 告知支付宝这笔单的最晚付款时限,逾期由支付宝侧自动关单。
+// 不设则支付宝侧订单永不过期,用户几天后仍能付一张我们早已当废单的订单。
+// 这只关支付宝那一侧:本地 top_ups 的 pending 行不会因此改写,
+// 异步通知里非 TRADE_SUCCESS/TRADE_FINISHED 一律写 "fail" 早退,要清得另做查单清扫。
+// 取值范围 1m~15d,不接受小数点(1.5h 要写成 90m)。
+const alipayOrderTimeout = "30m"
+
 // alipayWebPayURL 网站支付统一下单:移动端用 TradeWapPay(QUICK_WAP_WAY,唤起支付宝 App),
 // PC 保持 TradePagePay(FAST_INSTANT_TRADE_PAY)。两条链路共用同一回调与返跳。
 func alipayWebPayURL(cli *alipay.Client, subject, tradeNo, totalAmount, notifyURL, returnURL string, wap bool) (*url.URL, error) {
@@ -77,6 +84,7 @@ func alipayWebPayURL(cli *alipay.Client, subject, tradeNo, totalAmount, notifyUR
 		p.OutTradeNo = tradeNo
 		p.TotalAmount = totalAmount
 		p.ProductCode = "QUICK_WAP_WAY"
+		p.TimeoutExpress = alipayOrderTimeout
 		return cli.TradeWapPay(p)
 	}
 	var p = alipay.TradePagePay{}
@@ -86,6 +94,7 @@ func alipayWebPayURL(cli *alipay.Client, subject, tradeNo, totalAmount, notifyUR
 	p.OutTradeNo = tradeNo
 	p.TotalAmount = totalAmount
 	p.ProductCode = "FAST_INSTANT_TRADE_PAY"
+	p.TimeoutExpress = alipayOrderTimeout
 	return cli.TradePagePay(p)
 }
 
